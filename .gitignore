@@ -1,0 +1,97 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Sensitive credentials - NEVER commit these
+.env
+
+# Debug and temp files
+*.log
+*.txt
+*.json
+!knowledge_base.json
+!data/
+debug_*.py
+test_*.py
+check_*.py
+verify_*.py
+inspect_*.py
+migrate_*.py
+sync_*.py
+full_*.py
+diagnose_*.py
+cleanup_*.py
+seed_*.py
+update_*.py
+compare_*.py
+count_*.py
+import_*.py
+scrape_*.py
+add_*.py
+create_*.py
+patch_*.py
+find_*.py
+fix_*.py
+enrich_*.py
+quick_*.py
+re_sync*.py
+thorough_*.py
+ultra_*.py
+warm_*.py
+list_*.py
+diag_*.py
+remove_*.py
+setup_ai.py
+setup_ollama*.py
+setup_prod_db.py
+download_*.py
+setup_models*
+simple_db_check.py
+performance_engine.py
+speed_config.py
+simple_bot.py
+
+# Log and output files
+*.log
+*.log.utf8
+*_log.txt
+*_out.txt
+*_out_utf8.txt
+*_utf8.txt
+*_results.txt
+*_result.txt
+*_check.txt
+*_outcome.txt
+*_status.txt
+*_stats.txt
+*_stats2.txt
+*_sample.txt
+*_final.txt
+*_list.txt
+
+# Test result files
+test_tls_res.txt
+test_certifi_res.txt
+db_results.json
+verify_count.json
+cache_check.json
+resale_final_log.json
+group_sample.json
+
+# Embedded git repos (don't commit these)
+chatbot_repo/
+data/pc-part-dataset/
+
+# Windows specific
+Thumbs.db
+*.tmp
