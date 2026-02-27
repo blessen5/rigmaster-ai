@@ -1,0 +1,8 @@
+﻿ Volume in drive C is Windows
+ Volume Serial Number is 106D-CD90
+
+ Directory of C:\Users\bless\.gemini\antigravity\scratch\rigmaster-ui
+
+10-02-2026  07:25           163,904 app.py
+               1 File(s)        163,904 bytes
+               0 Dir(s)  252,552,798,208 bytes free

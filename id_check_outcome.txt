@@ -1,0 +1,4 @@
+Match found for 'NVIDIA GeForce RTX 4090':
+  ID in 'components': 69854e67caad6512b362d1a9
+  ID in 'gpus':       69854e67caad6512b362d1a9
+  SUCCESS: IDs match.

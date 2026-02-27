@@ -1,0 +1,27 @@
+{
+  "unified_total": 28540,
+  "categories": {
+    "cpu": 962,
+    "gpu": 3596,
+    "motherboard": 4974,
+    "ram": 3512,
+    "storage": 1896,
+    "psu": 2147,
+    "case": 4218,
+    "cooler": 2338,
+    "fans": 1000,
+    "monitor": 1367,
+    "peripherals": 2516,
+    "os": 14
+  },
+  "old_cols": {
+    "cpus": 962,
+    "gpus": 3596,
+    "motherboards": 4974,
+    "ram": 3512,
+    "storage": 1896,
+    "psu": 2147,
+    "cases": 4218,
+    "coolers": 2338
+  }
+}

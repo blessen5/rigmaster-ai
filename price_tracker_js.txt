@@ -1,0 +1,95 @@
+
+            // --- 5. Price Tracker - Real-Time Component Pricing ---
+            const priceTrackerLab = document.getElementById('price-tracker-lab');
+            try {
+                priceTrackerLab.style.display = 'block';
+                
+                const priceResponse = await fetch('/api/component-prices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const priceResult = await priceResponse.json();
+
+                if (priceResult.status === 'success') {
+                    const prices = priceResult.prices;
+                    let totalCost = 0;
+                    let componentCount = 0;
+                    let unavailableCount = 0;
+
+                    // Update each component price card
+                    Object.keys(prices).forEach(category => {
+                        const priceData = prices[category];
+                        const card = document.querySelector(`.price-card[data-category="${category}"]`);
+                        
+                        if (card && priceData) {
+                            // Update component name
+                            const nameEl = card.querySelector('.component-name');
+                            if (nameEl) nameEl.textContent = priceData.name;
+
+                            // Update price
+                            const priceEl = card.querySelector('.price-value');
+                            if (priceEl) {
+                                if (priceData.price && priceData.price > 0) {
+                                    priceEl.textContent = `$${priceData.price.toFixed(2)}`;
+                                    priceEl.style.color = '#10b981';
+                                    totalCost += priceData.price;
+                                    componentCount++;
+                                } else {
+                                    priceEl.textContent = 'N/A';
+                                    priceEl.style.color = '#6b7280';
+                                    unavailableCount++;
+                                }
+                            }
+
+                            // Update retailer info
+                            const retailerEl = card.querySelector('.retailer-info');
+                            if (retailerEl) {
+                                retailerEl.textContent = priceData.retailer || 'Market Average';
+                            }
+
+                            // Add stock indicator
+                            if (!priceData.in_stock) {
+                                card.style.opacity = '0.6';
+                                card.style.borderColor = '#ef4444';
+                            }
+                        }
+                    });
+
+                    // Update total cost
+                    const totalCostEl = document.getElementById('total-build-cost');
+                    if (totalCostEl) {
+                        totalCostEl.textContent = `$${totalCost.toFixed(2)}`;
+                    }
+
+                    // Generate price insight
+                    const insightEl = document.getElementById('price-insight');
+                    if (insightEl) {
+                        let insight = '';
+                        
+                        if (componentCount === 0) {
+                            insight = 'No pricing data available for selected components. Prices may vary by region and retailer.';
+                        } else if (unavailableCount > 0) {
+                            insight = `Pricing available for ${componentCount} of ${componentCount + unavailableCount} components. ${unavailableCount} component(s) have no current price data.`;
+                        } else {
+                            const avgPrice = totalCost / componentCount;
+                            if (totalCost < 800) {
+                                insight = `Budget-friendly build at $${totalCost.toFixed(2)}. Great value for entry-level gaming or productivity.`;
+                            } else if (totalCost < 1500) {
+                                insight = `Mid-range build at $${totalCost.toFixed(2)}. Excellent balance of performance and cost.`;
+                            } else if (totalCost < 2500) {
+                                insight = `High-performance build at $${totalCost.toFixed(2)}. Premium components for demanding workloads.`;
+                            } else {
+                                insight = `Enthusiast-grade build at $${totalCost.toFixed(2)}. Top-tier components for maximum performance.`;
+                            }
+                        }
+                        
+                        insightEl.textContent = insight;
+                    }
+                }
+            } catch (error) { 
+                console.error('Price tracker failed:', error); 
+                // Hide price tracker if it fails
+                if (priceTrackerLab) priceTrackerLab.style.display = 'none';
+            }
+

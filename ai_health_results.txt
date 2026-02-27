@@ -1,0 +1,7 @@
+Provider        | Key Status      | Response   | Quota/Status                  
+--------------------------------------------------------------------------------
+groq            | Present         | 200 OK     | Active
+openrouter      | Present         | 429        | QUOTA EXHAUSTED
+cohere          | Present         | 404        | Error: 
+mistral         | Present         | 200 OK     | Active
+deepseek        | Present         | 402        | Error: Insufficient Balance

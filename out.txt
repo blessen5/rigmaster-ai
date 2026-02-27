@@ -1,0 +1,1 @@
+{'db': 'rigmaster', 'collections': 17, 'views': 0, 'objects': 52264, 'avgObjSize': 214.541309505587, 'dataSize': 11212787.0, 'storageSize': 5496832.0, 'indexes': 19, 'indexSize': 2060288.0, 'totalSize': 7557120.0, 'scaleFactor': 1, 'fsUsedSize': 288843116544.0, 'fsTotalSize': 510869368832.0, 'ok': 1.0}

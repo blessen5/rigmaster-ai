@@ -1,0 +1,11 @@
+cpus: 35
+gpus: 42
+motherboards: 26
+ram: 19
+storage: 19
+psu: 17
+cases: 16
+coolers: 19
+components: 193
+
+Sum of category collections: 193

@@ -1,0 +1,4 @@
+Indexes on components collection:
+  _id_: {'v': 2, 'key': [('_id', 1)]}
+  category_1: {'v': 2, 'key': [('category', 1)]}
+  category_1_name_1: {'v': 2, 'key': [('category', 1), ('name', 1)]}

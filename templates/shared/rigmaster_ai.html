@@ -1,0 +1,632 @@
+<!-- RigMaster Nexus AI Assistant -->
+<div id="nexus-assistant-root" class="nexus-root">
+    <!-- Floating Launcher (AI) -->
+    <div id="nexus-launcher" class="nexus-launcher" onclick="NexusAI.toggle('ai')" title="AI Assistant">
+        <div class="nexus-core">
+            <div class="nexus-pulse"></div>
+            <svg viewBox="0 0 100 100" class="nexus-icon">
+                <path d="M50 15 L85 35 V65 L50 85 L15 65 V35 Z" fill="none" stroke="currentColor" stroke-width="4" />
+                <circle cx="50" cy="50" r="10" fill="currentColor" class="nexus-inner-core" />
+            </svg>
+        </div>
+        <div class="nexus-label-bubble">AI Architect</div>
+    </div>
+
+
+    <!-- Chat Panel -->
+    <div id="nexus-panel" class="nexus-panel">
+        <div class="nexus-header">
+            <div class="nexus-header-info">
+                <div class="nexus-status-indicator">
+                    <span class="nexus-status-dot"></span>
+                    <span class="nexus-status-text">Nexus Core Online</span>
+                </div>
+                <h3>RigMaster Nexus</h3>
+            </div>
+            <div class="nexus-header-actions">
+                <span id="mode-badge" class="mode-badge">AI MODE</span>
+                <button class="nexus-close-btn" onclick="NexusAI.close()">&times;</button>
+            </div>
+        </div>
+
+
+
+        <div id="nexus-chat-body" class="nexus-chat-body">
+            <!-- Initial state is empty as per user preference from previous turns -->
+            <div id="nexus-messages" class="nexus-messages"></div>
+        </div>
+
+        <div class="nexus-input-container">
+            <div class="nexus-context-chip" id="nexus-context-chip">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M2 12h20" />
+                </svg>
+                <span id="nexus-context-text">Auto-scanning page context...</span>
+            </div>
+            <div class="nexus-input-wrapper">
+                <input type="text" id="nexus-input" placeholder="Ask about your build..."
+                    onkeypress="NexusAI.handleKey(event)">
+                <button class="nexus-send-btn" onclick="NexusAI.sendMessage()">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --nexus-primary: #6366f1;
+        --nexus-accent: #06b6d4;
+        --nexus-bg: #0f172a;
+        --nexus-border: rgba(255, 255, 255, 0.1);
+        --nexus-text: #f8fafc;
+        --nexus-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .nexus-root {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 2147483647;
+        /* Ensure maximum visibility above all overlays */
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Launcher Styles */
+    .nexus-launcher {
+        width: 70px;
+        height: 70px;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .nexus-launcher:hover {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    .nexus-core {
+        width: 100%;
+        height: 100%;
+        background: var(--nexus-bg);
+        border: 2px solid var(--nexus-primary);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .nexus-pulse {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, var(--nexus-primary) 0%, transparent 70%);
+        opacity: 0.2;
+        animation: nexus-pulse-anim 2s infinite alternate;
+    }
+
+    @keyframes nexus-pulse-anim {
+        from {
+            transform: scale(0.8);
+            opacity: 0.1;
+        }
+
+        to {
+            transform: scale(1.2);
+            opacity: 0.3;
+        }
+    }
+
+    .nexus-icon {
+        width: 40px;
+        height: 40px;
+        color: var(--nexus-primary);
+        position: relative;
+        z-index: 2;
+    }
+
+    .nexus-inner-core {
+        animation: nexus-spin 4s linear infinite;
+        transform-origin: center;
+    }
+
+    @keyframes nexus-spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .nexus-label-bubble {
+        position: absolute;
+        right: 80px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(10px);
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--nexus-border);
+        color: white;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.3s;
+    }
+
+    .nexus-launcher:hover .nexus-label-bubble {
+        opacity: 1;
+        right: 85px;
+    }
+
+    /* Support Launcher Specifics */
+    .support-launcher {
+        bottom: 100px;
+        /* Position above the main launcher */
+        width: 50px;
+        height: 50px;
+        right: 2rem;
+        position: fixed;
+        z-index: 2147483647;
+    }
+
+    .support-core {
+        background: #10b981;
+        border-color: #059669;
+        border-radius: 50%;
+    }
+
+    .support-icon {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+
+    .mode-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--nexus-text);
+        border: 1px solid var(--nexus-border);
+    }
+
+    /* Panel Styles */
+    .nexus-panel {
+        position: absolute;
+        bottom: 85px;
+        right: 0;
+        width: 400px;
+        height: 600px;
+        background: var(--nexus-bg);
+        border: 1px solid var(--nexus-border);
+        border-radius: 24px;
+        box-shadow: var(--nexus-shadow);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nexus-panel.active {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+
+    .nexus-header {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--nexus-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .nexus-header h3 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.1rem;
+        margin: 0;
+        color: white;
+    }
+
+    .nexus-status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .nexus-status-dot {
+        width: 6px;
+        height: 6px;
+        background: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #10b981;
+    }
+
+    .nexus-status-text {
+        font-size: 0.65rem;
+        color: var(--nexus-accent);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 700;
+    }
+
+    .nexus-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .nexus-select {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--nexus-border);
+        color: #94a3b8;
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 8px;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .nexus-close-btn {
+        background: transparent;
+        border: none;
+        color: var(--nexus-text);
+        font-size: 1.5rem;
+        cursor: pointer;
+        opacity: 0.5;
+        transition: 0.2s;
+        line-height: 1;
+    }
+
+    .nexus-close-btn:hover {
+        opacity: 1;
+        transform: rotate(90deg);
+    }
+
+    .nexus-chat-body {
+        flex: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+        background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.05), transparent 40%);
+        scrollbar-width: thin;
+        scrollbar-color: var(--nexus-primary) transparent;
+    }
+
+    .nexus-messages {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .nexus-message {
+        max-width: 85%;
+        padding: 1rem 1.25rem;
+        border-radius: 18px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        position: relative;
+        animation: nexus-msg-fade 0.3s ease-out;
+    }
+
+    @keyframes nexus-msg-fade {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .nexus-assistant-msg {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--nexus-border);
+        color: #e2e8f0;
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+    }
+
+    .nexus-user-msg {
+        background: linear-gradient(135deg, var(--nexus-primary), #4f46e5);
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .nexus-msg-meta {
+        font-size: 0.65rem;
+        opacity: 0.4;
+        margin-top: 0.5rem;
+        display: block;
+        text-align: right;
+    }
+
+    /* Markdown Styling */
+    .nexus-assistant-msg h1,
+    .nexus-assistant-msg h2,
+    .nexus-assistant-msg h3 {
+        color: var(--nexus-accent);
+        font-size: 1rem;
+        margin: 1rem 0 0.5rem;
+        font-family: 'Outfit';
+    }
+
+    .nexus-assistant-msg p {
+        margin-bottom: 0.75rem;
+    }
+
+    .nexus-assistant-msg ul {
+        padding-left: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .nexus-assistant-msg code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-family: monospace;
+        color: var(--nexus-accent);
+    }
+
+    /* Input Container */
+    .nexus-input-container {
+        padding: 1.25rem 1.5rem 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-top: 1px solid var(--nexus-border);
+    }
+
+    .nexus-context-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(6, 182, 212, 0.1);
+        color: var(--nexus-accent);
+        padding: 4px 10px;
+        border-radius: 100px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        width: fit-content;
+    }
+
+    .nexus-input-wrapper {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .nexus-input-wrapper input {
+        flex: 1;
+        background: #1e293b;
+        border: 1px solid var(--nexus-border);
+        padding: 0.85rem 1.25rem;
+        border-radius: 14px;
+        color: white;
+        outline: none;
+        font-size: 0.95rem;
+        transition: 0.2s;
+    }
+
+    .nexus-input-wrapper input:focus {
+        border-color: var(--nexus-primary);
+        background: #1e293b;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .nexus-send-btn {
+        width: 45px;
+        height: 45px;
+        background: var(--nexus-primary);
+        border: none;
+        border-radius: 14px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .nexus-send-btn:hover {
+        transform: scale(1.05) translateY(-2px);
+        background: #4f46e5;
+        box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+    }
+
+    .nexus-typing {
+        display: flex;
+        gap: 4px;
+        padding: 0.5rem 0;
+    }
+
+    .nexus-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--nexus-accent);
+        border-radius: 50%;
+        animation: nexus-typing 1s infinite alternate;
+        opacity: 0.3;
+    }
+
+    .nexus-dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .nexus-dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes nexus-typing {
+        from {
+            transform: translateY(0);
+            opacity: 0.3;
+        }
+
+        to {
+            transform: translateY(-4px);
+            opacity: 1;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    const NexusAI = {
+        isOpen: false,
+        toggle() {
+
+            // If already open and clicking safe launcher, just switch mode
+            // If clicking same launcher, toggle visibility
+            this.isOpen = !this.isOpen;
+
+            this.updateHeader();
+
+            const panel = document.getElementById('nexus-panel');
+            panel.classList.toggle('active', this.isOpen);
+            if (this.isOpen) {
+                document.getElementById('nexus-input').focus();
+            }
+        },
+
+        close() {
+            this.isOpen = false;
+            document.getElementById('nexus-panel').classList.remove('active');
+        },
+
+        updateHeader() {
+            const badge = document.getElementById('mode-badge');
+            const title = document.querySelector('.nexus-header h3');
+
+            badge.innerText = "AI ARCHITECT";
+            badge.style.color = "#818cf8";
+            badge.style.borderColor = "#6366f1";
+            title.innerText = "RigMaster Nexus";
+        },
+
+        handleKey(e) {
+            if (e.key === 'Enter') this.sendMessage();
+        },
+
+        appendMessage(role, content) {
+            const container = document.getElementById('nexus-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `nexus-message nexus-${role}-msg`;
+
+            if (role === 'assistant') {
+                msgDiv.innerHTML = typeof marked !== 'undefined' ? marked.parse(content) : content;
+            } else {
+                msgDiv.textContent = content;
+            }
+
+            const meta = document.createElement('span');
+            meta.className = 'nexus-msg-meta';
+            meta.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            msgDiv.appendChild(meta);
+
+            container.appendChild(msgDiv);
+            const chatBody = document.getElementById('nexus-chat-body');
+            chatBody.scrollTop = chatBody.scrollHeight;
+            return msgDiv;
+        },
+
+
+
+        async sendMessage() {
+            const input = document.getElementById('nexus-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            this.appendMessage('user', text);
+
+            const messages = document.getElementById('nexus-messages');
+            const typing = document.createElement('div');
+            typing.className = 'nexus-typing nexus-message nexus-assistant-msg';
+            typing.innerHTML = '<div class="nexus-dot"></div><div class="nexus-dot"></div><div class="nexus-dot"></div>';
+            messages.appendChild(typing);
+
+            const chatBody = document.getElementById('nexus-chat-body');
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            const context = this.gatherContext();
+
+            try {
+                const response = await fetch('/ai-assistant', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        context: context
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    if (messages.contains(typing)) messages.removeChild(typing);
+                    this.appendMessage('assistant', data.response);
+                    success = true;
+                }
+            } catch (err) {
+                console.error("AI Assistant failed:", err);
+            }
+
+            if (!success) {
+                if (messages.contains(typing)) messages.removeChild(typing);
+                this.appendMessage('assistant', "RigMaster Nexus is currently recalibrating. Please try again in a moment.");
+            }
+        },
+
+        gatherContext() {
+            let ctx = {};
+            const urlParams = new URLSearchParams(window.location.search);
+            const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'build_id'];
+            keys.forEach(k => {
+                if (urlParams.get(k)) ctx[k] = urlParams.get(k);
+            });
+
+            const selectors = {
+                'cpu_id': 'cpu-select', 'gpu_id': 'gpu-select', 'motherboard_id': 'mobo-select',
+                'ram_id': 'ram-select', 'storage_id': 'storage-select', 'psu_id': 'psu-select'
+            };
+            Object.entries(selectors).forEach(([k, id]) => {
+                const el = document.getElementById(id);
+                if (el && el.value) ctx[k] = el.value;
+            });
+
+            return ctx;
+        }
+    };
+
+    // Auto-update context text based on URL
+    document.addEventListener('DOMContentLoaded', () => {
+        const text = document.getElementById('nexus-context-text');
+        if (window.location.pathname.includes('builder')) {
+            text.textContent = 'Analyzing current build configuration...';
+        } else if (window.location.pathname.includes('analysis')) {
+            text.textContent = 'Reviewing performance telemetry...';
+        } else {
+            text.textContent = 'Nexus active on ' + document.title;
+        }
+    });
+</script>

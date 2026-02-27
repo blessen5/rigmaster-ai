@@ -1,0 +1,188 @@
+<!-- PRICE TRACKER FEATURE - Real-Time Component Pricing -->
+<div id="price-tracker-lab" style="margin-bottom: 2rem; display: none;">
+    <div
+        style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%); 
+                            border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; overflow: hidden; padding: 2.5rem; position: relative;">
+
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+            <h2 style="font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 1rem; color: #10b981;">
+                <span
+                    style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 0.6rem; border-radius: 12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                </span>
+                Real-Time Price Tracker
+            </h2>
+            <div style="text-align: right;">
+                <div id="total-build-cost"
+                    style="font-size: 2.2rem; font-weight: 800; color: #10b981; margin-bottom: 0.3rem;">
+                    $0.00
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    Total Build Cost
+                </div>
+            </div>
+        </div>
+
+        <!-- Component Prices Grid -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+            <!-- CPU Price -->
+            <div class="price-card" data-category="cpu"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border); position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            CPU</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- GPU Price -->
+            <div class="price-card" data-category="gpu"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            GPU</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- Motherboard Price -->
+            <div class="price-card" data-category="motherboard"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            Motherboard</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- RAM Price -->
+            <div class="price-card" data-category="ram"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            RAM</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- Storage Price -->
+            <div class="price-card" data-category="storage"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            Storage</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- PSU Price -->
+            <div class="price-card" data-category="psu"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            PSU</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- Case Price -->
+            <div class="price-card" data-category="case"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            Case</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+
+            <!-- Cooler Price -->
+            <div class="price-card" data-category="cooler"
+                style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                            Cooler</div>
+                        <div class="component-name"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                            --</div>
+                    </div>
+                    <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--</div>
+                </div>
+                <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+            </div>
+        </div>
+
+        <!-- Price Insights -->
+        <div
+            style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 16px; padding: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 16v-4"></path>
+                    <path d="M12 8h.01"></path>
+                </svg>
+                <h3
+                    style="font-size: 0.95rem; color: #10b981; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Price Insights</h3>
+            </div>
+            <p id="price-insight" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin: 0;">
+                Loading pricing data from market sources...
+            </p>
+        </div>
+    </div>
+</div>

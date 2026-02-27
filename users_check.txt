@@ -1,0 +1,2 @@
+Users count: 1
+User: {'_id': ObjectId('698698907b0fca2f77c3047c'), 'username': 'admin', 'email': 'admin@rigmaster.ai', 'is_admin': True, 'is_active': True, 'created_at': datetime.datetime(2026, 2, 7, 1, 42, 40, 454000)}

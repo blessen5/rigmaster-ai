@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RigMaster AI | Build Your Dream PC</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <nav id="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <span class="logo-accent">Rig</span>Master AI
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
+
+                {% if session.get('user_id') %}
+                <li><a href="{{ url_for('builder') }}">Builder</a></li>
+                <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                <li><a href="{{ url_for('ai_recommendation') }}">AI Recommendation</a></li>
+                <li><a href="{{ url_for('saved_builds') }}">Saved Builds</a></li>
+                <li><a href="{{ url_for('group_builder_page') }}">Group Builder</a></li>
+                {% endif %}
+            </ul>
+            <div class="nav-actions">
+                {% if session.get('username') %}
+                <a href="{{ url_for('profile') }}" class="btn btn-secondary"
+                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    <i class="bi bi-person-circle"></i> Profile
+                </a>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Hi, <span
+                        style="color: var(--primary-light); font-weight: 600;">{{ session.username }}</span></span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary"
+                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">Logout</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-secondary"
+                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">Login</a>
+                <a href="{{ url_for('signup') }}" class="btn btn-secondary"
+                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">Sign Up</a>
+                {% endif %}
+                <div class="theme-toggle" id="theme-toggle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5" />
+                        <path
+                            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container hero-container">
+            <div class="hero-content">
+                <h1>Build Your <span class="text-gradient">Ideal PC</span> with Intelligence</h1>
+                <p class="subtitle">Experience a new way of PC building. RigMaster AI guides you through every
+                    component, ensuring peak performance and perfect compatibility for your specific needs.</p>
+                <div class="hero-btns">
+                    <a href="{{ url_for('builder') }}" class="btn btn-primary btn-large">Start Building</a>
+                    <a href="#features" class="btn btn-secondary btn-large">Explore Features</a>
+                </div>
+            </div>
+            <div class="hero-illustration">
+                <div class="illustration-wrapper">
+                    <!-- The generated image will be placed here via CSS or img tag -->
+                    <img src="{{ url_for('static', filename='images/hero.png') }}" alt="PC Hardware Illustration"
+                        class="floating-img">
+                    <div class="glow-effect"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+    <section id="how-it-works" class="section">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                        </svg>
+                    </div>
+                    <h3>Set Your Budget</h3>
+                    <p>Tell us your target price range and we'll optimize every dollar for maximum value.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                    </div>
+                    <h3>Describe Use Case</h3>
+                    <p>Gaming, content creation, or professional workstation? We tailor the parts to your workload.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6" />
+                            <polyline points="8 6 2 12 8 18" />
+                        </svg>
+                    </div>
+                    <h3>Build Configuration</h3>
+                    <p>Watch as the AI generates a balanced, compatible, and optimized component list.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                    </div>
+                    <h3>Analyze & Refine</h3>
+                    <p>Get detailed analysis on performance bottlenecks and refine your build until it's perfect.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Assistant Spotlight -->
+    <section class="section">
+        <div class="container">
+            <div class="glass-panel"
+                style="display: flex; align-items: center; gap: 3rem; padding: 3rem; border: 1px solid var(--primary-light); background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), rgba(15, 23, 42, 0.6));">
+                <div style="flex: 1;">
+                    <div
+                        style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--rb-primary, #10b981); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
+                        RigMaster Oracle</div>
+                    <h2 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 1rem;">Support Bot</h2>
+
+                    <p style="font-size: 1.1rem; line-height: 1.7; color: var(--text-muted); margin-bottom: 2rem;">
+                        Stuck on a component choice? Need technical specs? Our <strong>Support Oracle</strong> is
+                        always ready.
+                        It utilizes a massive hardware knowledge base and real-time web search to answer questions about
+                        sockets, dimensions, and building techniques without the unpredictability of AI.
+                    </p>
+                    <ul
+                        style="list-style: none; padding: 0; margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                            <span style="color: #10b981;">✓</span> Expert System Logic
+                        </li>
+                        <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                            <span style="color: #10b981;">✓</span> Real-Time Web Search
+                        </li>
+                        <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                            <span style="color: #10b981;">✓</span> 10,000+ Hardware Specs
+                        </li>
+                        <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                            <span style="color: #10b981;">✓</span> Zero AI Hallucinations
+                        </li>
+                    </ul>
+                    <a href="#"
+                        onclick="if(typeof RigBot !== 'undefined') { RigBot.toggle(); } else { alert('Oracle loading...'); } return false;"
+                        class="btn btn-primary"
+                        style="background: var(--rb-primary, #10b981); border-color: #10b981;">Consult the Oracle</a>
+
+                </div>
+                <div style="flex: 0.8; position: relative;">
+                    <!-- Abstract representation of chat interface -->
+                    <div
+                        style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="width: 30px; height: 30px; background: var(--primary); border-radius: 50%;">
+                            </div>
+                            <div
+                                style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 0 12px 12px 12px; flex: 1;">
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">How can I optimize
+                                    this build for 4K video editing?</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-direction: row-reverse;">
+                            <div style="width: 30px; height: 30px; background: var(--accent); border-radius: 50%;">
+                            </div>
+                            <div
+                                style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2); padding: 0.8rem; border-radius: 12px 0 12px 12px; flex: 1;">
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-main);">I recommend upgrading
+                                    to 64GB DDR5 RAM and switching to a faster NVMe Gen5 SSD for smooth timeline
+                                    scrubbing.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="section bg-light">
+        <div class="container">
+            <h2 class="section-title">Everything You Need</h2>
+            <div class="features-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                <!-- Core Builder -->
+                <div class="feature-card">
+                    <div class="feature-icon accent-blue">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                        </svg>
+                    </div>
+                    <h4>Smart PC Builder</h4>
+                    <p>Dynamic component selection with real-time compatibility validation for power, size, and sockets.
+                    </p>
+                </div>
+
+                <!-- Group Builder -->
+                <div class="feature-card">
+                    <div class="feature-icon accent-purple">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                    </div>
+                    <h4>Group Deployment</h4>
+                    <p>Plan bulk builds for offices or labs. Calculate total power load, logistics weight, and cost
+                        instantly.</p>
+                </div>
+
+                <!-- Price Tracker -->
+                <div class="feature-card">
+                    <div class="feature-icon accent-green" style="color: #34d399; background: rgba(52, 211, 153, 0.1);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                    <h4>Price Tracker & Alerts</h4>
+                    <p>Track real-time market prices, view 30-day history, and set alerts for when parts drop to your
+                        budget.</p>
+                </div>
+
+                <!-- Analysis -->
+                <div class="feature-card">
+                    <div class="feature-icon accent-orange">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                    </div>
+                    <h4>Performance Analytics</h4>
+                    <p>Visualize bottlenecks, estimate FPS for popular games, and analyze thermal efficiency.</p>
+                </div>
+
+                <!-- Resale Predictor -->
+                <div class="feature-card">
+                    <div class="feature-icon accent-cyan">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <h4>Resale Value Predictor</h4>
+                    <p>AI-driven estimates of your rig's future value based on component aging and market trends.</p>
+                </div>
+
+                <!-- Insights & Vault -->
+                <div class="feature-card">
+                    <div class="feature-icon" style="color: #f472b6; background: rgba(244, 114, 182, 0.1);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                            </path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    </div>
+                    <h4>Insights & Vault</h4>
+                    <p>A digital locker for your build. Access warranty data, assembly checklists, and maintenance logs.
+                    </p>
+                </div>
+
+                <!-- Hardware Encyclopedia -->
+                <div class="feature-card">
+                    <div class="feature-icon" style="color: #60a5fa; background: rgba(96, 165, 250, 0.1);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </div>
+                    <h4>Hardware Encyclopedia</h4>
+                    <p>Deep technical specifications for thousands of components to help you make informed decisions.
+                    </p>
+                </div>
+
+                <!-- Saved Builds -->
+                <div class="feature-card">
+                    <div class="feature-icon" style="color: #e879f9; background: rgba(232, 121, 249, 0.1);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <h4>Project Management</h4>
+                    <p>Save multiple configurations, compare them side-by-side, and toggle public visibility to share.
+                    </p>
+                </div>
+
+                <!-- AI Recommendation -->
+                <div class="feature-card">
+                    <div class="feature-icon" style="color: #6366f1; background: rgba(99, 102, 241, 0.1);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h4>AI Recommendation</h4>
+                    <p>Get instant full-build suggestions tailored to your budget and usage, powered by advanced
+                        algorithms.
+                    </p>
+                </div>
+
+                <!-- Help & Support -->
+                <div class="feature-card">
+                    <div class="feature-icon" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h4>Help & Support</h4>
+                    <p>Access our comprehensive knowledge base or contact support for assistance with your account or
+                        builds.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="cta-banner">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Start Your Build?</h2>
+                <p style="margin-bottom: 2rem;">Join thousands of builders who created their perfect rig with RigMaster
+                    AI.</p>
+                <a href="{{ url_for('builder') }}" class="btn btn-primary btn-large">Start Building Now</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-accent">Rig</span>Master AI
+                    </div>
+                    <p>The future of PC building is intelligent.</p>
+                </div>
+                <div class="footer-links">
+                    <h5>Platform</h5>
+                    <ul>
+                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
+                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                        <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Support</h5>
+                    <ul>
+                        <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+                        <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Contact</h5>
+                    <ul>
+                        <li><a href="{{ url_for('contact') }}">Support</a></li>
+                        <li><a href="{{ url_for('feedback') }}">Feedback</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 RigMaster AI. All rights reserved. Professional design for academic project.
+            </div>
+        </div>
+    </footer>
+    {% if session.get('user_id') %}
+    {% include 'shared/rigmaster_ai.html' %}
+    {% endif %}
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+
+</html>

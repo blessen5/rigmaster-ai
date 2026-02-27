@@ -1,0 +1,26 @@
+Checking unified components collection:
+Total components: 28538
+Categories: ['case', 'cooler', 'cpu', 'fans', 'gpu', 'monitor', 'motherboard', 'os', 'peripherals', 'psu', 'ram', 'storage']
+  case: 4218
+  cooler: 2338
+  cpu: 962
+  fans: 1000
+  gpu: 3596
+  monitor: 1367
+  motherboard: 4974
+  os: 12
+  peripherals: 2516
+  psu: 2147
+  ram: 3512
+  storage: 1896
+
+Sample GPU: {
+  "_id": "69854e67caad6512b362d1a9",
+  "name": "NVIDIA GeForce RTX 4090",
+  "price": 1599,
+  "vram": "24GB GDDR6X",
+  "tdp": "450W",
+  "cuda_cores": 16384,
+  "status": "Active",
+  "category": "gpu"
+}

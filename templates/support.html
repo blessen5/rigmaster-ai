@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support | RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .support-hero {
+            padding: 10rem 0 5rem;
+            text-align: center;
+        }
+
+        .support-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 5rem;
+        }
+
+        .support-card {
+            background: var(--bg-card);
+            padding: 2.5rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .support-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+        }
+
+        .support-card h3 {
+            margin-bottom: 1rem;
+            color: var(--primary-light);
+        }
+
+        .support-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .contact-section {
+            background: var(--bg-card);
+            padding: 4rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 5rem;
+        }
+
+        .contact-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            color: white;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .resource-list {
+            list-style: none;
+        }
+
+        .resource-list li {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .resource-list li:last-child {
+            border-bottom: none;
+        }
+
+        .resource-link {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .resource-link:hover {
+            color: var(--primary-light);
+        }
+
+        .faq-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .faq-question {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .faq-answer {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .contact-form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+
+    <header class="support-hero">
+        <div class="container">
+            <h1 class="text-gradient" style="font-size: 3.5rem;">Support</h1>
+            <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">Everything you need to build with
+                confidence.</p>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        {% for message in messages %}
+        <div
+            style="background: rgba(74, 222, 128, 0.1); border: 1px solid #4ade80; color: #4ade80; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; text-align: center;">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Dashboard Sections -->
+        <div class="support-grid">
+            <div class="support-card" id="help-center">
+                <h3>Help Center</h3>
+                <p>Browse our extensive guides and FAQs to solve common issues during your PC building journey.</p>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <div class="faq-question">How does the AI compatibility check work?</div>
+                        <div class="faq-answer">Our AI analyzes socket types, dimensions, and power requirements against
+                            our massive database of verified components.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">Can I save multiple builds?</div>
+                        <div class="faq-answer">Yes, logged-in users can save as many configurations as they like and
+                            compare them in the Insights section.</div>
+                    </div>
+                </div>
+            </div>
+
+
+
+
+        </div>
+
+        <section class="contact-section" id="contact">
+            <h2 class="text-gradient" style="margin-bottom: 2.5rem; font-size: 2.5rem;">Contact & Feedback</h2>
+            <form class="contact-form" action="{{ url_for('support_page') }}" method="POST">
+                <div class="form-group">
+                    <label>Your Name</label>
+                    <input type="text" name="user_name" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="user_email" placeholder="john@example.com" required>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Type of Request</label>
+                    <select name="request_type" required>
+                        <option value="support">Technical Support</option>
+                        <option value="feedback">General Feedback</option>
+                        <option value="bug">Report a Bug</option>
+                        <option value="feature">Feature Request</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Message</label>
+                    <textarea name="user_message" rows="5" placeholder="Tell us how we can help..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="grid-column: 1 / -1; font-size: 1.1rem; padding: 1rem;">Send Message</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-accent">Rig</span>Master AI
+                    </div>
+                    <p>The future of PC building is intelligent.</p>
+                </div>
+                <div class="footer-links">
+                    <h5>Platform</h5>
+                    <ul>
+                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
+                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                        <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Support</h5>
+                    <ul>
+                        <li><a href="{{ url_for('support_page') }}#help-center">Help Center</a></li>
+                        <li><a href="{{ url_for('support_page') }}#contact">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Contact</h5>
+                    <ul>
+                        <li><a href="{{ url_for('support_page') }}#contact">Support</a></li>
+                        <li><a href="{{ url_for('support_page') }}#contact">Feedback</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 RigMaster AI. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+
+</html>

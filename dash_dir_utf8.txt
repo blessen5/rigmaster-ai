@@ -1,0 +1,8 @@
+﻿ Volume in drive C is Windows
+ Volume Serial Number is 106D-CD90
+
+ Directory of C:\Users\bless\.gemini\antigravity\scratch\rigmaster-ui\templates\admin
+
+10-02-2026  07:25            13,366 dashboard.html
+               1 File(s)         13,366 bytes
+               0 Dir(s)  252,540,137,472 bytes free

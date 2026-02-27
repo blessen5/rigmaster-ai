@@ -1,0 +1,11 @@
+﻿{
+  "coolers": 2340,
+  "users": 1,
+  "motherboards": 4975,
+  "cpus": 962,
+  "ram": 3515,
+  "storage": 1899,
+  "cases": 4218,
+  "gpus": 3597,
+  "psu": 2149
+}

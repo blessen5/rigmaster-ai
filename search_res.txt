@@ -1,0 +1,1 @@
+558: def get_component_list(category_name):

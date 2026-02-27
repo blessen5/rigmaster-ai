@@ -1,0 +1,20 @@
+Status Code: 200
+Body: {
+  "cpu": {
+    "message": "Motherboard supports higher-tier CPUs in this generation.",
+    "status": "Ready"
+  },
+  "gpu": {
+    "message": "PSU has 560W headroom for a better GPU.",
+    "status": "Ready"
+  },
+  "ram": {
+    "message": "Plenty of slots available for expansion.",
+    "status": "Ready"
+  },
+  "storage": {
+    "message": "Multiple M.2 and SATA ports free.",
+    "status": "Ready"
+  }
+}
+
