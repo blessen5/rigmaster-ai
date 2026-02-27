@@ -1,0 +1,33 @@
+
+======================================================================
+  RIGMASTER AI - AUTO STARTUP
+======================================================================
+
+1.  Checking Ollama service...
+    Ollama is already running
+
+2.  Checking if models are warm...
+     Models need warming up
+
+3.  Warming up fastest model...
+ Warming up fastest model (qwen2.5:1.5b)...
+ Model ready! (17.7s)
+
+======================================================================
+   STARTUP COMPLETE - Starting Flask App
+======================================================================
+
+ * Serving Flask app 'app'
+ * Debug mode: on
+python : WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server 
+instead.
+At line:1 char:1
++ python app.py > app.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: This i...server instead.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.220.35:5001
+Press CTRL+C to quit

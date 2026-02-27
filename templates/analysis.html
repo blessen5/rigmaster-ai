@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis - RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3 {
+            color: var(--primary-light);
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .markdown-content p {
+            margin-bottom: 1rem;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .markdown-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-content table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .markdown-content th {
+            background: rgba(124, 58, 237, 0.2);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .markdown-content td {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .markdown-content tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .markdown-content strong {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .markdown-content hr {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 2rem 0;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid var(--accent);
+            background: rgba(124, 58, 237, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 0 12px 12px 0;
+            font-style: italic;
+            margin: 1.5rem 0;
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 0.4rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .difficulty-badge.beginner {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .difficulty-badge.intermediate {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .difficulty-badge.advanced {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 158, 11, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+
+    <!-- Ultra Compact Analysis Dashboard -->
+    <div class="container section" style="margin-top: 80px; max-width: 1200px; padding: 0 1rem;">
+        <div class="step-card" style="width: 100%; border: none; background: transparent; padding: 0;">
+
+            <!-- Premium Responsive Header Row -->
+            <div
+                style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 2rem; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(15px); padding: 2rem; border: 1px solid var(--border); border-radius: 24px; margin-bottom: 2.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; min-width: 300px;">
+                    <div style="display: flex; align-items: baseline; gap: 1rem;">
+                        <h1 class="text-gradient" style="font-size: 3rem; margin: 0; line-height: 1;">Analysis</h1>
+                        <div id="build-name-display"
+                            style="font-size: 1.1rem; color: var(--primary-light); font-weight: 600; display: none; opacity: 0.8;">
+                            &nbsp;—&nbsp;<span id="view-build-name"></span>
+                        </div>
+                    </div>
+
+                    <div id="status-container"
+                        style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                        <div
+                            style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.03); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                            <span
+                                style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">System
+                                Health:</span>
+                            <span id="compat-status"
+                                style="font-weight: 700; font-size: 1.1rem; color: var(--accent-cyan);">Checking...</span>
+                        </div>
+                        <button id="btn-fix-compatibility" class="btn btn-primary"
+                            style="display: none; padding: 0.6rem 1.2rem; font-size: 0.85rem; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);">
+                            Resolve Issues
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;">
+                    <div id="difficulty-indicator"
+                        style="display: none; align-items: center; gap: 1.5rem; padding-right: 1.5rem; border-right: 1px solid var(--border); margin-right: 0.5rem;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                            <span id="difficulty-level-badge" class="difficulty-badge">Loading...</span>
+                            <span id="difficulty-explanation"
+                                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; max-width: 250px; text-align: right;"></span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="btn-what-if" class="btn btn-primary"
+                            style="padding: 0.8rem 1.6rem; font-size: 0.95rem; background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);">
+                            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                What-If Simulator
+                            </span>
+                        </button>
+                        <a href="{{ url_for('builder') }}" class="btn btn-secondary"
+                            style="padding: 0.8rem 1.4rem; font-size: 0.95rem;">Edit Build</a>
+                        <a href="{{ url_for('builder') }}" class="btn btn-primary"
+                            style="padding: 0.8rem 1.4rem; font-size: 0.95rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); box-shadow: none;">New
+                            Build</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compact List of messages -->
+            <div id="analysis-results" style="display: none; margin-bottom: 2rem;">
+                <ul id="compat-messages"
+                    style="list-style: none; padding: 0; margin: 0; display: flex; overflow-x: auto; gap: 1.2rem; white-space: nowrap; padding-bottom: 1rem; scrollbar-width: thin; scrollbar-color: var(--border) transparent;">
+                </ul>
+            </div>
+
+            <!-- Compatibility Fix Suggestions Panel -->
+            <div id="fix-suggestions-panel"
+                style="display: none; margin-bottom: 2rem; background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 20px; padding: 2.5rem; animation: fadeIn 0.4s ease-out;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2
+                        style="font-size: 1.4rem; color: #f87171; margin: 0; display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path
+                                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+                            </path>
+                        </svg>
+                        Compatibility Fix Suggestions
+                    </h2>
+                    <button onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
+                        style="background: transparent; border: none; color: var(--text-muted); cursor: pointer;">Dismiss</button>
+                </div>
+                <div id="fix-options-container"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <div id="dashboard-row"
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+
+                <!-- Column 1: Power Profile -->
+                <div id="power-analysis-panel" style="background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
+                           border: 1px solid var(--border); padding: 2rem; border-radius: 20px; display: none;">
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.4rem; margin: 0; display: flex; align-items: center; gap: 0.8rem;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="var(--accent)" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Power Profile
+                        </h2>
+                        <div id="psu-adequacy-badge"
+                            style="padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 700; font-size: 0.95rem; background: var(--bg-card); border: 1px solid var(--border);">
+                            ...
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 2rem;">
+                        <div
+                            style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Consumption
+                            </div>
+                            <div id="val-total-power" style="font-size: 1.8rem; font-weight: 700;">0 W</div>
+                        </div>
+                        <div
+                            style="background: rgba(124, 58, 237, 0.12); border: 1px solid rgba(124, 58, 237, 0.25); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                            <div style="color: var(--accent); font-size: 0.9rem; margin-bottom: 0.5rem;">Recommended PSU
+                            </div>
+                            <div id="val-rec-psu" style="font-size: 1.8rem; font-weight: 700; color: var(--accent);">0 W
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="power-breakdown-grid"
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 1rem;">
+                        <div id="bd-cpu"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>CPU</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
+                        <div id="bd-gpu"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>GPU</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
+                        <div id="bd-ram"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>RAM</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
+                        <div id="bd-storage"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>Drive</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2: Upgrade Readiness -->
+                <div id="upgrade-readiness-panel" style="background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
+                           border: 1px solid var(--border); padding: 2rem; border-radius: 20px; display: none;">
+
+                    <h2
+                        style="font-size: 1.4rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                                stroke="var(--accent)" stroke-width="2" />
+                            <path d="M12 6V12L16 14" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                        Upgrade Goals
+                    </h2>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                        <div id="up-ram"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                RAM</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                        <div id="up-storage"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                Storage</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                        <div id="up-gpu"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                GPU</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                        <div id="up-cpu"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                CPU</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                    </div>
+
+                    <div id="upgrade-details"
+                        style="margin-top: 2rem; font-size: 1rem; color: var(--text-muted); height: 3.2em; line-height: 1.4; overflow: hidden; border-top: 1px solid var(--border); padding-top: 1rem;">
+                        Hover for details.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENERGY EFFICIENCY & RUNNING COSTS (New Feature) -->
+            <div id="energy-efficiency-lab" style="margin-bottom: 2rem; display: none;">
+                <div
+                    style="background: linear-gradient(145deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; padding: 2.5rem; position: relative;">
+                    <!-- Eco Glow -->
+                    <div
+                        style="position: absolute; top: -50px; right: -50px; width: 220px; height: 220px; background: #22c55e; opacity: 0.1; filter: blur(60px); border-radius: 50%;">
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; position: relative;">
+                        <h2 style="font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+                            <span
+                                style="background: #22c55e; color: white; padding: 0.6rem; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path
+                                        d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.4 21 2c-1 5.3-1.3 7-3 10.7C17 14.7 14.4 20 11 20z" />
+                                    <path d="M9.138 9.2a.5.5 0 0 0 0 .8" />
+                                </svg>
+                            </span>
+                            Energy & Sustainability Analysis
+                        </h2>
+                        <div id="efficiency-rating"
+                            style="background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; color: #4ade80; padding: 0.7rem 1.5rem; border-radius: 50px; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;">
+                            Rating: --
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                        <!-- Monthly Operating Cost -->
+                        <div
+                            style="background: rgba(0,0,0,0.3); padding: 1.8rem; border-radius: 18px; border: 1px solid var(--border); text-align: center;">
+                            <h3
+                                style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                                Est. Monthly Cost</h3>
+                            <div id="cost-monthly"
+                                style="font-size: 2.4rem; font-weight: 800; color: white; margin-bottom: 0.5rem;">$0.00
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">@ $0.15 per kWh</div>
+                        </div>
+
+                        <!-- Annual Carbon Footprint -->
+                        <div
+                            style="background: rgba(0,0,0,0.3); padding: 1.8rem; border-radius: 18px; border: 1px solid var(--border); text-align: center;">
+                            <h3
+                                style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                                Annual Carbon Footprint</h3>
+                            <div id="carbon-footprint"
+                                style="font-size: 2.4rem; font-weight: 800; color: #4ade80; margin-bottom: 0.5rem;">0
+                                <span style="font-size: 1rem;">kg</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Equivalent to 12 trees</div>
+                        </div>
+
+                        <!-- Efficiency Insights -->
+                        <div
+                            style="background: rgba(34, 197, 94, 0.05); padding: 1.8rem; border-radius: 18px; border: 1px solid rgba(34, 197, 94, 0.2);">
+                            <h3
+                                style="margin-bottom: 1rem; font-size: 0.85rem; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Eco-Insight</h3>
+                            <p id="efficiency-insight"
+                                style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin: 0;">
+                                Calculating your build's energy footprint...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- PRICE TRACKER FEATURE - Real-Time Component Pricing -->
+            <div id="price-tracker-lab" style="margin-bottom: 2rem; display: none;">
+                <div
+                    style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%); 
+                            border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; overflow: hidden; padding: 2.5rem; position: relative;">
+
+                    <!-- Header -->
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+                        <h2
+                            style="font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 1rem; color: #10b981;">
+                            <span
+                                style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 0.6rem; border-radius: 12px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </span>
+                            Real-Time Price Tracker
+                        </h2>
+                        <div style="text-align: right;">
+                            <div id="total-build-cost"
+                                style="font-size: 2.2rem; font-weight: 800; color: #10b981; margin-bottom: 0.3rem;">
+                                $0.00
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                Total Build Cost
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Component Prices Grid -->
+                    <div
+                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                        <!-- CPU Price -->
+                        <div class="price-card" data-category="cpu"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border); position: relative; overflow: hidden;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        CPU</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- GPU Price -->
+                        <div class="price-card" data-category="gpu"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        GPU</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Motherboard Price -->
+                        <div class="price-card" data-category="motherboard"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Motherboard</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- RAM Price -->
+                        <div class="price-card" data-category="ram"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        RAM</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Storage Price -->
+                        <div class="price-card" data-category="storage"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Storage</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- PSU Price -->
+                        <div class="price-card" data-category="psu"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        PSU</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Case Price -->
+                        <div class="price-card" data-category="case"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Case</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Cooler Price -->
+                        <div class="price-card" data-category="cooler"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Cooler</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Monitor Price -->
+                        <div class="price-card" data-category="monitor"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Monitor</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- OS Price -->
+                        <div class="price-card" data-category="os"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Operating System</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Peripherals Price -->
+                        <div class="price-card" data-category="peripherals"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Peripherals</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
+                        <!-- Fans Price -->
+                        <div class="price-card" data-category="fans"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Case Fans</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Price Insights -->
+                    <div
+                        style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 16px; padding: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 16v-4"></path>
+                                <path d="M12 8h.01"></path>
+                            </svg>
+                            <h3
+                                style="font-size: 0.95rem; color: #10b981; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Price Insights</h3>
+                        </div>
+                        <p id="price-insight"
+                            style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin: 0;">
+                            Loading pricing data from market sources...
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div id="loading-msg"
+                style="background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--border); padding: 3rem; border-radius: 16px; margin-bottom: 2rem; text-align: center;">
+                <p style="font-size: 1.1rem;">No build data found. Use the <a href="{{ url_for('builder') }}"
+                        style="color: var(--accent);">Builder</a>.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- What-If Upgrade Simulator Modal -->
+    <div id="simulator-modal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; width: 95%;">
+            <div class="modal-header">
+                <div>
+                    <h2 class="text-gradient" style="margin-bottom: 0.5rem;">What-If Upgrade Simulator</h2>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Simulate part swaps to see the
+                        impact on your build.</p>
+                </div>
+                <div id="sim-lifecycle-warning"
+                    style="display:none; font-size:0.8rem; background:rgba(251,191,36,0.1); border:1px solid #fbbf24; color:#fbbf24; padding:6px 12px; border-radius:8px; margin-right: 2rem;">
+                    ⚠️ Build contains deprecated parts</div>
+                <span id="close-simulator" class="close-modal">&times;</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-bottom: 2.5rem;">
+                <!-- Left Side: Current Build -->
+                <div class="step-card"
+                    style="text-align: left; padding: 2rem; background: rgba(255,255,255,0.02); border-style: dashed;">
+                    <h3
+                        style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Current Configuration</h3>
+                    <div id="current-build-list" style="display: grid; gap: 0.8rem;">
+                        <!-- Populate via JS -->
+                    </div>
+                </div>
+
+                <!-- Right Side: Simulation -->
+                <div class="step-card"
+                    style="text-align: left; padding: 2rem; border-color: var(--primary-light); background: rgba(99, 102, 241, 0.03);">
+                    <h3
+                        style="margin-bottom: 1.5rem; color: var(--primary-light); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Proposed Upgrades</h3>
+                    <div id="simulation-controls"
+                        style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                        <!-- Selects via JS -->
+                        <div style="text-align: center; color: var(--text-muted); padding: 2rem; grid-column: 1 / -1;">
+                            Loading component
+                            database...</div>
+                    </div>
+                    <button id="run-simulation" class="btn btn-primary"
+                        style="width: 100%; margin-top: 2rem; padding: 1rem; font-size: 1.1rem;">
+                        Analyze Upgrade Impact
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Section (Now Clean & AI-Focused) -->
+            <div id="simulation-results-section"
+                style="display: none; border-top: 1px solid var(--border); padding-top: 2.5rem; animation: slideUp 0.4s ease-out;">
+
+                <div class="ai-analysis-box"
+                    style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.2); padding: 2.5rem; border-radius: 20px; margin-bottom: 2rem;">
+                    <h4
+                        style="color: var(--primary-light); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.8rem; font-size: 1.2rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Expert AI Analysis
+                    </h4>
+                    <div id="simulation-explanation" class="markdown-content"
+                        style="line-height: 1.6; color: var(--text-main); font-size: 1.1rem;">
+                        <!-- AI text here -->
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; padding-bottom: 1rem;">
+                    <button id="save-sim-build" class="btn btn-primary" style="padding: 0.8rem 2rem; min-width: 200px;">
+                        Save as New Build
+                    </button>
+                    <button onclick="document.getElementById('simulation-results-section').style.display='none'"
+                        class="btn btn-secondary" style="padding: 0.8rem 2rem;">
+                        Discard Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-accent">Rig</span>Master AI
+                    </div>
+                    <p>The future of PC building is intelligent.</p>
+                </div>
+                <div class="footer-links">
+                    <h5>Platform</h5>
+                    <ul>
+                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
+                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                        <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Support</h5>
+                    <ul>
+                        <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+                        <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Contact</h5>
+                    <ul>
+                        <li><a href="{{ url_for('contact') }}">Support</a></li>
+                        <li><a href="{{ url_for('feedback') }}">Feedback</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 RigMaster AI. All rights reserved.
+            </div>
+        </div>
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const buildId = urlParams.get('build_id');
+
+            let buildData = {
+                cpu_id: urlParams.get('cpu_id'),
+                motherboard_id: urlParams.get('motherboard_id'),
+                ram_id: urlParams.get('ram_id'),
+                gpu_id: urlParams.get('gpu_id'),
+                storage_id: urlParams.get('storage_id'),
+                psu_id: urlParams.get('psu_id'),
+                case_id: urlParams.get('case_id'),
+                cooler_id: urlParams.get('cooler_id'),
+                monitor_id: urlParams.get('monitor_id'),
+                os_id: urlParams.get('os_id'),
+                peripherals_id: urlParams.get('peripherals_id'),
+                fans_id: urlParams.get('fans_id')
+            };
+
+            const loadingMsg = document.getElementById('loading-msg');
+
+            // Provide immediate feedback if we have a build ID
+            if (buildId) {
+                loadingMsg.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div><p style="margin-top: 1rem; color: var(--text-muted);">Retrieving your build from the vault...</p>';
+            }
+
+            // If we have a build_id, fetch any missing components from the database
+            if (buildId) {
+                try {
+                    const res = await fetch(`/api/get_build/${buildId}`);
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        const b = data.build;
+                        // Fill in any blanks in buildData from the saved build
+                        Object.keys(buildData).forEach(key => {
+                            if ((buildData[key] === null || buildData[key] === "") && b[key]) {
+                                buildData[key] = b[key];
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch build context:", e);
+                }
+            }
+
+            const hasData = Object.values(buildData).some(v => v !== null && v !== "");
+
+            if (hasData) {
+                loadingMsg.style.display = 'none';
+                document.getElementById('analysis-results').style.display = 'block';
+                await validateBuild(buildData);
+            } else {
+                loadingMsg.innerHTML = '<p style="font-size: 1.1rem;">No build data found. Use the <a href="' + "{{ url_for('builder') }}" + '" style="color: var(--accent);">Builder</a>.</p>';
+                loadingMsg.style.display = 'block';
+            }
+
+            if (buildId) {
+                await loadBuildDifficulty(buildId);
+            }
+
+            // --- Simulator Button Event ---
+            const btnWhatIf = document.getElementById('btn-what-if');
+            if (btnWhatIf) {
+                btnWhatIf.onclick = async () => {
+                    document.getElementById('simulator-modal').style.display = 'block';
+                    await prepareSimulator();
+                };
+            }
+        });
+
+        // --- What-If Simulator Logic ---
+        const simulatorModal = document.getElementById('simulator-modal');
+        const closeSim = document.getElementById('close-simulator');
+        const simControls = document.getElementById('simulation-controls');
+        const currentBuildList = document.getElementById('current-build-list');
+        const runSimBtn = document.getElementById('run-simulation');
+        const saveSimBtn = document.getElementById('save-sim-build');
+
+        let currentSimulationData = {};
+        let originalBuildId = new URLSearchParams(window.location.search).get('build_id');
+
+        if (closeSim) {
+            closeSim.onclick = () => simulatorModal.style.display = 'none';
+        }
+
+        async function prepareSimulator() {
+            const urlParams = new URLSearchParams(window.location.search);
+            // const components = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu']; // Not needed
+
+            currentBuildList.innerHTML = '';
+            simControls.innerHTML = '';
+
+            // Map internal IDs to display names (we'll fetch these as we populate the selects)
+            const categories = [
+                { id: 'cpu', label: 'Processor', api: '/api/cpus', db_key: 'cpu_id' },
+                { id: 'gpu', label: 'Graphics Card', api: '/api/gpus', db_key: 'gpu_id' },
+                { id: 'motherboard', label: 'Motherboard', api: '/api/motherboards', db_key: 'motherboard_id' },
+                { id: 'ram', label: 'Memory', api: '/api/ram', db_key: 'ram_id' },
+                { id: 'storage', label: 'Storage', api: '/api/storage', db_key: 'storage_id' },
+                { id: 'psu', label: 'Power Supply', api: '/api/psu', db_key: 'psu_id' }
+            ];
+
+            for (const cat of categories) {
+                const currentId = urlParams.get(cat.db_key);
+
+                // Add to Current Build List (placeholder until we resolve names)
+                const currentItem = document.createElement('div');
+                currentItem.style.cssText = "display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05)";
+                currentItem.innerHTML = `<span style="color: var(--text-muted)">${cat.label}:</span> <span id="cur-name-${cat.id}" style="font-weight: 500;">${currentId ? 'Loading...' : 'None'}</span>`;
+                currentBuildList.appendChild(currentItem);
+
+                // Create Select for simulation
+                const controlGroup = document.createElement('div');
+                controlGroup.innerHTML = `
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase;">${cat.label}</label>
+                    <select id="sim-select-${cat.id}" class="btn btn-secondary" style="width: 100%; text-align: left; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.1); padding: 0.7rem;">
+                        <option value="">Searching...</option>
+                    </select>
+                `;
+                simControls.appendChild(controlGroup);
+
+                // Fetch data and populate
+                fetch(cat.api).then(res => res.json()).then(data => {
+                    const select = document.getElementById(`sim-select-${cat.id}`);
+                    select.innerHTML = '';
+                    // Add an empty option for "None" or "Select a component"
+                    const defaultOpt = document.createElement('option');
+                    defaultOpt.value = '';
+                    defaultOpt.textContent = `Select a ${cat.label}`;
+                    select.appendChild(defaultOpt);
+
+                    data.forEach(item => {
+                        const status = item.status || 'Active';
+                        const opt = document.createElement('option');
+                        opt.value = item.id;
+                        opt.dataset.status = status;
+
+                        let displayName = item.name;
+                        if (status === 'Deprecated') displayName += ' [Deprecated]';
+                        else if (status === 'Discontinued') {
+                            displayName += ' [Discontinued]';
+                            opt.disabled = true;
+                        }
+
+                        opt.textContent = displayName;
+                        if (item.id === currentId) {
+                            opt.selected = true;
+                            document.getElementById(`cur-name-${cat.id}`).textContent = item.name;
+                        }
+                        select.appendChild(opt);
+                    });
+
+                    // Add change listener for warning and UI update
+                    select.onchange = () => {
+                        // 1. Update the display name in the Current Build list
+                        const nameEl = document.getElementById(`cur-name-${cat.id}`);
+                        if (nameEl) {
+                            const selectedOption = select.options[select.selectedIndex];
+                            nameEl.textContent = selectedOption.value ? selectedOption.text.split(' [')[0] : 'None';
+                            nameEl.style.color = selectedOption.value ? 'var(--accent-cyan)' : 'var(--text-main)';
+                        }
+
+                        // 2. Update lifecycle warning
+                        let hasDeprecated = false;
+                        const catIds = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu'];
+                        catIds.forEach(cid => {
+                            const s = document.getElementById(`sim-select-${cid}`);
+                            if (s && s.selectedIndex >= 0) {
+                                const opt = s.options[s.selectedIndex];
+                                if (opt && opt.dataset.status === 'Deprecated') hasDeprecated = true;
+                            }
+                        });
+                        const warningDiv = document.getElementById('sim-lifecycle-warning');
+                        if (warningDiv) warningDiv.style.display = hasDeprecated ? 'block' : 'none';
+                    };
+                });
+            }
+        }
+
+        if (runSimBtn) {
+            runSimBtn.onclick = async () => {
+                const resultsSection = document.getElementById('simulation-results-section');
+                const explanationEl = document.getElementById('simulation-explanation');
+
+                runSimBtn.textContent = "Analyzing components...";
+                runSimBtn.disabled = true;
+                resultsSection.style.display = 'block';
+                explanationEl.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="typing-indicator"><span></span><span></span><span></span></div><p style="margin-top: 1rem; color: var(--text-muted);">RigMaster AI is evaluating the upgrade path...</p></div>';
+
+                const originalComponents = {};
+                const urlParams = new URLSearchParams(window.location.search);
+                ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id'].forEach(key => {
+                    originalComponents[key] = urlParams.get(key);
+                });
+
+                const upgrades = {};
+                ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu'].forEach(id => {
+                    upgrades[id + '_id'] = document.getElementById(`sim-select-${id}`).value;
+                });
+
+                currentSimulationData = upgrades; // Store for saving
+
+                try {
+                    const response = await fetch('/api/simulate-upgrade', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            original_build_id: originalBuildId,
+                            original_components: originalComponents,
+                            upgraded_components: upgrades
+                        })
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        explanationEl.innerHTML = marked.parse(result.explanation);
+                    } else {
+                        explanationEl.textContent = result.message;
+                    }
+                } catch (e) {
+                    explanationEl.textContent = "Failed to run simulation. AI analysis temporarily offline.";
+                } finally {
+                    runSimBtn.textContent = "Analyze Upgrade Impact";
+                    runSimBtn.disabled = false;
+                    resultsSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+        }
+
+        if (saveSimBtn) {
+            saveSimBtn.onclick = async () => {
+                if (!currentSimulationData.cpu_id) { // Basic check if simulation data exists
+                    alert('Please run a simulation first.');
+                    return;
+                }
+
+                saveSimBtn.disabled = true;
+                saveSimBtn.textContent = "Saving...";
+
+                try {
+                    const response = await fetch('/api/save_build', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(currentSimulationData)
+                    });
+                    const res = await response.json();
+                    if (res.status === 'success') {
+                        alert('Simulation saved as a new build!');
+                        window.location.href = '/saved-builds';
+                    } else {
+                        alert('Error saving build: ' + res.message);
+                    }
+                } catch (e) {
+                    alert('Connection error while saving.');
+                } finally {
+                    saveSimBtn.disabled = false;
+                    saveSimBtn.textContent = "Save as New Build";
+                }
+            };
+        }
+
+        async function validateBuild(data) {
+            const statusEl = document.getElementById('compat-status');
+            const listEl = document.getElementById('compat-messages');
+
+            // Declare at function scope for use across all sections
+            let result = { pResult: null };
+            let priceResultContext = null;
+
+            // --- 1. Compatibility Check ---
+            try {
+                const response = await fetch('/api/validate_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const validationResult = await response.json();
+
+                statusEl.textContent = validationResult.status;
+                if (validationResult.status === 'Compatible') {
+                    statusEl.style.color = '#4ade80';
+                } else if (validationResult.status === 'Not Compatible') {
+                    statusEl.style.color = '#f87171';
+                    const fixBtn = document.getElementById('btn-fix-compatibility');
+                    if (fixBtn) {
+                        fixBtn.style.display = 'block';
+                        fixBtn.onclick = () => showFixSuggestions(data);
+                    }
+                } else {
+                    statusEl.style.color = '#fbbf24';
+                    document.getElementById('btn-fix-compatibility').style.display = 'none';
+                }
+
+                listEl.innerHTML = '';
+                validationResult.messages.forEach(msg => {
+                    const li = document.createElement('li');
+                    li.textContent = msg;
+                    li.style.background = 'rgba(0,0,0,0.3)';
+                    li.style.padding = '0.5rem 1rem';
+                    li.style.borderRadius = '8px';
+                    li.style.fontSize = '0.85rem';
+                    listEl.appendChild(li);
+                });
+
+            } catch (error) {
+                console.error('Validation failed:', error);
+                statusEl.textContent = 'System Error';
+                statusEl.style.color = 'red';
+            }
+
+            // --- 2. Power Analysis Check ---
+            const powerPanel = document.getElementById('power-analysis-panel');
+            try {
+                powerPanel.style.display = 'block';
+                const pResponse = await fetch('/api/analyze_power', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const pResult = await pResponse.json();
+
+                if (pResult.status === 'success') {
+                    document.getElementById('val-total-power').textContent = pResult.total_base_wattage + ' W';
+                    document.getElementById('val-rec-psu').textContent = pResult.recommended_wattage + ' W';
+
+                    const bd = pResult.breakdown;
+                    if (bd) {
+                        document.querySelector('#bd-cpu .val').textContent = bd.cpu + ' W';
+                        document.querySelector('#bd-gpu .val').textContent = bd.gpu + ' W';
+                        document.querySelector('#bd-ram .val').textContent = bd.ram + ' W';
+                        document.querySelector('#bd-storage .val').textContent = bd.storage + ' W';
+                    }
+
+                    const badge = document.getElementById('psu-adequacy-badge');
+                    const status = pResult.adequacy_status;
+                    badge.textContent = status;
+
+                    if (status === 'Safe') {
+                        badge.style.color = '#4ade80';
+                        badge.style.borderColor = '#4ade80';
+                    } else if (status === 'Borderline') {
+                        badge.style.color = '#fbbf24';
+                        badge.style.borderColor = '#fbbf24';
+                    } else if (status === 'Insufficient') {
+                        badge.style.color = '#f87171';
+                        badge.style.borderColor = '#f87171';
+                    }
+                    // NEW: Store for ecological calculations later
+                    result.pResult = pResult;
+                }
+            } catch (error) { console.error('Power analysis failed:', error); }
+
+            // --- 3. Upgrade Readiness Check ---
+            const upgradePanel = document.getElementById('upgrade-readiness-panel');
+            try {
+                upgradePanel.style.display = 'block';
+                const uResponse = await fetch('/api/analyze_upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const uResult = await uResponse.json();
+
+                if (uResult.status !== 'error') {
+                    const categories = ['ram', 'storage', 'gpu', 'cpu'];
+                    const detailsEl = document.getElementById('upgrade-details');
+
+                    categories.forEach(cat => {
+                        const card = document.getElementById(`up-${cat}`);
+                        const info = uResult[cat];
+                        card.querySelector('.status').textContent = info.status;
+
+                        card.onmouseover = () => {
+                            detailsEl.textContent = info.message;
+                            detailsEl.style.color = 'var(--text-main)';
+                        };
+                        card.onmouseout = () => {
+                            detailsEl.textContent = 'Hover for details.';
+                            detailsEl.style.color = 'var(--text-muted)';
+                        };
+
+                        if (info.status === 'Ready') {
+                            card.querySelector('.status').style.color = '#4ade80';
+                            card.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+                        } else if (info.status === 'Limited') {
+                            card.querySelector('.status').style.color = '#fbbf24';
+                            card.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+                        } else if (info.status === 'Not Recommended') {
+                            card.querySelector('.status').style.color = '#f87171';
+                            card.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+                        }
+                    });
+                }
+            } catch (error) { console.error('Upgrade analysis failed:', error); }
+
+
+
+            // --- 5. Price Tracker - Real-Time Component Pricing ---
+            const priceTrackerLab = document.getElementById('price-tracker-lab');
+            try {
+                priceTrackerLab.style.display = 'block';
+
+                const priceResponse = await fetch('/api/component-prices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const priceResult = await priceResponse.json();
+                priceResultContext = priceResult;
+
+                if (priceResult.status === 'success') {
+                    const prices = priceResult.prices;
+                    const symbol = priceResult.currency_symbol || '$';
+                    const rate = priceResult.exchange_rate || 1.0;
+                    const currency = priceResult.currency || 'USD';
+
+                    let totalCostUSD = 0;
+                    let componentCount = 0;
+                    let unavailableCount = 0;
+
+                    const formatVal = (val) => {
+                        if (currency === 'INR') return Math.round(val * rate).toLocaleString();
+                        return (val * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    };
+
+                    // Update each component price card
+                    Object.keys(prices).forEach(category => {
+                        const priceData = prices[category];
+                        const card = document.querySelector(`.price-card[data-category="${category}"]`);
+
+                        if (card && priceData) {
+                            // Update component name
+                            const nameEl = card.querySelector('.component-name');
+                            if (nameEl) nameEl.textContent = priceData.name;
+
+                            // Update price
+                            const priceEl = card.querySelector('.price-value');
+                            if (priceEl) {
+                                if (priceData.price && priceData.price > 0) {
+                                    priceEl.textContent = `${symbol}${formatVal(priceData.price)}`;
+                                    priceEl.style.color = '#10b981';
+                                    totalCostUSD += priceData.price;
+                                    componentCount++;
+                                } else {
+                                    priceEl.textContent = 'N/A';
+                                    priceEl.style.color = '#6b7280';
+                                    unavailableCount++;
+                                }
+                            }
+                            // ... (retailer info remains same)
+                            const retailerEl = card.querySelector('.retailer-info');
+                            if (retailerEl) {
+                                retailerEl.textContent = priceData.retailer || 'Market Average';
+                            }
+
+                            if (!priceData.in_stock) {
+                                card.style.opacity = '0.6';
+                                card.style.borderColor = '#ef4444';
+                            }
+                        }
+                    });
+
+                    const totalCostConverted = totalCostUSD * rate;
+
+                    // Update total cost
+                    const totalCostEl = document.getElementById('total-build-cost');
+                    if (totalCostEl) {
+                        totalCostEl.textContent = `${symbol}${formatVal(totalCostUSD)}`;
+                    }
+
+                    // Generate price insight
+                    const insightEl = document.getElementById('price-insight');
+                    if (insightEl) {
+                        let insight = '';
+
+                        if (componentCount === 0) {
+                            insight = 'No pricing data available for selected components. Prices may vary by region and retailer.';
+                        } else if (unavailableCount > 0) {
+                            insight = `Pricing available for ${componentCount} of ${componentCount + unavailableCount} components. ${unavailableCount} component(s) have no current price data.`;
+                        } else {
+                            if (totalCostUSD < 800) {
+                                insight = `Budget-friendly build at ${symbol}${formatVal(totalCostUSD)}. Great value for entry-level gaming or productivity.`;
+                            } else if (totalCostUSD < 1500) {
+                                insight = `Mid-range build at ${symbol}${formatVal(totalCostUSD)}. Excellent balance of performance and cost.`;
+                            } else if (totalCostUSD < 2500) {
+                                insight = `High-performance build at ${symbol}${formatVal(totalCostUSD)}. Premium components for demanding workloads.`;
+                            } else {
+                                insight = `Enthusiast-grade build at ${symbol}${formatVal(totalCostUSD)}. Top-tier components for maximum performance.`;
+                            }
+                        }
+
+                        insightEl.textContent = insight;
+                    }
+                }
+            } catch (error) {
+                console.error('Price tracker failed:', error);
+                // Hide price tracker if it fails
+                if (priceTrackerLab) priceTrackerLab.style.display = 'none';
+            }
+            // --- 6. Energy Efficiency & Sustainability (Moved to end to use price context) ---
+            const ecoLab = document.getElementById('energy-efficiency-lab');
+            try {
+                // We use the already available power results from section 2
+                const pResult = result.pResult;
+
+                if (pResult && pResult.status === 'success') {
+                    ecoLab.style.display = 'block';
+
+                    const peakWatts = pResult.total_base_wattage;
+                    const idleWatts = Math.round(peakWatts * 0.15); // Rough heuristic for idle
+                    const hoursGaming = 4;
+                    const hoursIdle = 12; // More realistic daily idle/low use
+                    const pricePerKwh = 0.15;
+
+                    const dailyKwh = ((peakWatts * hoursGaming) + (idleWatts * hoursIdle)) / 1000;
+                    const monthlyCost = dailyKwh * 30 * pricePerKwh;
+                    const yearlyCo2 = dailyKwh * 365 * 0.44; // 0.44kg CO2 per kWh is global avg
+
+                    const symbol = priceResultContext ? priceResultContext.currency_symbol : '$';
+                    const rate = priceResultContext ? priceResultContext.exchange_rate : 1.0;
+                    const currency = priceResultContext ? priceResultContext.currency : 'USD';
+
+                    const formatVal = (val) => {
+                        const converted = val * rate;
+                        if (currency === 'INR') return Math.round(converted).toLocaleString();
+                        return converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    };
+
+                    document.getElementById('cost-monthly').textContent = symbol + formatVal(monthlyCost);
+                    document.getElementById('carbon-footprint').innerHTML = `${yearlyCo2.toFixed(0)} <span style="font-size: 1rem;">kg CO2/yr</span>`;
+
+                    // Dynamic tree equivalency
+                    const trees = Math.ceil(yearlyCo2 / 21.8); // Avg tree absorbs ~21.8kg CO2/yr
+                    const treeSubtext = document.querySelector('#carbon-footprint + div');
+                    if (treeSubtext) {
+                        treeSubtext.textContent = `Equivalent to ${trees} trees`;
+                    }
+
+                    // Rating Logic
+                    let rating = 'A';
+                    let color = '#22c55e';
+                    let insight = '';
+
+                    if (peakWatts > 700) {
+                        rating = 'F'; color = '#ef4444';
+                        insight = "High energy demand. Consider an 80+ Platinum/Titanium PSU to minimize heat waste and reduce costs.";
+                    } else if (peakWatts > 500) {
+                        rating = 'D'; color = '#f97316';
+                        insight = "Significant power draw. Ensure good case airflow as components will output substantial heat during gaming.";
+                    } else if (peakWatts > 300) {
+                        rating = 'B'; color = '#84cc16';
+                        insight = "Good efficiency for a mid-high performance build. Well balanced energy footprint.";
+                    } else {
+                        rating = 'A+'; color = '#22c55e';
+                        insight = "Excellent efficiency! This build has a very low carbon footprint and will be very cheap to run.";
+                    }
+
+                    const ratingEl = document.getElementById('efficiency-rating');
+                    ratingEl.textContent = `Rating: ${rating}`;
+                    ratingEl.style.color = color;
+                    ratingEl.style.borderColor = color;
+                    ratingEl.style.backgroundColor = color + '1a';
+
+                    document.getElementById('efficiency-insight').textContent = insight;
+                }
+            } catch (e) {
+                console.error('Eco analysis failed:', e);
+            }
+        }
+
+
+
+
+        async function loadBuildDifficulty(buildId) {
+            const indicator = document.getElementById('difficulty-indicator');
+            const badge = document.getElementById('difficulty-level-badge');
+            const explanation = document.getElementById('difficulty-explanation');
+
+            try {
+                const response = await fetch(`/api/build-difficulty/${buildId}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    indicator.style.display = 'flex';
+                    badge.textContent = data.difficulty;
+                    badge.className = `difficulty-badge ${data.difficulty.toLowerCase()}`;
+                    explanation.textContent = data.explanation;
+                    if (data.name) {
+                        const nameDisplay = document.getElementById('build-name-display');
+                        const nameSpan = document.getElementById('view-build-name');
+                        if (nameDisplay && nameSpan) {
+                            nameDisplay.style.display = 'block';
+                            nameSpan.textContent = data.name;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load build difficulty:', error);
+            }
+        }
+
+        async function showFixSuggestions(buildData) {
+            const panel = document.getElementById('fix-suggestions-panel');
+            const container = document.getElementById('fix-options-container');
+
+            panel.style.display = 'block';
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><p style="color: var(--text-muted);">Scanning database for compatible parts...</p></div>';
+            panel.scrollIntoView({ behavior: 'smooth' });
+
+            try {
+                const response = await fetch('/api/fix-compatibility', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buildData)
+                });
+                const result = await response.json();
+
+                if (result.status === 'success' && result.suggestions.length > 0) {
+                    container.innerHTML = result.suggestions.map(s => `
+                        <div class="step-card" style="text-align: left; padding: 1.5rem; background: rgba(0,0,0,0.2); border-left: 4px solid #f87171;">
+                            <h4 style="color: white; font-size: 1rem; margin-bottom: 0.5rem;">${s.title}</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;">${s.reason}</p>
+                            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                                ${s.options.map(opt => `
+                                    <button class="btn btn-secondary" style="font-size: 0.8rem; text-align: left; padding: 0.7rem; display: flex; justify-content: space-between; border-color: rgba(255,255,255,0.05);" 
+                                            onclick="applyFix('${s.category}_id', '${opt.id}')">
+                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${opt.name}</span>
+                                        <span style="color: #4ade80; font-weight: 700;">+ Use</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">No easy fixes found. Try manual part swaps in the Builder.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #f87171; padding: 2rem;">Failed to load suggestions.</div>';
+            }
+        }
+
+        function applyFix(key, value) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set(key, value);
+            // Also unset build_id if we change parts to avoid confusion
+            urlParams.delete('build_id');
+            window.location.search = urlParams.toString();
+        }
+    </script>
+    {% if session.get('user_id') %}
+    {% include 'shared/rigmaster_ai.html' %}
+    {% endif %}
+</body>
+
+</html>

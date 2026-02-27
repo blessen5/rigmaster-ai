@@ -1,0 +1,38 @@
+digraph RigMaster_Context {
+	dpi=300 rankdir=TB size="12,10"
+	node [fontname=Arial fontsize=11]
+	edge [fontname=Arial fontsize=10]
+	node [fillcolor=lightblue height=3 shape=circle style=filled width=3]
+	System [label="RigMaster AI
+PC Building
+System" fontsize=14]
+	node [fillcolor=lightgreen height=1 shape=rectangle style=filled width=2]
+	User [label="User/Customer"]
+	Admin [label=Administrator]
+	AI [label="AI Services
+(Gemini/Groq/Mistral)"]
+	Shopping [label="Shopping API
+(Google Shopping)"]
+	Email [label="Email Service"]
+	User -> System [label="Login, Build Config,
+Component Selection,
+Price Alerts"]
+	System -> User [label="Recommendations,
+Validation Results,
+Saved Builds, Reports"]
+	Admin -> System [label="User Management,
+Component Management,
+System Config"]
+	System -> Admin [label="Admin Dashboard,
+System Analytics"]
+	System -> AI [label="Build Requirements,
+User Preferences"]
+	AI -> System [label="AI Recommendations,
+Performance Predictions"]
+	System -> Shopping [label="Component Search
+Queries"]
+	Shopping -> System [label="Product Listings,
+Prices"]
+	System -> Email [label="OTP, Notifications"]
+	Email -> User [label="Password Reset Email"]
+}

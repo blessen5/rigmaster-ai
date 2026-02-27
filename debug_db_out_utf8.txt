@@ -1,0 +1,130 @@
+﻿{
+  "cpu": {
+    "count": 962,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "socket",
+      "cores",
+      "threads",
+      "base_clock",
+      "boost_clock",
+      "tdp",
+      "status",
+      "core_clock",
+      "core_count",
+      "graphics",
+      "microarchitecture",
+      "category"
+    ],
+    "has_name": true
+  },
+  "gpu": {
+    "count": 3597,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "vram",
+      "tdp",
+      "cuda_cores",
+      "status",
+      "category"
+    ],
+    "has_name": true
+  },
+  "motherboard": {
+    "count": 4975,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "socket",
+      "chipset",
+      "ram_type",
+      "max_ram",
+      "status",
+      "category"
+    ],
+    "has_name": true
+  },
+  "ram": {
+    "count": 3515,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "capacity",
+      "type",
+      "speed",
+      "status",
+      "category"
+    ],
+    "has_name": true
+  },
+  "storage": {
+    "count": 1899,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "capacity",
+      "type",
+      "read_speed",
+      "write_speed",
+      "status",
+      "category"
+    ],
+    "has_name": true
+  },
+  "psu": {
+    "count": 2149,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "wattage",
+      "efficiency",
+      "modular",
+      "status",
+      "category"
+    ],
+    "has_name": true
+  },
+  "case": {
+    "count": 4218,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "form_factor",
+      "color",
+      "status",
+      "external_volume",
+      "internal_35_bays",
+      "psu",
+      "side_panel",
+      "type",
+      "category"
+    ],
+    "has_name": true
+  },
+  "cooler": {
+    "count": 2340,
+    "sample_keys": [
+      "_id",
+      "name",
+      "price",
+      "type",
+      "tdp_rating",
+      "status",
+      "color",
+      "noise_level",
+      "rpm",
+      "size",
+      "category"
+    ],
+    "has_name": true
+  }
+}

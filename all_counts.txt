@@ -1,0 +1,11 @@
+ram: 3512
+components: 23643
+saved_builds: 1
+motherboards: 4974
+gpus: 3596
+cpus: 962
+coolers: 2338
+cases: 4218
+users: 2
+psu: 2147
+storage: 1896

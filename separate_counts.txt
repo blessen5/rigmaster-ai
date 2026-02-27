@@ -1,0 +1,9 @@
+Checking separate collections:
+  cpus: 962
+  gpus: 3596
+  motherboards: 4974
+  ram: 3512
+  storage: 1896
+  psu: 2147
+  cases: 4218
+  coolers: 2338

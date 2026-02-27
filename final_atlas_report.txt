@@ -1,0 +1,17 @@
+﻿--- ATLAS STATUS ---
+cases: 4218
+complaints: 1
+components: 28548
+coolers: 2338
+cpus: 962
+gpus: 3596
+group_builds: 10
+group_projects: 1
+motherboards: 4974
+psu: 2147
+ram: 3512
+saved_builds: 27
+settings: 3
+shopping_cache: 39
+storage: 1896
+users: 2

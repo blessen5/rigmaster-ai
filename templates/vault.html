@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Vault | RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .vault-hero {
+            padding: 8rem 0 3rem;
+            text-align: center;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 5rem;
+        }
+
+        .vault-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 2.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .build-selector {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 0.8rem 1.2rem;
+            border-radius: var(--radius-md);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 2rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .status-badge {
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .status-expired {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .warranty-item {
+            display: grid;
+            grid-template-columns: 120px 1fr 100px;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.2rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .warranty-item:last-child {
+            border-bottom: none;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent-cyan));
+            border-radius: 4px;
+        }
+
+        .resale-stat {
+            text-align: center;
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+        }
+
+        .maintenance-check {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .maintenance-check:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .check-circle {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--primary-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .check-circle.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .support-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .support-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 0.8rem;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .support-btn:hover {
+            color: white;
+            border-color: var(--primary-light);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .vault-card {
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .warranty-item {
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .vault-card:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .vault-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .warranty-item:nth-child(1) {
+            animation-delay: 0.3s;
+        }
+
+        .warranty-item:nth-child(2) {
+            animation-delay: 0.35s;
+        }
+
+        .warranty-item:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        .warranty-item:nth-child(4) {
+            animation-delay: 0.45s;
+        }
+
+        .warranty-item:nth-child(n+5) {
+            animation-delay: 0.5s;
+        }
+
+        .progress-fill {
+            transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            width: 0;
+            /* Start at 0 for animation */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+
+    <header class="vault-hero">
+        <div class="container">
+            <h1 class="text-gradient" style="font-size: 3.5rem;">The Digital Vault</h1>
+            <p style="color: var(--text-muted); margin-top: 1rem;">Lifecycle, Warranty & Maintenance Management</p>
+        </div>
+    </header>
+
+    <main class="container">
+        {% if no_builds %}
+        <div class="vault-card" style="text-align: center; padding: 5rem;">
+            <h2>No configurations found in your vault.</h2>
+            <p style="color: var(--text-muted); margin-top: 1rem; margin-bottom: 2rem;">Save a build from the PC Builder
+                to start managing its lifecycle.</p>
+            <a href="{{ url_for('builder') }}" class="btn btn-primary">Go to PC Builder</a>
+        </div>
+        {% else %}
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">MANAGING RIG:</span>
+                <select class="build-selector" onchange="window.location.href='/vault?build_id=' + this.value">
+                    {% for b in all_builds %}
+                    <option value="{{ b._id }}" {% if b._id==build._id|string %}selected{% endif %}>{{ b.name or 'Custom
+                        Rig' }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="text-align: right;">
+                <span style="color: var(--text-muted); font-size: 0.9rem;">BUILD DATE:</span>
+                <div style="color: var(--primary-light); font-weight: 600;">{{ purchase_date }}</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Left Column -->
+            <div class="vault-card">
+                <h2 style="margin-bottom: 2rem; display: flex; align-items: center; gap: 10px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    Warranty Coverage Timeline
+                </h2>
+
+                <div class="warranty-list">
+                    {% for cat, data in components.items() %}
+                    <div class="warranty-item">
+                        <div>
+                            <div
+                                style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">
+                                {{ cat }}</div>
+                            <div style="font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;"
+                                title="{{ data.name }}">
+                                {{ data.name }}
+                            </div>
+                        </div>
+                        <div>
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--text-muted);">
+                                <span>Expires: {{ data.warranty_expiry }}</span>
+                                <span>{{ data.warranty_percent|round|int }}% Remaining</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill"
+                                    style="--w: {{ data.warranty_percent|default(0) }}%; width: var(--w);"></div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span
+                                class="status-badge {{ 'status-active' if data.warranty_status == 'Active' else 'status-expired' }}">
+                                {{ data.warranty_status }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div style="display: flex; flex-direction: column; gap: 2rem;">
+                <!-- Value Card -->
+                <div class="vault-card" style="padding: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-muted);">Current Market
+                        Valuation</h3>
+                    <div class="resale-stat">
+                        <div style="font-size: 2.5rem; font-weight: 700;" class="text-gradient">${{ current_value }}
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                            Original: ${{ total_cost }} ({{ ((current_value / total_cost) * 100)|round|int if total_cost
+                            > 0 else 0 }}% retained)
+                        </div>
+                    </div>
+                    <div
+                        style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px;">
+                        Value is estimated based on component-specific depreciation curves and local market trends.
+                    </div>
+                </div>
+
+                <!-- Maintenance Card -->
+                <div class="vault-card">
+                    <h3 style="margin-bottom: 1.5rem;">Maintenance Log</h3>
+
+                    <div class="maintenance-check">
+                        <div class="check-circle" onclick="this.classList.toggle('checked')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; font-weight: 600;">System Deep Clean</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Recommended: Every 6 months</div>
+                        </div>
+                    </div>
+
+                    <div class="maintenance-check">
+                        <div class="check-circle" onclick="this.classList.toggle('checked')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; font-weight: 600;">Full Data Backup</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Recommended: Every 3 months</div>
+                        </div>
+                    </div>
+
+                    <div class="maintenance-check">
+                        <div class="check-circle" onclick="this.classList.toggle('checked')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; font-weight: 600;">Check SSD Health</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Via SMART monitoring (Jan/July)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Support Card -->
+                <div class="vault-card">
+                    <h3 style="margin-bottom: 1.2rem;">Official Support Hub</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.2rem;">Access official
+                        documentation and driver updates for your rig.</p>
+
+                    <div class="support-links">
+                        {% if components.motherboard %}
+                        <a href="https://www.google.com/search?q={{ components.motherboard.name|urlencode }}+official+drivers"
+                            target="_blank" class="support-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Mobo Drivers
+                        </a>
+                        {% endif %}
+
+                        {% if components.gpu %}
+                        <a href="https://www.google.com/search?q={{ components.gpu.name|urlencode }}+official+drivers"
+                            target="_blank" class="support-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            GPU Drivers
+                        </a>
+                        {% endif %}
+
+                        {% if components.motherboard %}
+                        <a href="https://www.google.com/search?q={{ components.motherboard.name|urlencode }}+user+manual+pdf"
+                            target="_blank" class="support-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                            </svg>
+                            Mobo Manual
+                        </a>
+                        {% endif %}
+
+                        <a href="{{ url_for('support_page') }}" class="support-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                            Get Help
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-accent">Rig</span>Master AI
+                    </div>
+                    <p>The future of PC building is intelligent.</p>
+                </div>
+                <div class="footer-links">
+                    <h5>Platform</h5>
+                    <ul>
+                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
+                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                        <li><a href="{{ url_for('vault') }}">The Vault</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Support</h5>
+                    <ul>
+                        <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+                        <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Contact</h5>
+                    <ul>
+                        <li><a href="{{ url_for('contact') }}">Support</a></li>
+                        <li><a href="{{ url_for('feedback') }}">Feedback</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 RigMaster AI. All rights reserved. Professional design for academic project.
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Trigger progress bar animations
+            setTimeout(() => {
+                document.querySelectorAll('.progress-fill').forEach(fill => {
+                    fill.style.width = getComputedStyle(fill).getPropertyValue('--w');
+                });
+            }, 500);
+        });
+    </script>
+</body>
+
+</html>

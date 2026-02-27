@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Architect | RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --accent: #06b6d4;
+            --bg-dark: #020617;
+            --card-bg: rgba(15, 23, 42, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .config-wrapper {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            margin-top: 80px;
+            background: radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15), transparent 70%);
+        }
+
+        .config-card {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card-bg);
+            backdrop-filter: blur(40px);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .config-header {
+            padding: 4rem 4rem 1rem;
+            text-align: center;
+        }
+
+        .config-body {
+            padding: 2rem 4rem 4rem;
+        }
+
+        /* Form Styles */
+        .section-label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            letter-spacing: 0.5px;
+        }
+
+        .premium-input,
+        .premium-select,
+        .premium-textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .premium-input:focus,
+        .premium-select:focus,
+        .premium-textarea:focus {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--primary);
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.1);
+        }
+
+        .premium-textarea {
+            min-height: 120px;
+            resize: vertical;
+            border-radius: 24px;
+        }
+
+        /* Budget Control Styling */
+        .budget-control-container {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .budget-input-wrapper {
+            position: relative;
+            width: 180px;
+        }
+
+        .currency-symbol {
+            position: absolute;
+            left: 1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-light);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .budget-input {
+            padding-left: 2.5rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--primary-light);
+        }
+
+        /* Select Styling */
+        .custom-select-wrapper {
+            position: relative;
+        }
+
+        .premium-select {
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .premium-select option {
+            background-color: var(--bg-dark);
+            color: white;
+            padding: 10px;
+        }
+
+        .select-arrow {
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Action Button */
+        .architect-btn {
+            width: 100%;
+            padding: 1.75rem;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            border: none;
+            border-radius: 24px;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .architect-btn:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 30px 60px -15px rgba(99, 102, 241, 0.6);
+            filter: brightness(1.1);
+        }
+
+        .architect-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Results Styling */
+        .results-view {
+            display: none;
+            padding: 4rem;
+        }
+
+        .build-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .component-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 1.75rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .component-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary-light);
+            transform: translateY(-8px);
+        }
+
+        .component-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+            opacity: 0.5;
+        }
+
+        .cat-tag {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--primary-light);
+            letter-spacing: 2px;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .comp-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .price-badge {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent);
+            padding: 0.4rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        /* Total Section */
+        .summary-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+
+        .summary-info h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-info p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .final-total {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #818cf8, #22d3ee);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Explanation Styling */
+        .architect-notes {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 3rem;
+            margin-bottom: 4rem;
+        }
+
+        .architect-notes h4 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .architect-notes h4 svg {
+            color: var(--primary-light);
+        }
+
+        .markdown-body {
+            line-height: 1.8;
+            color: var(--text-muted);
+        }
+
+        .markdown-body strong {
+            color: white;
+        }
+
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            color: white;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Loading Animation */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.98);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4rem;
+        }
+
+        .scanner {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin-bottom: 3rem;
+        }
+
+        .scanner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            animation: pulse-ring 2s infinite;
+        }
+
+        .scanner::after {
+            content: '';
+            position: absolute;
+            inset: 20px;
+            border-radius: 30%;
+            border: 4px solid var(--accent);
+            animation: spin-inner 3s linear infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        @keyframes spin-inner {
+            0% {
+                transform: rotate(0deg) scale(1);
+            }
+
+            50% {
+                transform: rotate(180deg) scale(1.2);
+            }
+
+            100% {
+                transform: rotate(360deg) scale(1);
+            }
+        }
+
+        .loading-text h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, white, var(--primary-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .loading-text p {
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        /* Navigation Buttons */
+        .actions-group {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+        }
+
+        .btn-premium {
+            padding: 1.25rem 2.5rem;
+            border-radius: 18px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: white;
+        }
+
+        .btn-outline:hover {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-glow {
+            background: var(--primary);
+            border: none;
+            color: white;
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-glow:hover {
+            box-shadow: 0 15px 40px -10px rgba(99, 102, 241, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .config-card {
+                border-radius: 0;
+            }
+
+            .config-header,
+            .config-body,
+            .results-view {
+                padding: 2rem;
+            }
+
+            .summary-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 1.5rem;
+            }
+
+            .final-total {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar-placeholder">
+        {% include 'shared/navbar.html' %}
+    </div>
+
+    <div class="config-wrapper">
+        <div class="config-card">
+            <div id="loading-overlay" class="loading-overlay">
+                <div class="scanner"></div>
+                <div class="loading-text">
+                    <h2 id="loading-status">Neural Processing</h2>
+                    <p id="loading-subtext">Initializing architecture phase...</p>
+                </div>
+            </div>
+
+            <div id="setup-view">
+                <div class="config-header">
+                    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 0.5rem; font-family: 'Outfit';">AI
+                        Build Architect</h1>
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">Professional hardware selection powered by
+                        multi-provider AI.</p>
+                </div>
+
+                <div class="config-body">
+                    <!-- 1. Budget Section -->
+                    <div class="input-group-wrapper" style="margin-bottom: 2.5rem;">
+                        <label class="section-label">Budget Limit ({{ session.get('currency', 'USD') }})</label>
+                        <div class="budget-control-container">
+                            <div class="budget-input-wrapper">
+                                <span class="currency-symbol" id="input-currency-symbol">{% if session.get('currency')
+                                    == 'INR' %}₹{% elif session.get('currency') == 'GBP' %}£{% elif
+                                    session.get('currency') == 'EUR' %}€{% elif session.get('currency') == 'CAD' %}C${%
+                                    elif session.get('currency') == 'AUD' %}A${% else %}${% endif %}</span>
+                                <input type="number" id="budget-input" class="premium-input budget-input" value="1500"
+                                    min="400" max="10000" step="10" oninput="syncBudget(this.value, 'input')">
+                            </div>
+                            <div class="slider-wrapper" style="flex: 1;">
+                                <input type="range" id="budget-slider" min="400" max="6000" step="50" value="1500"
+                                    oninput="syncBudget(this.value, 'slider')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. System Purpose -->
+                    <div class="input-group-wrapper" style="margin-bottom: 2.5rem;">
+                        <label class="section-label">System Purpose (Optional)</label>
+                        <div class="custom-select-wrapper">
+                            <select id="purpose-select" class="premium-select"
+                                onchange="handlePurposeChange(this.value)">
+                                <option value="Gaming" selected>🎮 Gaming</option>
+                                <option value="Workstation">💼 Workstation</option>
+                                <option value="Streaming">📡 Streaming</option>
+                                <option value="Office">📄 Office / Productivity</option>
+                                <option value="Other">✨ Other (Specify below)</option>
+                            </select>
+                            <div class="select-arrow">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Other Field -->
+                    <div id="other-purpose-group"
+                        style="display: none; margin-bottom: 2.5rem; animation: fadeIn 0.3s ease;">
+                        <label class="section-label" style="color: var(--primary-light);">Specify Custom Purpose</label>
+                        <input type="text" id="custom-purpose" class="premium-input"
+                            placeholder="e.g. 3D Rendering, Home Lab, AI Training..." style="width: 100%;">
+                    </div>
+
+                    <!-- 3. Additional Requirements -->
+                    <div class="input-group-wrapper">
+                        <label class="section-label">Additional Requirements (Optional)</label>
+                        <textarea id="requirements" class="premium-textarea"
+                            placeholder="Any specific preferences? (e.g., 'All-white build', 'Must have WiFi', 'Quiet operation')..."></textarea>
+                    </div>
+
+                    <!-- Architect Action -->
+                    <div style="margin-top: 3rem;">
+                        <button class="architect-btn" onclick="startGeneration()">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                            </svg>
+                            GENERATE ARCHITECTURE
+                        </button>
+                        <p style="text-align: center; margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted);">
+                            The AI will select components currently available in our database.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="results-view" class="results-view">
+                <div style="text-align: center; margin-bottom: 4rem;">
+                    <div
+                        style="color: var(--primary-light); font-weight: 800; letter-spacing: 4px; font-size: 0.8rem; margin-bottom: 0.5rem;">
+                        BLUEPRINT LOADED</div>
+                    <h2 class="text-gradient" id="result-title" style="font-size: 3.5rem; font-family: 'Outfit';">
+                        Architect's Selection</h2>
+                </div>
+
+                <div class="build-grid" id="build-grid">
+                    <!-- Injected by JS -->
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <h3>Build Summary</h3>
+                        <p id="summary-meta">Optimized for Gaming @ $1500</p>
+                    </div>
+                    <div class="final-total" id="final-total-display">$0</div>
+                </div>
+
+                <div class="architect-notes">
+                    <h4>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Architect's Analysis
+                    </h4>
+                    <div id="explanation-box" class="markdown-body">
+                        <!-- AI Analysis -->
+                    </div>
+                </div>
+
+                <div class="actions-group">
+                    <button class="btn-premium btn-outline" onclick="resetUI()">NEW ARCHITECTURE</button>
+                    <button class="btn-premium btn-glow" id="save-btn">SAVE TO PROFILE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPurpose = 'Gaming';
+        let currentBudget = 1500;
+
+        function syncBudget(val, source) {
+            currentBudget = val;
+            if (source === 'input') {
+                document.getElementById('budget-slider').value = val;
+            } else {
+                document.getElementById('budget-input').value = val;
+            }
+        }
+
+        function handlePurposeChange(val) {
+            selectedPurpose = val;
+            const otherGroup = document.getElementById('other-purpose-group');
+            if (val === 'Other') {
+                otherGroup.style.display = 'block';
+                // Focus the input automatically
+                setTimeout(() => document.getElementById('custom-purpose').focus(), 100);
+            } else {
+                otherGroup.style.display = 'none';
+            }
+        }
+
+        async function startGeneration() {
+            const requirements = document.getElementById('requirements').value;
+            const customPurpose = document.getElementById('custom-purpose').value;
+
+            const finalPurpose = selectedPurpose === 'Other' ? (customPurpose || 'General Purpose') : selectedPurpose;
+
+            // Show Loading
+            const overlay = document.getElementById('loading-overlay');
+            const statusText = document.getElementById('loading-status');
+            const subtext = document.getElementById('loading-subtext');
+            overlay.style.display = 'flex';
+
+            const phases = [
+                { s: "Hardware Scan", m: "Querying MongoDB for available stock..." },
+                { s: "Benchmarking", m: "Running virtual performance simulations..." },
+                { s: "Compatibility", m: "Verifying socket and chipset alignment..." },
+                { s: "Optimization", m: "Balancing budget for peak efficiency..." },
+                { s: "Finalizing", m: "Compiling architect's recommendation..." }
+            ];
+
+            let phaseIdx = 0;
+            const interval = setInterval(() => {
+                if (phaseIdx < phases.length) {
+                    statusText.innerText = phases[phaseIdx].s;
+                    subtext.innerText = phases[phaseIdx].m;
+                    phaseIdx++;
+                }
+            }, 3000);
+
+            try {
+                const response = await fetch('/api/ai-recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        budget: currentBudget,
+                        usage: finalPurpose,
+                        requirements: requirements
+                    })
+                });
+
+                const data = await response.json();
+                clearInterval(interval);
+
+                if (data.status === 'success') {
+                    renderBuild(data, finalPurpose);
+                } else {
+                    alert('Architect Error: ' + data.message);
+                    overlay.style.display = 'none';
+                }
+            } catch (error) {
+                console.error(error);
+                overlay.style.display = 'none';
+                alert('Neural Link Failed: Could not communicate with RigMaster AI.');
+            }
+        }
+
+        function renderBuild(data, purpose) {
+            const setup = document.getElementById('setup-view');
+            const results = document.getElementById('results-view');
+            const grid = document.getElementById('build-grid');
+            const overlay = document.getElementById('loading-overlay');
+
+            grid.innerHTML = '';
+
+            const mapping = [
+                { k: 'CPU', l: 'Central Processor' },
+                { k: 'GPU', l: 'Graphics Processor' },
+                { k: 'Motherboard', l: 'Logic Board' },
+                { k: 'RAM', l: 'Memory' },
+                { k: 'Storage', l: 'Solid State Storage' },
+                { k: 'PSU', l: 'Power Delivery' },
+                { k: 'Case', l: 'Chassis' },
+                { k: 'Cooler', l: 'Thermal System' }
+            ];
+
+            const build = data.build || {};
+
+            const symbol = data.currency_symbol || '$';
+            const rate = data.exchange_rate || 1.0;
+            const currency = data.currency || 'USD';
+
+            const formatVal = (val) => {
+                const converted = val * rate;
+                if (currency === 'INR') return Math.round(converted).toLocaleString();
+                return converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+
+            mapping.forEach(item => {
+                const comp = build[item.k] || build[item.k.toLowerCase()];
+                if (comp) {
+                    const card = document.createElement('div');
+                    card.className = 'component-card';
+
+                    let name = typeof comp === 'object' ? (comp.name || "Unknown") : comp;
+                    let price = typeof comp === 'object' ? (comp.estimated_price || 0) : 0;
+
+                    if (typeof price === 'string') {
+                        price = parseFloat(price.replace('$', '').replace(',', '')) || 0;
+                    }
+
+                    card.innerHTML = `
+                        <span class="cat-tag">${item.l}</span>
+                        <div class="comp-title">${name}</div>
+                        <div class="price-badge">${symbol}${formatVal(price)}</div>
+                    `;
+                    grid.appendChild(card);
+                }
+            });
+
+            const totalCost = data.total_estimated_cost || currentBudget;
+            document.getElementById('final-total-display').innerText = `${symbol}${formatVal(totalCost)}`;
+            document.getElementById('summary-meta').innerText = `Architected for ${purpose} @ ${symbol}${formatVal(currentBudget)}`;
+
+            const explanation = data.explanation || "No tactical breakdown provided.";
+            document.getElementById('explanation-box').innerHTML = marked.parse(explanation);
+
+            setup.style.display = 'none';
+            results.style.display = 'block';
+            overlay.style.display = 'none';
+
+            // Save functionality
+            document.getElementById('save-btn').onclick = async () => {
+                const btn = document.getElementById('save-btn');
+                btn.innerText = "SAVING...";
+
+                try {
+                    const payload = {
+                        name: `${purpose} Rig - $${currentBudget}`,
+                        cpu_id: build.CPU?.id || build.cpu?.id,
+                        gpu_id: build.GPU?.id || build.gpu?.id,
+                        motherboard_id: build.Motherboard?.id || build.motherboard?.id,
+                        ram_id: build.RAM?.id || build.ram?.id,
+                        storage_id: build.Storage?.id || build.storage?.id,
+                        psu_id: build.PSU?.id || build.psu?.id,
+                        case_id: build.Case?.id || build.case?.id,
+                        cooler_id: build.Cooler?.id || build.cooler?.id
+                    };
+
+                    const res = await fetch('/api/save_build', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        btn.innerText = "SAVED TO PROFILE";
+                        btn.style.background = "#059669";
+                    } else {
+                        btn.innerText = "SAVE FAILED";
+                    }
+                } catch (e) {
+                    btn.innerText = "ERROR";
+                }
+            };
+        }
+
+        function resetUI() {
+            document.getElementById('setup-view').style.display = 'block';
+            document.getElementById('results-view').style.display = 'none';
+            document.getElementById('save-btn').innerText = "SAVE TO PROFILE";
+            document.getElementById('save-btn').style.background = "";
+        }
+    </script>
+
+    {% if session.get('user_id') %}
+    {% include 'shared/rigmaster_ai.html' %}
+    {% endif %}
+</body>
+
+</html>

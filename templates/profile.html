@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile | RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <style>
+        .profile-hero {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 5rem 0 3rem;
+            margin-top: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(60px);
+        }
+
+        .profile-avatar-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            font-weight: 800;
+            border: 5px solid var(--bg-body);
+            box-shadow: 0 10px 40px rgba(124, 58, 237, 0.4);
+            position: relative;
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            border: 3px solid var(--bg-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid var(--border);
+            border-radius: 1.2rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary-light);
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(124, 58, 237, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+            color: var(--primary-light);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, var(--primary-light) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-icon {
+            width: 45px;
+            height: 45px;
+            background: rgba(124, 58, 237, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-light);
+            font-size: 1.3rem;
+        }
+
+        .achievement-badge {
+            background: linear-gradient(145deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .achievement-badge::before {
+            content: '✨';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 3rem;
+            opacity: 0.1;
+        }
+
+        .achievement-badge:hover {
+            transform: scale(1.05);
+            border-color: rgba(255, 215, 0, 0.6);
+        }
+
+        .achievement-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .achievement-title {
+            font-weight: 700;
+            color: #ffd700;
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        .achievement-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            border-left: 3px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(5px);
+        }
+
+        .timeline-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
+            color: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .preference-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 0.8rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .preference-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--primary-light);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--primary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .badge-pro {
+            background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .progress-bar-custom {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill-custom {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 50px;
+            transition: width 0.5s ease;
+        }
+
+        /* Modal Styles */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 50px;
+            border: 1px solid transparent;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.secure {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .status-badge.secure i,
+        .status-badge.secure span {
+            color: #10b981;
+        }
+
+        .status-badge.action {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .status-badge.action i,
+        .status-badge.action span {
+            color: #ef4444;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            margin: 5% auto;
+            padding: 0;
+            border: 1px solid var(--border);
+            width: 90%;
+            border-radius: 1.5rem;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: modalSlideDown 0.3s ease-out;
+        }
+
+        @keyframes modalSlideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-modal {
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+
+    <!-- Enhanced Profile Hero -->
+    <div class="profile-hero">
+        <div class="container">
+            <div style="display: flex; align-items: center; gap: 3rem; position: relative; z-index: 1;">
+                <div class="profile-avatar-wrapper">
+                    <div class="profile-avatar">
+                        {{ user.username[0] | upper }}
+                    </div>
+                    <div class="avatar-badge">
+                        <i class="bi bi-star-fill" style="color: white;"></i>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <h1 class="text-white" style="margin: 0; font-size: 2.5rem;">{{ user.username }}</h1>
+                        <span class="badge-pro">PRO</span>
+                    </div>
+                    <div style="display: flex; gap: 2rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        <span><i class="bi bi-envelope me-2"></i>{{ user.email or 'No email linked' }}</span>
+                        <span><i class="bi bi-calendar3 me-2"></i>Member since {{ user.created_at.strftime('%B %Y') if
+                            user.created_at else 'January 2026' }}</span>
+                        <span><i class="bi bi-geo-alt me-2"></i>Global</span>
+                    </div>
+                    <div>
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">Profile Completion</span>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary-light);">85%</span>
+                        </div>
+                        <div class="progress-bar-custom">
+                            <div class="progress-fill-custom" style="width: 85%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" style="padding: 0.8rem 1.5rem;"
+                        onclick="openModal('editProfileModal')">
+                        <i class="bi bi-pencil me-2"></i>Edit Profile
+                    </button>
+                    <button class="btn btn-secondary" style="padding: 0.8rem 1.5rem;" onclick="shareProfile()">
+                        <i class="bi bi-share"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container section" style="margin-top: 3rem;">
+        <!-- Enhanced Statistics -->
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-pc-display-horizontal"></i></div>
+                <div class="stat-value">{{ build_count }}</div>
+                <div class="stat-label">Total Builds</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-diagram-3"></i></div>
+                <div class="stat-value">{{ group_count }}</div>
+                <div class="stat-label">Deployments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-lightning-charge"></i></div>
+                <div class="stat-value">{{ build_count * 3 + group_count * 10 }}</div>
+                <div class="stat-label">Power Score</div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <!-- Build Timeline -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-icon"><i class="bi bi-clock-history"></i></div>
+                    <h2 class="text-white" style="margin: 0; font-size: 1.5rem;">Build Timeline</h2>
+                </div>
+                {% if recent_builds %}
+                {% for build in recent_builds %}
+                <div class="timeline-item">
+                    <div class="timeline-icon">
+                        <i class="bi bi-pc-display"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 700; color: white; font-size: 1.05rem; margin-bottom: 0.3rem;">
+                            {{ build.name or 'Untitled Build' }}
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                            <i class="bi bi-calendar3 me-1"></i>{{ build.created_at.strftime('%B %d, %Y at %I:%M %p') if
+                            build.created_at else 'Recently' }}
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <span
+                                style="font-size: 0.75rem; background: rgba(124, 58, 237, 0.1); color: var(--primary-light); padding: 0.3rem 0.8rem; border-radius: 50px;">
+                                <i class="bi bi-check-circle me-1"></i>Compatible
+                            </span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <a href="{{ url_for('analysis') }}?build_id={{ build._id }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <button class="btn btn-sm btn-secondary" onclick="shareBuild('{{ build._id }}')">
+                            <i class="bi bi-share"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                    <i class="bi bi-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No builds yet. Start creating!</p>
+                    <a href="{{ url_for('builder') }}" class="btn btn-primary" style="margin-top: 1rem;">
+                        <i class="bi bi-plus-circle me-2"></i>Create Build
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Preferences & Settings -->
+            <div>
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon"><i class="bi bi-sliders"></i></div>
+                        <h2 class="text-white" style="margin: 0; font-size: 1.3rem;">Preferences</h2>
+                    </div>
+
+                    <div class="preference-item" style="cursor: pointer;" onclick="togglePreference(this)">
+                        <div>
+                            <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Price Alerts</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Get notified of deals</div>
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+
+                    <div class="preference-item" style="cursor: pointer;" onclick="togglePreference(this)">
+                        <div>
+                            <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Email Digest</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Weekly summaries</div>
+                        </div>
+                        <div class="toggle-switch"></div>
+                    </div>
+
+                    <div class="preference-item" style="cursor: pointer;" onclick="togglePreference(this)">
+                        <div>
+                            <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Dark Mode</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Always enabled</div>
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+
+                    <div class="preference-item" style="cursor: pointer;" onclick="togglePreference(this)">
+                        <div>
+                            <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">AI Suggestions</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Smart recommendations</div>
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon"><i class="bi bi-shield-check"></i></div>
+                        <div style="flex: 1;">
+                            <h2 class="text-white" style="margin: 0; font-size: 1.3rem;">Security</h2>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Manage your account
+                                security</p>
+                        </div>
+                        <div id="security-status-badge"
+                            class="status-badge {{ 'secure' if user.two_factor_enabled else 'action' }}">
+                            <i class="bi {{ 'bi-shield-fill-check' if user.two_factor_enabled else 'bi-shield-fill-exclamation' }}"
+                                style="font-size: 0.9rem;"></i>
+                            <span style="font-size: 0.75rem; font-weight: 600;">
+                                {{ 'Secure' if user.two_factor_enabled else 'Action Required' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Security Actions -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <!-- Change Password -->
+                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 0.8rem; padding: 1.2rem; transition: all 0.2s ease; cursor: pointer;"
+                            onclick="openModal('changePasswordModal')"
+                            onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'; this.style.borderColor='var(--primary-light)'"
+                            onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='var(--border)'">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(124, 58, 237, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bi bi-key" style="color: var(--primary-light); font-size: 1.2rem;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Change Password
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Update your account
+                                        password</div>
+                                </div>
+                                <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
+                            </div>
+                        </div>
+
+                        <!-- Two-Factor Authentication -->
+                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 0.8rem; padding: 1.2rem; transition: all 0.2s ease; cursor: pointer;"
+                            onclick="openModal('twoFactorModal')"
+                            onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'; this.style.borderColor='var(--primary-light)'"
+                            onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='var(--border)'">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bi bi-shield-lock" style="color: #10b981; font-size: 1.2rem;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Two-Factor Auth
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Add extra security layer
+                                    </div>
+                                </div>
+                                <div id="tfa-status-badge"
+                                    class="status-badge {{ 'secure' if user.two_factor_enabled else 'action' }}"
+                                    style="padding: 0.3rem 0.6rem; font-size: 0.7rem;">
+                                    {{ 'ENABLED' if user.two_factor_enabled else 'DISABLED' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Export Data -->
+                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 0.8rem; padding: 1.2rem; transition: all 0.2s ease; cursor: pointer;"
+                            onclick="exportData()"
+                            onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'; this.style.borderColor='var(--primary-light)'"
+                            onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='var(--border)'">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(59, 130, 246, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bi bi-download" style="color: #3b82f6; font-size: 1.2rem;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Export Your Data
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Download all your
+                                        information</div>
+                                </div>
+                                <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
+                            </div>
+                        </div>
+
+                        <!-- Login Sessions -->
+                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 0.8rem; padding: 1.2rem; transition: all 0.2s ease; cursor: pointer;"
+                            onclick="openModal('activeSessionsModal')"
+                            onmouseover="this.style.background='rgba(255, 255, 255, 0.04)'; this.style.borderColor='var(--primary-light)'"
+                            onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='var(--border)'">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(168, 85, 247, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bi bi-laptop" style="color: #a855f7; font-size: 1.2rem;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: white; margin-bottom: 0.2rem;">Active Sessions
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Manage logged-in devices
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <i class="bi bi-exclamation-triangle" style="color: #ef4444;"></i>
+                            <h3
+                                style="margin: 0; font-size: 0.9rem; color: #ef4444; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                                Danger Zone</h3>
+                        </div>
+                        <div
+                            style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 0.8rem; padding: 1.2rem;">
+                            <div style="display: flex; align-items: start; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(239, 68, 68, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bi bi-trash" style="color: #ef4444; font-size: 1.2rem;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; color: #ef4444; margin-bottom: 0.3rem;">Delete Account
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
+                                        Permanently delete your account and all associated data. This action cannot be
+                                        undone.</div>
+                                    <button class="btn btn-outline" onclick="openModal('deleteAccountModal')"
+                                        style="color: #ef4444; border-color: #ef4444; padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 600;">
+                                        <i class="bi bi-trash me-2"></i>Delete My Account
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="text-gradient">Edit Profile</h2>
+                <span class="close-modal" onclick="closeModal('editProfileModal')">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <div style="margin-bottom: 1.5rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">Username</label>
+                    <input type="text" id="editUsername" value="{{ user.username }}"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 0.95rem;">
+                </div>
+                <div style="margin-bottom: 2rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">Email
+                        Address</label>
+                    <input type="email" id="editEmail" value="{{ user.email or '' }}"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 0.95rem;">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="updateProfile()">Save Changes</button>
+                    <button class="btn btn-secondary" style="flex: 1;"
+                        onclick="closeModal('editProfileModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="text-gradient">Change Password</h2>
+                <span class="close-modal" onclick="closeModal('changePasswordModal')">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <div style="margin-bottom: 1.5rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">Current
+                        Password</label>
+                    <input type="password" id="currentPassword" placeholder="Enter current password"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 0.95rem;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">New
+                        Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 0.95rem;">
+                </div>
+                <div style="margin-bottom: 2rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">Confirm
+                        New Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 0.95rem;">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="changePassword()">Update Password</button>
+                    <button class="btn btn-secondary" style="flex: 1;"
+                        onclick="closeModal('changePasswordModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-Factor Auth Modal -->
+    <div id="twoFactorModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="text-gradient">Two-Factor Authentication</h2>
+                <span class="close-modal" onclick="closeModal('twoFactorModal')">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div
+                        style="width: 150px; height: 150px; background: white; margin: 0 auto 1rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center;">
+                        <div style="font-size: 0.75rem; color: #333;">QR Code Placeholder</div>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Scan this QR code with your authenticator
+                        app</p>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">Verification
+                        Code</label>
+                    <input type="text" id="verificationCode" placeholder="Enter 6-digit code" maxlength="6"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 1.2rem; text-align: center; letter-spacing: 0.5rem;">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="toggle2FA()">{{ 'Disable 2FA' if
+                        user.two_factor_enabled else 'Enable 2FA' }}</button>
+                    <button class="btn btn-secondary" style="flex: 1;"
+                        onclick="closeModal('twoFactorModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Sessions Modal -->
+    <div id="activeSessionsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="text-gradient">Active Sessions</h2>
+                <span class="close-modal" onclick="closeModal('activeSessionsModal')">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Manage devices where you're currently logged
+                    in</p>
+
+                <!-- Current Session -->
+                <div
+                    style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 0.8rem; padding: 1.5rem; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div
+                            style="width: 50px; height: 50px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-laptop" style="color: #10b981; font-size: 1.5rem;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; color: white; margin-bottom: 0.3rem;">Windows PC - Chrome
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Current session • Last active:
+                                Just now</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">IP: 192.168.1.100 • Location:
+                                Your City</div>
+                        </div>
+                        <span
+                            style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: 600;">ACTIVE</span>
+                    </div>
+                </div>
+
+                <!-- Other Sessions -->
+                <div
+                    style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 0.8rem; padding: 1.5rem; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div
+                            style="width: 50px; height: 50px; background: rgba(124, 58, 237, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-phone" style="color: var(--primary-light); font-size: 1.5rem;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; color: white; margin-bottom: 0.3rem;">iPhone - Safari</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Last active: 2 hours ago</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">IP: 192.168.1.105 • Location:
+                                Your City</div>
+                        </div>
+                        <button class="btn btn-outline"
+                            style="color: #ef4444; border-color: #ef4444; padding: 0.5rem 1rem; font-size: 0.85rem;"
+                            onclick="revokeSession('mobile')">Revoke</button>
+                    </div>
+                </div>
+
+                <button class="btn btn-outline w-100" style="color: #ef4444; border-color: #ef4444; margin-top: 1rem;"
+                    onclick="revokeAllSessions()">
+                    <i class="bi bi-x-circle me-2"></i>Revoke All Other Sessions
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div id="deleteAccountModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(239, 68, 68, 0.2);">
+                <h2 style="color: #ef4444; margin: 0;">Delete Account</h2>
+                <span class="close-modal" onclick="closeModal('deleteAccountModal')">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <div
+                    style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 0.8rem; padding: 1.5rem; margin-bottom: 2rem;">
+                    <div style="display: flex; gap: 1rem; align-items: start;">
+                        <i class="bi bi-exclamation-triangle" style="color: #ef4444; font-size: 2rem;"></i>
+                        <div>
+                            <h3 style="color: #ef4444; margin: 0 0 0.5rem 0; font-size: 1.1rem;">Warning: This action is
+                                permanent!</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Deleting your account
+                                will:</p>
+                            <ul style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 0 1.5rem;">
+                                <li>Remove all your saved builds</li>
+                                <li>Delete all your personal data</li>
+                                <li>Cancel any active subscriptions</li>
+                                <li>This action cannot be undone</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label
+                        style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">Type
+                        "DELETE" to confirm</label>
+                    <input type="text" id="deleteConfirmation" placeholder="Type DELETE"
+                        style="width: 100%; padding: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: white; font-size: 0.95rem;">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-outline" style="flex: 1; color: #ef4444; border-color: #ef4444;"
+                        onclick="confirmDeleteAccount()">Delete My Account</button>
+                    <button class="btn btn-secondary" style="flex: 1;"
+                        onclick="closeModal('deleteAccountModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="margin-top: 5rem;">
+        <div class="container">
+            <div
+                style="text-align: center; padding: 2rem 0; border-top: 1px solid var(--border); color: var(--text-muted);">
+                <p>&copy; 2026 RigMaster AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Modal Functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function togglePreference(element) {
+            const toggle = element.querySelector('.toggle-switch');
+            toggle.classList.toggle('active');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Edit Profile Functions
+        async function updateProfile() {
+            const username = document.getElementById('editUsername').value;
+            const email = document.getElementById('editEmail').value;
+
+            if (!username || !email) {
+                alert('Please fill in both fields');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    location.reload(); // Reload to show updated info
+                } else {
+                    alert(result.message || 'Failed to update profile');
+                }
+            } catch (e) {
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        function shareProfile() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Profile link copied to clipboard!');
+            }).catch(err => {
+                alert('Could not copy link: ' + err);
+            });
+        }
+
+        function shareBuild(buildId) {
+            const baseUrl = window.location.origin;
+            const url = `${baseUrl}/analysis?build_id=${buildId}`;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Build link copied to clipboard!');
+            }).catch(err => {
+                alert('Could not copy link: ' + err);
+            });
+        }
+
+        // Change Password
+        async function changePassword() {
+            const current = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+
+            if (!current || !newPass || !confirm) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (newPass !== confirm) {
+                alert('New passwords do not match');
+                return;
+            }
+
+            if (newPass.length < 6) {
+                alert('Password must be at least 6 characters long');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ current_password: current, new_password: newPass })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    closeModal('changePasswordModal');
+                    // Clear fields
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else {
+                    alert(result.message || 'Failed to change password');
+                }
+            } catch (e) {
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        // Two-Factor Authentication
+        const is2FAInitialState = "{{ 'true' if user.two_factor_enabled else 'false' }}";
+        let is2FAEnabled = (is2FAInitialState === "true");
+        async function toggle2FA() {
+            const code = document.getElementById('verificationCode').value;
+
+            if (!is2FAEnabled && (!code || code.length !== 6)) {
+                alert('Please enter a valid 6-digit code to enable 2FA');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile/toggle-2fa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    is2FAEnabled = result.two_factor_enabled;
+                    const badge = document.getElementById('tfa-status-badge');
+                    const modalBtn = document.querySelector('#twoFactorModal .btn-primary');
+
+                    if (is2FAEnabled) {
+                        badge.innerHTML = 'ENABLED';
+                        badge.className = 'status-badge secure';
+                        badge.style.padding = '0.3rem 0.6rem';
+                        badge.style.fontSize = '0.7rem';
+
+                        const securityBadge = document.getElementById('security-status-badge');
+                        if (securityBadge) {
+                            securityBadge.className = 'status-badge secure';
+                            const icon = securityBadge.querySelector('i');
+                            if (icon) icon.className = 'bi bi-shield-fill-check';
+                            const text = securityBadge.querySelector('span');
+                            if (text) text.innerHTML = 'Secure';
+                        }
+
+                        modalBtn.innerHTML = 'Disable 2FA';
+                        alert('Two-Factor Authentication has been enabled');
+                    } else {
+                        badge.innerHTML = 'DISABLED';
+                        badge.className = 'status-badge action';
+                        badge.style.padding = '0.3rem 0.6rem';
+                        badge.style.fontSize = '0.7rem';
+
+                        const securityBadge = document.getElementById('security-status-badge');
+                        if (securityBadge) {
+                            securityBadge.className = 'status-badge action';
+                            const icon = securityBadge.querySelector('i');
+                            if (icon) icon.className = 'bi bi-shield-fill-exclamation';
+                            const text = securityBadge.querySelector('span');
+                            if (text) text.innerHTML = 'Action Required';
+                        }
+
+                        modalBtn.innerHTML = 'Enable 2FA';
+                        alert('Two-Factor Authentication has been disabled');
+                    }
+                    closeModal('twoFactorModal');
+                    document.getElementById('verificationCode').value = '';
+                }
+            } catch (e) {
+                alert('Failed to toggle 2FA');
+            }
+        }
+
+        // Export Data
+        async function exportData() {
+            try {
+                const response = await fetch('/api/profile/export-data');
+                const data = await response.json();
+
+                // Create a blob and download it
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `rigmaster_data_export_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+
+                alert('Your data has been exported successfully!');
+            } catch (e) {
+                alert('Failed to export data');
+            }
+        }
+
+        // Active Sessions
+        async function revokeSession(sessionId) {
+            if (confirm('Are you sure you want to revoke this session?')) {
+                try {
+                    const response = await fetch('/api/profile/revoke-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                        closeModal('activeSessionsModal');
+                    }
+                } catch (e) {
+                    alert('Failed to revoke session');
+                }
+            }
+        }
+
+        async function revokeAllSessions() {
+            if (confirm('Are you sure you want to revoke all other sessions? You will remain logged in on this device.')) {
+                try {
+                    const response = await fetch('/api/profile/revoke-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ all_others: true })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                        closeModal('activeSessionsModal');
+                    }
+                } catch (e) {
+                    alert('Failed to revoke sessions');
+                }
+            }
+        }
+
+        // Delete Account
+        async function confirmDeleteAccount() {
+            const confirmation = document.getElementById('deleteConfirmation').value;
+
+            if (confirmation !== 'DELETE') {
+                alert('Please type DELETE to confirm account deletion');
+                return;
+            }
+
+            if (confirm('This is your final warning. Are you absolutely sure you want to delete your account? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/profile/delete-account', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ confirm: 'DELETE' })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Account deleted successfully. Logging you out...');
+                        window.location.href = '/';
+                    }
+                } catch (e) {
+                    alert('Failed to delete account');
+                }
+            }
+        }
+    </script>
+    {% if session.get('user_id') %}
+    {% include 'shared/rigmaster_ai.html' %}
+    {% endif %}
+</body>
+
+</html>

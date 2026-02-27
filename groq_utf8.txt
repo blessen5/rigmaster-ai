@@ -1,0 +1,21 @@
+﻿Status: 200
+Content:
+{
+  "total_system_value": "$275",
+   "market_advice": "To maximize resale value, focus on highlighting the AMD A10-7850K's integrated graphics and overclocking capabilities. For the AMD 100-435415 GPU, market it as a budget-friendly option for esports and retro gaming. Clean the components thoroughly and provide high-quality photos. In descriptions, emphasize the system's potential for DIY upgrades and modifications. Target buyers looking for affordable, entry-level gaming setups. Consider selling on Reddit's r/hardwareswap or eBay with a competitive starting price to attract bidders.",
+   "components": [
+       {
+           "category": "CPU",
+           "name": "AMD A10-7850K",
+           "status": "Active",
+           "estimated_resale": "$120"
+       },
+       {
+           "category": "GPU",
+           "name": "AMD 100-435415",
+           "status": "Active",
+           "estimated_resale": "$155"
+       }
+   ]
+}
+Parsed keys: dict_keys(['total_system_value', 'market_advice', 'components'])

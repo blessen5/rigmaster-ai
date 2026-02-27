@@ -1,0 +1,1 @@
+﻿['case', 'cooler', 'cpu', 'gpu', 'motherboard', 'psu', 'ram', 'storage']

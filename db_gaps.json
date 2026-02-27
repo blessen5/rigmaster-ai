@@ -1,0 +1,255 @@
+{
+  "uri": "mongodb://127.0.0.1:27017/",
+  "collections": [
+    "ram",
+    "components",
+    "saved_builds",
+    "motherboards",
+    "gpus",
+    "cpus",
+    "coolers",
+    "shopping_cache",
+    "cases",
+    "ai_cache",
+    "users",
+    "psu",
+    "storage"
+  ],
+  "samples": {
+    "sample_0": {
+      "_id": "69854e66caad6512b362d186",
+      "name": "Intel Core i9-14900KS",
+      "price": 689,
+      "socket": "LGA1700",
+      "cores": 24,
+      "threads": 32,
+      "base_clock": "3.2 GHz",
+      "boost_clock": 6.2,
+      "tdp": 150,
+      "status": "Active",
+      "core_clock": 3.2,
+      "core_count": 24,
+      "graphics": "Intel UHD Graphics 770",
+      "microarchitecture": "Raptor Lake Refresh",
+      "category": "cpu"
+    },
+    "sample_1": {
+      "_id": "69854e67caad6512b362d187",
+      "name": "Intel Core i9-14900K",
+      "price": 589,
+      "socket": "LGA1700",
+      "cores": 24,
+      "threads": 32,
+      "base_clock": "3.2 GHz",
+      "boost_clock": 6,
+      "tdp": 125,
+      "status": "Active",
+      "core_clock": 3.2,
+      "core_count": 24,
+      "graphics": "Intel UHD Graphics 770",
+      "microarchitecture": "Raptor Lake Refresh",
+      "category": "cpu"
+    },
+    "sample_2": {
+      "_id": "69854e67caad6512b362d188",
+      "name": "Intel Core i9-14900F",
+      "price": 529,
+      "socket": "LGA1700",
+      "cores": 24,
+      "threads": 32,
+      "base_clock": "2.0 GHz",
+      "boost_clock": 5.8,
+      "tdp": 65,
+      "status": "Active",
+      "core_clock": 2,
+      "core_count": 24,
+      "graphics": null,
+      "microarchitecture": "Raptor Lake Refresh",
+      "category": "cpu"
+    }
+  },
+  "gaps": {
+    "case": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "form_factor",
+        "color",
+        "status",
+        "external_volume",
+        "internal_35_bays",
+        "psu",
+        "side_panel",
+        "type",
+        "category",
+        "brand"
+      ],
+      "missing": {
+        "form_factor": 4192,
+        "color": 47,
+        "status": 4192,
+        "external_volume": 910,
+        "internal_35_bays": 5,
+        "psu": 3810,
+        "side_panel": 1416,
+        "type": 5,
+        "brand": 4203
+      }
+    },
+    "cooler": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "type",
+        "radiator_size",
+        "status",
+        "category"
+      ],
+      "missing": {
+        "type": 2319,
+        "radiator_size": 2328,
+        "status": 2319,
+        "brand": 2338
+      }
+    },
+    "cpu": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "socket",
+        "cores",
+        "threads",
+        "base_clock",
+        "boost_clock",
+        "tdp",
+        "status",
+        "core_clock",
+        "core_count",
+        "graphics",
+        "microarchitecture",
+        "category"
+      ],
+      "missing": {
+        "socket": 927,
+        "cores": 927,
+        "threads": 927,
+        "base_clock": 927,
+        "boost_clock": 445,
+        "status": 927,
+        "core_clock": 1,
+        "core_count": 1,
+        "graphics": 506,
+        "microarchitecture": 1,
+        "brand": 962
+      }
+    },
+    "gpu": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "vram",
+        "tdp",
+        "cuda_cores",
+        "status",
+        "category"
+      ],
+      "missing": {
+        "vram": 3554,
+        "tdp": 3554,
+        "cuda_cores": 3576,
+        "status": 3554,
+        "brand": 3596,
+        "chipset": 3596
+      }
+    },
+    "motherboard": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "socket",
+        "chipset",
+        "ram_type",
+        "max_ram",
+        "status",
+        "category"
+      ],
+      "missing": {
+        "chipset": 4948,
+        "ram_type": 4948,
+        "max_ram": 4948,
+        "status": 4948,
+        "brand": 4974
+      }
+    },
+    "psu": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "wattage",
+        "efficiency",
+        "modular",
+        "status",
+        "category"
+      ],
+      "missing": {
+        "efficiency": 351,
+        "status": 2130,
+        "brand": 2147
+      }
+    },
+    "ram": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "capacity",
+        "type",
+        "speed",
+        "status",
+        "category"
+      ],
+      "missing": {
+        "capacity": 3493,
+        "type": 3493,
+        "status": 3493,
+        "brand": 3512
+      }
+    },
+    "storage": {
+      "fields": [
+        "_id",
+        "name",
+        "price",
+        "capacity",
+        "type",
+        "read_speed",
+        "write_speed",
+        "status",
+        "category"
+      ],
+      "missing": {
+        "type": 22,
+        "read_speed": 1877,
+        "write_speed": 1877,
+        "status": 1877,
+        "brand": 1896
+      }
+    }
+  },
+  "categories": [
+    "case",
+    "cooler",
+    "cpu",
+    "gpu",
+    "motherboard",
+    "psu",
+    "ram",
+    "storage"
+  ]
+}

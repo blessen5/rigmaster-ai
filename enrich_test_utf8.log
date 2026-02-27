@@ -1,0 +1,40 @@
+﻿python : Traceback (most recent call 
+last):
+At line:1 char:1
++ python enrich_components.py --limit 5 
+> enrich_test.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Traceback (most recent call l  
+  ast)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+  File "C:\Users\bless\.gemini\antigravi
+ty\scratch\rigmaster-ui\enrich_component
+s.py", line 132, in <module>
+    enrich_database(limit=args.limit, 
+categories=cats)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
+  File "C:\Users\bless\.gemini\antigravi
+ty\scratch\rigmaster-ui\enrich_component
+s.py", line 38, in enrich_database
+    print(f"\U0001f680 Starting 
+enrichment for categories: 
+{categories}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\Pyt
+honSoftwareFoundation.Python.3.13_3.13.3
+312.0_x64__qbz5n2kfra8p0\Lib\encodings\c
+p1252.py", line 19, in encode
+    return codecs.charmap_encode(input,s
+elf.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec 
+can't encode character '\U0001f680' in 
+position 0: character maps to 
+<undefined>

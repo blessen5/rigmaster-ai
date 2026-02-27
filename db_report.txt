@@ -1,0 +1,7 @@
+Collections: ['motherboards', 'ram', 'cpus', 'gpus', 'cases', 'psu', 'coolers', 'shopping_cache', 'users', 'ai_cache', 'saved_builds', 'storage']
+cpus count: 961
+cpus sample doc: {'_id': ObjectId('696999e31dce692221d00cd2'), 'name': 'AMD Ryzen 7 9800X3D', 'boost_clock': 5.2, 'core_clock': 4.7, 'core_count': 8, 'graphics': 'Radeon', 'microarchitecture': 'Zen 5', 'tdp': 120, 'socket': 'AM5'}
+gpus count: 3555
+gpus sample doc: {'_id': ObjectId('696999e51dce692221d01093'), 'name': 'MSI GeForce RTX 3060 Ventus 2X 12G', 'boost_clock': 1777, 'chipset': 'GeForce RTX 3060 12GB', 'color': 'Black', 'core_clock': 1320, 'length': 235, 'memory': 12}
+motherboards count: 4957
+motherboards sample doc: {'_id': ObjectId('696999eb1dce692221d01e76'), 'name': 'Asus PRIME B650-PLUS WIFI', 'color': 'Black / Silver', 'form_factor': 'ATX', 'max_memory': 192, 'memory_slots': 4, 'socket': 'AM5', 'memory_type': 'DDR5'}

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Builder - RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Markdown Styling for Chat */
+        .message.assistant-message {
+            padding: 1.2rem;
+        }
+
+        .message.assistant-message h1,
+        .message.assistant-message h2,
+        .message.assistant-message h3 {
+            color: var(--primary-light);
+            font-size: 1rem;
+            margin: 0.8rem 0 0.4rem 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .message.assistant-message p {
+            margin-bottom: 0.6rem;
+        }
+
+        .message.assistant-message ul,
+        .message.assistant-message ol {
+            margin-bottom: 0.6rem;
+            padding-left: 1.2rem;
+        }
+
+        .message.assistant-message table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.8rem 0;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .message.assistant-message th {
+            background: rgba(124, 58, 237, 0.2);
+            color: white;
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .message.assistant-message td {
+            padding: 0.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .message.assistant-message code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--accent-cyan);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+    <div class="container section" style="margin-top: 120px; display: flex; justify-content: center;">
+        <div class="step-card" style="max-width: 1000px; width: 100%; text-align: left;">
+            <h1 class="text-gradient" style="font-size: 3.5rem; margin-bottom: 2rem; text-align: center;">PC Builder
+            </h1>
+            <p style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 3rem; text-align: center;">Select your
+                components from our database.</p>
+
+            <form id="builder-form"
+                style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
+
+                <div class="form-group" style="grid-column: 1 / 2; margin-bottom: 2rem;">
+                    <label
+                        style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase;">Build
+                        Name</label>
+                    <input type="text" id="build-name" name="config_name" placeholder="E.g. Office PC v1..."
+                        style="width: 100%; padding: 1.25rem; background: rgba(124, 58, 237, 0.03); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem;">
+                </div>
+
+                <div class="form-group" style="grid-column: 2 / 3; margin-bottom: 2rem;">
+                    <label
+                        style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase;">System
+                        Quantity</label>
+                    <input type="number" id="build-quantity" value="1" min="1"
+                        style="width: 100%; padding: 1.25rem; background: rgba(124, 58, 237, 0.03); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem; text-align: center;">
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Processor
+                        (CPU)</label>
+                    <select id="cpu-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading CPUs...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Graphics Card
+                        (GPU)</label>
+                    <select id="gpu-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading GPUs...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Motherboard</label>
+                    <select id="mobo-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Motherboards...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Memory (RAM)</label>
+                    <select id="ram-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading RAM...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Storage</label>
+                    <select id="storage-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Storage...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Power Supply
+                        (PSU)</label>
+                    <select id="psu-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading PSUs...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Case</label>
+                    <select id="case-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Cases...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">CPU Cooler</label>
+                    <select id="cooler-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Coolers...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Monitor</label>
+                    <select id="monitor-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Monitors...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Operating
+                        System</label>
+                    <select id="os-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading OS...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Peripherals</label>
+                    <select id="peripherals-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Peripherals...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Case Fans</label>
+                    <select id="fans-select" class="form-select"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                        <option value="">Loading Fans...</option>
+                    </select>
+                </div>
+
+                <div id="lifecycle-warning"
+                    style="display:none; padding:1rem; background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; border-radius: 12px; margin-top: 1rem; grid-column: 1 / -1;">
+                    <div style="display:flex; align-items:center; gap:10px; color:#fbbf24; font-weight:600;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" />
+                        </svg>
+                        Performance Warning
+                    </div>
+                    <p id="warning-text" style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem;"></p>
+                </div>
+
+            </form>
+
+            <div
+                style="margin-top: 2rem; text-align: center; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('home') }}" class="btn btn-secondary">Cancel</a>
+                <button type="button" id="save-btn" class="btn btn-primary" onclick="saveBuild()">Save Build</button>
+                <button type="button" id="update-btn" class="btn btn-primary" onclick="saveBuild(true)"
+                    style="display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">Update
+                    Build</button>
+                <a id="export-pdf-link" href="#" class="btn btn-secondary"
+                    style="display: none; border-color: var(--primary);">Export as PDF</a>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="save-success-overlay">
+        <span>Build Saved Successfully!</span>
+        <button class="btn btn-primary btn-sm" onclick="viewAnalysis()"
+            style="padding: 0.5rem 1rem; font-size: 0.9rem; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none;">View
+            Analysis</button>
+        <button class="btn btn-secondary btn-sm" onclick="orderComponents()"
+            style="padding: 0.5rem 1rem; font-size: 0.9rem;">Order Components</button>
+        <a id="overlay-export-pdf" href="#" class="btn btn-secondary btn-sm"
+            style="padding: 0.5rem 1rem; font-size: 0.9rem; border-color: white;">Export PDF</a>
+        <button class="btn btn-secondary btn-sm" onclick="closeSuccessOverlay()"
+            style="padding: 0.5rem 1rem; font-size: 0.9rem; margin-left: 0.5rem;">Dismiss</button>
+    </div>
+
+    <!-- Shopping Modal -->
+    <div id="shopping-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title text-gradient">Component Purchase Options</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="shopping-results" class="shopping-grid">
+                <!-- Results will be injected here -->
+                <p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">Loading
+                    purchase options...</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-accent">Rig</span>Master AI
+                    </div>
+                    <p>The future of PC building is intelligent.</p>
+                </div>
+                <div class="footer-links">
+                    <h5>Platform</h5>
+                    <ul>
+                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
+                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                        <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Support</h5>
+                    <ul>
+                        <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+                        <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h5>Contact</h5>
+                    <ul>
+                        <li><a href="{{ url_for('contact') }}">Support</a></li>
+                        <li><a href="{{ url_for('feedback') }}">Feedback</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 RigMaster AI. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let lastSavedBuildId = null;
+
+        async function fetchComponents(type, elementId) {
+            const select = document.getElementById(elementId);
+            try {
+                const response = await fetch(`/api/${type}`);
+                const data = await response.json();
+
+                select.innerHTML = '<option value="">Select component...</option>';
+                data.forEach(item => {
+                    const status = item.status || 'Active';
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.dataset.status = status;
+
+                    let displayName = item.name;
+                    if (status === 'Deprecated') {
+                        displayName += ' [Outdated / Deprecated]';
+                    } else if (status === 'Discontinued') {
+                        displayName += ' [Discontinued - Not Recommended]';
+                        option.disabled = true;
+                    }
+
+                    option.textContent = displayName;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error(`Error loading ${type}:`, error);
+                select.innerHTML = '<option value="">Error loading data</option>';
+            }
+        }
+
+        function checkLifecycleStatus() {
+            const selects = ['cpu-select', 'gpu-select', 'mobo-select', 'ram-select', 'storage-select', 'psu-select',
+                'case-select', 'cooler-select', 'monitor-select', 'os-select', 'peripherals-select', 'fans-select'];
+            let deprecatedParts = [];
+
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                if (sel) {
+                    const selected = sel.options[sel.selectedIndex];
+                    if (selected && selected.dataset.status === 'Deprecated') {
+                        const label = sel.previousElementSibling.textContent;
+                        deprecatedParts.push(`${label}: ${selected.textContent.split(' [')[0]}`);
+                    }
+                }
+            });
+
+            const warningDiv = document.getElementById('lifecycle-warning');
+            const warningText = document.getElementById('warning-text');
+
+            if (deprecatedParts.length > 0) {
+                warningDiv.style.display = 'block';
+                warningText.innerHTML = `This build contains components marked as
+    <strong>Deprecated</strong>:<br><br>${deprecatedParts.join('<br>')}<br><br>While functional, these parts may offer
+    poor value or lack support for modern features.`;
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Add change listeners for status tracking
+            ['cpu-select', 'gpu-select', 'mobo-select', 'ram-select', 'storage-select', 'psu-select', 'case-select',
+                'cooler-select', 'monitor-select', 'os-select', 'peripherals-select', 'fans-select'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', checkLifecycleStatus);
+                });
+            // Load all components
+            await Promise.all([
+                fetchComponents('cpus', 'cpu-select'),
+                fetchComponents('gpus', 'gpu-select'),
+                fetchComponents('motherboards', 'mobo-select'),
+                fetchComponents('ram', 'ram-select'),
+                fetchComponents('storage', 'storage-select'),
+                fetchComponents('psu', 'psu-select'),
+                fetchComponents('cases', 'case-select'),
+                fetchComponents('coolers', 'cooler-select'),
+                fetchComponents('monitors', 'monitor-select'),
+                fetchComponents('os', 'os-select'),
+                fetchComponents('peripherals', 'peripherals-select'),
+                fetchComponents('fans', 'fans-select')
+            ]);
+
+            // Check if we need to load a specific build
+            const urlParams = new URLSearchParams(window.location.search);
+            const buildId = urlParams.get('build_id');
+            if (buildId) {
+                try {
+                    const response = await fetch(`/api/get_build/${buildId}`);
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        const b = data.build;
+                        if (b.cpu_id) document.getElementById('cpu-select').value = b.cpu_id;
+                        if (b.gpu_id) document.getElementById('gpu-select').value = b.gpu_id;
+                        if (b.motherboard_id) document.getElementById('mobo-select').value = b.motherboard_id;
+                        if (b.ram_id) document.getElementById('ram-select').value = b.ram_id;
+                        if (b.storage_id) document.getElementById('storage-select').value = b.storage_id;
+                        if (b.psu_id) document.getElementById('psu-select').value = b.psu_id;
+                        if (b.case_id) document.getElementById('case-select').value = b.case_id;
+                        if (b.cooler_id) document.getElementById('cooler-select').value = b.cooler_id;
+                        if (b.monitor_id) document.getElementById('monitor-select').value = b.monitor_id;
+                        if (b.os_id) document.getElementById('os-select').value = b.os_id;
+                        if (b.peripherals_id) document.getElementById('peripherals-select').value = b.peripherals_id;
+                        if (b.fans_id) document.getElementById('fans-select').value = b.fans_id;
+                        if (b.name) document.getElementById('build-name').value = b.name;
+                        if (b.quantity) document.getElementById('build-quantity').value = b.quantity;
+
+                        lastSavedBuildId = buildId;
+                        document.getElementById('save-btn').style.display = 'none';
+                        document.getElementById('update-btn').style.display = 'inline-block';
+                        updateExportLink(buildId); // Update export link when build is loaded
+                    }
+                } catch (e) {
+                    console.error('Error loading specific build:', e);
+                }
+            }
+        });
+
+        function updateExportLink(id) {
+            const link = document.getElementById('export-pdf-link');
+            const overlayLink = document.getElementById('overlay-export-pdf');
+            if (id) {
+                const url = `/export-build/${id}`;
+                link.href = url;
+                link.style.display = 'inline-block'; // Make the main export link visible
+                overlayLink.href = url;
+            } else {
+                link.style.display = 'none'; // Hide if no build ID
+                overlayLink.href = '#'; // Reset overlay link
+            }
+        }
+
+        function closeSuccessOverlay() {
+            document.getElementById('save-success-overlay').style.display = 'none';
+        }
+
+        function closeModal() {
+            document.getElementById('shopping-modal').style.display = 'none';
+        }
+
+        function viewAnalysis() {
+            const params = new URLSearchParams();
+            const selects = {
+                cpu: 'cpu-select',
+                gpu: 'gpu-select',
+                motherboard: 'mobo-select',
+                ram: 'ram-select',
+                storage: 'storage-select',
+                psu: 'psu-select',
+                case: 'case-select',
+                cooler: 'cooler-select',
+                monitor: 'monitor-select',
+                os: 'os-select',
+                peripherals: 'peripherals-select',
+                fans: 'fans-select'
+            };
+
+            for (const [key, id] of Object.entries(selects)) {
+                const val = document.getElementById(id).value;
+                if (val) params.append(`${key}_id`, val);
+            }
+
+            if (lastSavedBuildId) {
+                params.append('build_id', lastSavedBuildId);
+            }
+
+            window.location.href = `/analysis?${params.toString()}`;
+        }
+
+        async function saveBuild(isUpdate = false) {
+            const nameInput = document.getElementById('build-name');
+            const buildData = {
+                name: nameInput ? nameInput.value.trim() : "",
+                quantity: document.getElementById('build-quantity').value || 1,
+                cpu_id: document.getElementById('cpu-select').value,
+                gpu_id: document.getElementById('gpu-select').value,
+                motherboard_id: document.getElementById('mobo-select').value,
+                ram_id: document.getElementById('ram-select').value,
+                storage_id: document.getElementById('storage-select').value,
+                psu_id: document.getElementById('psu-select').value,
+                case_id: document.getElementById('case-select').value,
+                cooler_id: document.getElementById('cooler-select').value,
+                monitor_id: document.getElementById('monitor-select').value,
+                os_id: document.getElementById('os-select').value,
+                peripherals_id: document.getElementById('peripherals-select').value,
+                fans_id: document.getElementById('fans-select').value
+            };
+
+            if (isUpdate && lastSavedBuildId) {
+                buildData.build_id = lastSavedBuildId;
+            }
+
+            const hasSelection = Object.values(buildData).some(val => val !== "" && val !== lastSavedBuildId);
+            if (!hasSelection) {
+                alert("Please select at least one component before saving.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/save_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buildData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    lastSavedBuildId = result.id;
+                    updateExportLink(result.id);
+                    const overlay = document.getElementById('save-success-overlay');
+                    overlay.style.display = 'flex';
+                    const savedName = result.name || buildData.name || "Custom Rig";
+                    overlay.querySelector('span').textContent = `Build "${savedName}" Saved! Redirecting to Analysis...`;
+
+                    // Auto-redirect after 1.5s to fulfill the user's expectation
+                    setTimeout(viewAnalysis, 1500);
+
+                } else {
+                    alert('Error saving build: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to save build.');
+            }
+        }
+
+        async function orderComponents() {
+            closeSuccessOverlay();
+            const modal = document.getElementById('shopping-modal');
+            const resultsContainer = document.getElementById('shopping-results');
+
+            modal.style.display = 'block';
+            resultsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">Searching for best prices...</p>';
+
+            try {
+                const response = await fetch('/api/order-components', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ build_id: lastSavedBuildId })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    resultsContainer.innerHTML = '';
+
+                    if (data.results.length === 0) {
+                        resultsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 2rem;">No items to display.</p>';
+                        return;
+                    }
+
+                    data.results.forEach(item => {
+                        item.listings.forEach(listing => {
+                            const card = document.createElement('div');
+                            card.className = 'shopping-card';
+
+                            card.innerHTML = `
+    <div class="comp-category">${item.category}</div>
+    <div class="listing-title">${listing.title}</div>
+    <div class="listing-price">${listing.price || 'N/A'}</div>
+    <div class="listing-source">${listing.source || ''}</div>
+    <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem;">Buy
+        Now</a>
+    `;
+                            resultsContainer.appendChild(card);
+                        });
+                    });
+                } else {
+                    resultsContainer.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">
+        ${data.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">Purchase links temporarily unavailable</p>';
+            }
+        }
+    </script>
+    {% if session.get('user_id') %}
+    {% include 'shared/rigmaster_ai.html' %}
+    {% endif %}
+</body>
+
+</html>

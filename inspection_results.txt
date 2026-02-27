@@ -1,0 +1,49 @@
+CATEGORY: monitor
+{
+  "_id": "6995b4c7a0702980c1b4c5ba",
+  "name": "KOORUI 24E3",
+  "category": "monitor",
+  "brand": "KOORUI",
+  "price": 109.99,
+  "status": "Active",
+  "specs": "24\", 1920x1080, 165Hz, IPS",
+  "source": "PCPartPicker"
+}
+--------------------
+CATEGORY: os
+{
+  "_id": "6995b4c8a0702980c1b4d8cd",
+  "name": "Microsoft Windows 11 Home OEM - DVD 64-bit",
+  "category": "os",
+  "brand": "Microsoft",
+  "price": 109.99,
+  "status": "Active",
+  "specs": "64, OEM/Retail",
+  "source": "PCPartPicker"
+}
+--------------------
+CATEGORY: peripherals
+{
+  "_id": "6995b4c8a0702980c1b4cef9",
+  "name": "HP HyperX Alloy Core",
+  "category": "peripherals",
+  "brand": "HP",
+  "price": 37.99,
+  "status": "Active",
+  "specs": "Keyboard, None",
+  "type": "Keyboard",
+  "source": "PCPartPicker"
+}
+--------------------
+CATEGORY: fans
+{
+  "_id": "6995b4c7a0702980c1b4cb11",
+  "name": "Lian Li Uni Fan SL-Infinity 3-Pack",
+  "category": "fans",
+  "brand": "Lian",
+  "price": 89.99,
+  "status": "Active",
+  "specs": "120mm, None RPM, [0, 29] dB",
+  "source": "PCPartPicker"
+}
+--------------------

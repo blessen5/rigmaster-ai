@@ -1,0 +1,32 @@
+{
+  "cpus": {
+    "name": "AMD Ryzen 7 9800X3D",
+    "socket": "AM5"
+  },
+  "gpus": {
+    "name": "MSI GeForce RTX 3060 Ventus 2X 12G",
+    "chipset": "GeForce RTX 3060 12GB"
+  },
+  "motherboards": {
+    "name": "Asus PRIME B650-PLUS WIFI",
+    "socket": "AM5",
+    "memory_type": "DDR5"
+  },
+  "ram": {
+    "name": "Corsair Vengeance RGB 32 GB"
+  },
+  "storage": {
+    "name": "Samsung 990 Pro",
+    "capacity": 1000
+  },
+  "psu": {
+    "name": "MSI MAG A750GL PCIE5",
+    "wattage": 750
+  },
+  "cases": {
+    "name": "Montech XR"
+  },
+  "coolers": {
+    "name": "Thermalright Peerless Assassin 120 SE"
+  }
+}

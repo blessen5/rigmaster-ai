@@ -1,0 +1,2 @@
+Total collections (tables): 15
+Collections: ['ram', 'components', 'saved_builds', 'motherboards', 'gpus', 'group_projects', 'cpus', 'coolers', 'shopping_cache', 'cases', 'ai_cache', 'group_builds', 'users', 'psu', 'storage']

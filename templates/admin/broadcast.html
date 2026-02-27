@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcast Center | RigMaster AI Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap"
+        rel="stylesheet">
+    <style>
+        .broadcast-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 3rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .stats-banner {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--primary-light);
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+
+    <header class="support-hero" style="padding: 10rem 0 5rem; text-align: center;">
+        <div class="container">
+            <h1 class="text-gradient"
+                style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 3L14.5 9H21L16 13L18 20L12 16L6 20L8 13L3 9H9.5L12 3Z" fill="url(#broad_grad)" />
+                    <defs>
+                        <linearGradient id="broad_grad" x1="3" y1="3" x2="21" y2="20" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="var(--primary-light)" />
+                            <stop offset="1" stop-color="var(--primary)" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                Broadcast Center
+            </h1>
+            <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">
+                Send announcements, updates, and newsletters to all registered users.
+            </p>
+        </div>
+    </header>
+
+    <main class="container" style="padding-bottom: 5rem;">
+
+
+        <div class="broadcast-container">
+            <div class="stats-banner">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+                    <path
+                        d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21"
+                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path
+                        d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z"
+                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path
+                        d="M23 21V19C22.9993 18.1137 22.7044 17.2524 22.1614 16.5523C21.6184 15.8522 20.8581 15.3516 20 15.13"
+                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path
+                        d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75608 18.1676 9.45768C17.623 10.1593 16.8604 10.6597 16 10.88"
+                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <div>
+                    <h3 style="margin: 0; color: var(--text-main);">Current Audience Size</h3>
+                    <p style="margin: 0; color: var(--text-muted);">You are about to send an email to <strong>{{
+                            user_count }}</strong> registered users.</p>
+                </div>
+            </div>
+
+            <form id="broadcastForm" onsubmit="sendBroadcast(event)">
+                <div class="form-group">
+                    <label class="form-label">Subject</label>
+                    <input type="text" id="b-subject" class="form-control" required
+                        placeholder="e.g. Major RigMaster Update: RTX 5090 Added!">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message Body (Text/HTML)</label>
+                    <textarea id="b-body" class="form-control" rows="10" required
+                        placeholder="Write your newsletter or announcement here..."></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;"><i class="bi bi-info-circle"></i> Emails
+                        are sent asynchronously to avoid timeouts.</p>
+                    <button type="submit" class="btn btn-primary btn-large" id="submitBtn"
+                        style="display: flex; align-items: center;">
+                        <span class="spinner" id="btnSpinner"></span>
+                        <span id="btnText"><i class="bi bi-send"></i> Send Broadcast</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        async function sendBroadcast(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const spinner = document.getElementById('btnSpinner');
+            const btnText = document.getElementById('btnText');
+
+            if (!confirm("Are you absolutely sure you want to mass email all users? This cannot be undone.")) return;
+
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            btnText.innerText = 'Sending...';
+
+            const payload = {
+                subject: document.getElementById('b-subject').value,
+                body: document.getElementById('b-body').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    alert('Broadcast initiated! Emails are being dispatched.');
+                    document.getElementById('broadcastForm').reset();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (err) {
+                alert('Connection error');
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.innerHTML = '<i class="bi bi-send"></i> Send Broadcast';
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,4 @@
+monitor: 109.99
+os: 109.99
+peripherals: 37.99
+fans: 89.99

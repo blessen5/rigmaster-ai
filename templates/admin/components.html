@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Hardware | RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap"
+        rel="stylesheet">
+    <style>
+        .cat-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .cat-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary-light);
+        }
+
+        .cat-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .comp-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .comp-info h4 {
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .comp-info p {
+            margin: 4px 0 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: #166534;
+            color: #4ade80;
+        }
+
+        .status-deprecated {
+            background: #854d0e;
+            color: #fbbf24;
+        }
+
+        .status-discontinued {
+            background: #991b1b;
+            color: #f87171;
+        }
+
+        .filter-group {
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-group select {
+            background: var(--bg-card);
+            color: white;
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    {% include 'shared/navbar.html' %}
+
+    <header class="support-hero" style="padding: 10rem 0 5rem; text-align: center;">
+        <div class="container">
+            <h1 class="text-gradient"
+                style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="16" height="16" rx="2" stroke="url(#hard_grad)" stroke-width="2" />
+                    <path d="M9 9H15V15H9V9Z" fill="url(#hard_grad)" />
+                    <path d="M12 2V4" stroke="url(#hard_grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M12 20V22" stroke="url(#hard_grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M20 12L22 12" stroke="url(#hard_grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M2 12L4 12" stroke="url(#hard_grad)" stroke-width="2" stroke-linecap="round" />
+                    <defs>
+                        <linearGradient id="hard_grad" x1="4" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="var(--primary-light)" />
+                            <stop offset="1" stop-color="var(--primary)" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                Hardware Components
+            </h1>
+            <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">
+                Manage the component database and compatibility data.
+            </p>
+        </div>
+    </header>
+
+    <main class="container" style="padding-bottom: 5rem;">
+        <!-- Navigation -->
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem;">
+            <div>
+                <h1 class="text-gradient"
+                    style="font-size: 2.5rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 15px;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                        <rect x="4" y="4" width="16" height="16" rx="2" stroke="url(#hard_grad_small)"
+                            stroke-width="2" />
+                        <path d="M12 2V4" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
+                        <path d="M12 20V22" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
+                        <path d="M20 12L22 12" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
+                        <path d="M2 12L4 12" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
+                        <defs>
+                            <linearGradient id="hard_grad_small" x1="4" y1="2" x2="22" y2="22"
+                                gradientUnits="userSpaceOnUse">
+                                <stop stop-color="var(--primary-light)" />
+                                <stop offset="1" stop-color="var(--primary)" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    Hardware Components
+                </h1>
+                <p style="color: var(--text-muted);">Manage the component database and compatibility data.</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="document.getElementById('import-modal').style.display='block'"
+                    class="btn btn-secondary" style="padding: 1rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right:8px; vertical-align:middle;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                    </svg>
+                    Bulk Import (CSV)
+                </button>
+                <button onclick="openAddModal()" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1rem;">+
+                    Add New Component</button>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 280px 1fr; gap: 3rem;">
+            <!-- Category Selector -->
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <button class="cat-btn active" onclick="loadCategory('cpus', this)">Processors (CPU)</button>
+                <button class="cat-btn" onclick="loadCategory('gpus', this)">Graphics Cards (GPU)</button>
+                <button class="cat-btn" onclick="loadCategory('motherboards', this)">Motherboards</button>
+                <button class="cat-btn" onclick="loadCategory('ram', this)">Memory (RAM)</button>
+                <button class="cat-btn" onclick="loadCategory('storage', this)">Storage</button>
+                <button class="cat-btn" onclick="loadCategory('psu', this)">Power Supplies</button>
+                <button class="cat-btn" onclick="loadCategory('cases', this)">Cases</button>
+                <button class="cat-btn" onclick="loadCategory('coolers', this)">Coolers</button>
+                <button class="cat-btn" onclick="loadCategory('fans', this)">Case Fans</button>
+                <button class="cat-btn" onclick="loadCategory('monitors', this)">Monitors</button>
+                <button class="cat-btn" onclick="loadCategory('os', this)">Operating Systems</button>
+                <button class="cat-btn" onclick="loadCategory('peripherals', this)">Peripherals</button>
+
+                <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                    <label
+                        style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">FILTER
+                        BY STATUS</label>
+                    <select id="status-filter"
+                        style="width: 100%; background: #020617; color: white; border: 1px solid var(--border); padding: 8px; border-radius: 6px;"
+                        onchange="loadCategory(currentCategory)">
+                        <option value="">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Deprecated">Deprecated</option>
+                        <option value="Discontinued">Discontinued</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- List Area -->
+            <div>
+                <div id="loading-spinner" style="display: none; text-align: center; padding: 4rem;">
+                    <div class="typing-indicator"><span></span><span></span><span></span></div>
+                </div>
+                <div id="comp-list">
+                    <!-- Loaded via JS -->
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Add/Edit Modal -->
+        <div id="comp-modal" class="modal">
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2 id="modal-title">Add Component</h2>
+                    <span class="close-modal" onclick="closeModal()">&times;</span>
+                </div>
+                <form id="comp-form">
+                    <div style="display: grid; gap: 1.5rem; margin-top: 1rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Component
+                                Name</label>
+                            <input type="text" name="name" required
+                                style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 0.8rem; border-radius: 8px; color: white;">
+                        </div>
+                        <div id="dynamic-fields">
+                            <!-- Category specific fields (socket, tdp, etc) -->
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem;">Save
+                            Component</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bulk Import Modal -->
+        <div id="import-modal" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>Bulk Import Components</h2>
+                    <span class="close-modal"
+                        onclick="document.getElementById('import-modal').style.display='none'">&times;</span>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">
+                        Upload a CSV file with columns: <strong>type, name, brand, model, price</strong> and any other
+                        specs.
+                    </p>
+                    <div
+                        style="background: rgba(0,0,0,0.2); border: 2px dashed var(--border); padding: 3rem; border-radius: 16px; text-align: center;">
+                        <input type="file" id="csv-file" accept=".csv" style="display:none">
+                        <label for="csv-file" class="btn btn-secondary" style="cursor:pointer" id="file-label">Choose
+                            CSV
+                            File</label>
+                        <div id="selected-filename"
+                            style="margin-top:1rem; font-size:0.85rem; color:var(--primary-light)">
+                        </div>
+                    </div>
+                    <button id="start-import" class="btn btn-primary"
+                        style="width: 100%; margin-top: 2rem; padding: 1rem;">Start Processing</button>
+
+                    <div id="import-results"
+                        style="display:none; margin-top:2rem; padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border)">
+                        <h4 style="margin-bottom:1rem">Import Summary</h4>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; font-size:0.9rem;">
+                            <div>Total Rows: <span id="res-total" style="font-weight:700">0</span></div>
+                            <div>Added: <span id="res-added" style="color:#4ade80; font-weight:700">0</span></div>
+                            <div>Skipped: <span id="res-skipped" style="color:#fbbf24; font-weight:700">0</span></div>
+                        </div>
+                        <div id="res-errors"
+                            style="margin-top:1rem; font-size:0.75rem; color:#f87171; max-height:100px; overflow-y:auto; border-top:1px solid var(--border); padding-top:0.5rem">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let currentCategory = 'cpus';
+            let isEditing = false;
+            let editId = null;
+
+            async function loadCategory(cat, btn) {
+                currentCategory = cat;
+                if (btn) {
+                    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+
+                const listEl = document.getElementById('comp-list');
+                const spinner = document.getElementById('loading-spinner');
+                const statusFilter = document.getElementById('status-filter').value;
+
+                listEl.innerHTML = '';
+                spinner.style.display = 'block';
+
+                try {
+                    let url = `/api/admin/components/${cat}`;
+                    if (statusFilter) url += `?status=${statusFilter}`;
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    spinner.style.display = 'none';
+
+                    if (data.status === 'success') {
+                        if (data.components.length === 0) {
+                            listEl.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted); background:rgba(255,255,255,0.02); border-radius:12px; border:1px dashed var(--border);">No components found in this category.</div>';
+                            return;
+                        }
+                        data.components.forEach(comp => {
+                            const status = comp.status || 'Active';
+                            const card = document.createElement('div');
+                            card.className = 'comp-card';
+                            card.innerHTML = `
+                            <div class="comp-info">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                                    <h4 style="margin:0">${comp.name}</h4>
+                                    <span class="status-badge status-${status.toLowerCase()}">${status}</span>
+                                </div>
+                                <p>${formatDetails(comp)}</p>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button onclick='editComp(${JSON.stringify(comp)})' class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Edit</button>
+                                <button onclick="deleteComp('${comp._id}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem; color: #f87171;">Delete</button>
+                            </div>
+                        `;
+                            listEl.appendChild(card);
+                        });
+                    }
+                } catch (e) {
+                    spinner.style.display = 'none';
+                    listEl.innerHTML = '<p style="color:red">Failed to load data.</p>';
+                }
+            }
+
+            function formatDetails(comp) {
+                if (currentCategory === 'cpus') return `Socket: ${comp.socket || 'N/A'} | Cores: ${comp.core_count || 'N/A'} | TDP: ${comp.tdp || '0'}W`;
+                if (currentCategory === 'gpus') return `Chipset: ${comp.chipset || 'N/A'} | VRAM: ${comp.memory || 'N/A'} GB | Power: ${comp.tdp || comp.power_usage || '0'}W`;
+                if (currentCategory === 'motherboards') return `Socket: ${comp.socket || 'N/A'} | Memory: ${comp.memory_type || 'N/A'} | Form: ${comp.form_factor || 'N/A'}`;
+                return 'Standard Component';
+            }
+
+            function openAddModal() {
+                isEditing = false;
+                editId = null;
+                document.getElementById('modal-title').textContent = `Add to ${currentCategory.toUpperCase()}`;
+                document.getElementById('comp-form').reset();
+                updateFormFields();
+                document.getElementById('comp-modal').style.display = 'block';
+            }
+
+            function closeModal() {
+                document.getElementById('comp-modal').style.display = 'none';
+            }
+
+            function updateFormFields(data = {}) {
+                const container = document.getElementById('dynamic-fields');
+                container.innerHTML = '';
+
+                const commonFields = [
+                    { name: 'brand', label: 'Brand', type: 'text' },
+                    { name: 'price', label: 'Price ($)', type: 'number' },
+                    { name: 'status', label: 'Lifecycle Status', type: 'select', options: ['Active', 'Deprecated', 'Discontinued'] }
+                ];
+
+                let specific = [];
+                if (currentCategory === 'cpus') {
+                    specific = [
+                        { name: 'socket', label: 'Socket (e.g. AM4, LGA1700)', type: 'text' },
+                        { name: 'tdp', label: 'TDP (Wattage)', type: 'number' },
+                        { name: 'core_count', label: 'Core Count', type: 'number' }
+                    ];
+                } else if (currentCategory === 'gpus') {
+                    specific = [
+                        { name: 'chipset', label: 'Chipset', type: 'text' },
+                        { name: 'tdp', label: 'Power Usage (W)', type: 'number' },
+                        { name: 'memory', label: 'VRAM (GB)', type: 'number' }
+                    ];
+                } else if (currentCategory === 'motherboards') {
+                    specific = [
+                        { name: 'socket', label: 'Socket', type: 'text' },
+                        { name: 'memory_type', label: 'Memory Type (DDR4/DDR5)', type: 'text' },
+                        { name: 'form_factor', label: 'Form Factor (ATX/MATX)', type: 'text' }
+                    ];
+                } else {
+                    specific = [
+                        { name: 'wattage', label: 'Power (W) / Size (GB)', type: 'number' }
+                    ];
+                }
+
+                [...commonFields, ...specific].forEach(f => {
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '1rem';
+
+                    if (f.type === 'select') {
+                        div.innerHTML = `
+                        <label style="display: block; margin-bottom: 0.4rem; font-size: 0.8rem; color: var(--text-muted);">${f.label}</label>
+                        <select name="${f.name}" style="width: 100%; background: #020617; border: 1px solid var(--border); padding: 0.7rem; border-radius: 6px; color: white;">
+                            ${f.options.map(opt => `<option value="${opt}" ${data[f.name] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                        </select>
+                    `;
+                    } else {
+                        div.innerHTML = `
+                        <label style="display: block; margin-bottom: 0.4rem; font-size: 0.8rem; color: var(--text-muted);">${f.label}</label>
+                        <input type="${f.type}" name="${f.name}" value="${data[f.name] || ''}" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 0.7rem; border-radius: 6px; color: white;">
+                    `;
+                    }
+                    container.appendChild(div);
+                });
+            }
+
+            function editComp(comp) {
+                isEditing = true;
+                editId = comp._id;
+                document.getElementById('modal-title').textContent = `Edit ${comp.name}`;
+                const form = document.getElementById('comp-form');
+                form.elements['name'].value = comp.name;
+                updateFormFields(comp);
+                document.getElementById('comp-modal').style.display = 'block';
+            }
+
+            async function deleteComp(id) {
+                if (!confirm('Are you sure you want to delete this component?')) return;
+                try {
+                    const res = await fetch(`/api/admin/components/${currentCategory}/${id}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (result.status === 'success') loadCategory(currentCategory, document.querySelector('.cat-btn.active'));
+                } catch (e) { alert('Delete failed'); }
+            }
+
+            document.getElementById('comp-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
+                const url = isEditing ? `/api/admin/components/${currentCategory}/${editId}` : `/api/admin/components/${currentCategory}`;
+                const method = isEditing ? 'PUT' : 'POST';
+
+                try {
+                    const res = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        closeModal();
+                        loadCategory(currentCategory, document.querySelector('.cat-btn.active'));
+                    } else { alert(result.message); }
+                } catch (e) { alert('Save failed'); }
+            };
+
+            // Bulk Import Logic
+            document.getElementById('csv-file').onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    document.getElementById('selected-filename').textContent = `Selected: ${file.name}`;
+                    document.getElementById('file-label').textContent = 'Change File';
+                }
+            };
+
+            document.getElementById('start-import').onclick = async () => {
+                const fileInput = document.getElementById('csv-file');
+                if (fileInput.files.length === 0) return alert('Please select a file first.');
+
+                const btn = document.getElementById('start-import');
+                const results = document.getElementById('import-results');
+
+                btn.disabled = true;
+                btn.textContent = 'Uploading & Processing...';
+                results.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const res = await fetch('/api/admin/import-components', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'success') {
+                        results.style.display = 'block';
+                        document.getElementById('res-total').textContent = data.stats.total;
+                        document.getElementById('res-added').textContent = data.stats.added;
+                        document.getElementById('res-skipped').textContent = data.stats.skipped;
+
+                        const errBox = document.getElementById('res-errors');
+                        errBox.innerHTML = data.stats.errors.length > 0 ? '<strong>Errors:</strong><br>' + data.stats.errors.join('<br>') : '';
+
+                        btn.textContent = 'Import More';
+                        btn.disabled = false;
+                        loadCategory(currentCategory, document.querySelector('.cat-btn.active'));
+                    } else {
+                        alert('Error: ' + data.message);
+                        btn.disabled = false;
+                        btn.textContent = 'Retry Import';
+                    }
+                } catch (e) {
+                    alert('Connection error');
+                    btn.disabled = false;
+                }
+            };
+
+            // Initialize
+            loadCategory('cpus', document.querySelector('.cat-btn.active'));
+        </script>
+</body>
+
+</html>
