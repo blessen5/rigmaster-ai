@@ -7,7 +7,7 @@ uri = "mongodb+srv://rigmaster_user:MMdm2NPf8J737U8D@cluster0.99f5zmr.mongodb.ne
 # Appending kwargs
 # 1. Base URI 
 try:
-    c = MongoClient(uri, serverSelectionTimeoutMS=2000, tls=True, tlsAllowInvalidCertificates=True)
+    c = MongoClient(uri + "&tlsAllowInvalidCertificates=true", serverSelectionTimeoutMS=2000)
     c.admin.command('ping')
     print("SUCCESS: tls=True, tlsAllowInvalidCertificates=True")
 except Exception as e:
@@ -15,7 +15,7 @@ except Exception as e:
 
 # 2. String params
 try:
-    uri_str = uri + "&tls=true&tlsAllowInvalidCertificates=true"
+    uri_str = uri + "&tlsAllowInvalidCertificates=true"
     c2 = MongoClient(uri_str, serverSelectionTimeoutMS=2000)
     c2.admin.command('ping')
     print("SUCCESS: string params")

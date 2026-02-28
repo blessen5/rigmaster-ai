@@ -96,6 +96,18 @@ def get_estimated_price(comp_name, cat):
         return 110
     if cat == 'peripherals':
         return 80
+    if cat == 'keyboards':
+        if 'MECHANICAL' in name: return 120
+        return 70
+    if cat == 'mice':
+        if 'WIRELESS' in name or 'LIGHTSPEED' in name: return 90
+        return 60
+    if cat == 'headsets':
+        if 'WIRELESS' in name or 'NOISE' in name: return 150
+        return 80
+    if cat == 'webcams':
+        if '4K' in name or 'BRIO' in name: return 200
+        return 100
     if cat == 'fans':
         return 30
     return 100
@@ -201,11 +213,12 @@ def get_db():
                 _mongo_client.admin.command('ping')
             except Exception as e:
                 app.logger.warning(f"Certifi SSL failed, falling back: {e}")
+                # Append tlsAllowInvalidCertificates to the URI to bypass verification
+                fallback_uri = MONGO_URI + "&tlsAllowInvalidCertificates=true"
                 _mongo_client = MongoClient(
-                    MONGO_URI, 
-                    serverSelectionTimeoutMS=5000, 
+                    fallback_uri,
+                    serverSelectionTimeoutMS=5000,
                     tz_aware=True,
-                    tlsAllowInvalidCertificates=True,
                     maxPoolSize=10,
                     minPoolSize=0,
                     maxIdleTimeMS=30000,
@@ -324,8 +337,16 @@ def hardware_encyclopedia():
             'fans': 'fans'
         }
         
-        req_cat = request.args.get('category', 'cpus')
+        req_cat = request.args.get('category', 'cpus').lower()
         search = request.args.get('search', '').strip()
+        
+        global db
+        if db is None:
+            db = get_db()
+        
+        if db is None:
+            app.logger.error("Hardware Encyclopedia requested but DB is None")
+            return render_template('error.html', message="Database connection unavailable."), 503
         
         valid_categories = {
             'cpus': 'Processors',
@@ -334,25 +355,52 @@ def hardware_encyclopedia():
             'ram': 'Memory',
             'storage': 'Storage',
             'psu': 'Power Supplies',
-            'cases': 'Chassis',
-            'coolers': 'Cooling',
+            'cases': 'Cases',
+            'coolers': 'Coolers',
             'monitors': 'Monitors',
             'os': 'Operating Systems',
-            'peripherals': 'Peripherals',
-            'fans': 'Case Fans'
+            'fans': 'Case Fans',
+            'keyboards': 'Keyboards',
+            'mice': 'Mice',
+            'headsets': 'Headsets',
+            'webcams': 'Webcams',
+            'peripherals': 'All Peripherals'
         }
         
+        category_map = {
+            'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
+            'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
+            'cases': 'case', 'coolers': 'cooler', 'monitors': 'monitor',
+            'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
+            'keyboards': 'peripherals', 'mice': 'peripherals',
+            'headsets': 'peripherals', 'webcams': 'peripherals'
+        }
         if req_cat not in valid_categories:
             req_cat = 'cpus'
             
         db_cat = category_map.get(req_cat, 'cpu')
-            
-        query = {'category': db_cat}
+        # Use regex to be robust against trailing spaces or case differences in DB
+        query = {'category': {'$regex': f'^{re.escape(db_cat.strip())}$', '$options': 'i'}}
+        
+        # Mapping for sub-category routing
+        subcat_map = {
+            'keyboards': 'keyboard',
+            'mice': 'mouse',
+            'headsets': 'headset',
+            'webcams': 'webcam'
+        }
+        
+        if req_cat in subcat_map:
+            query['sub_category'] = {'$regex': f'^{re.escape(subcat_map[req_cat])}$', '$options': 'i'}
+
         if search:
             query['name'] = {'$regex': search, '$options': 'i'}
             
         # Generic query to components table
+        print(f"DEBUG: hardware_encyclopedia - DB: {db.name}, Collections: {db.list_collection_names()}")
+        print(f"DEBUG: hardware_encyclopedia - req_cat: {req_cat}, query: {query}")
         items = list(db.components.find(query).sort('name', 1))
+        print(f"DEBUG: Found {len(items)} items")
         for item in items:
             item['_id'] = str(item['_id'])
             
@@ -506,7 +554,7 @@ def feedback():
 def admin_complaints():
     try:
         db = get_db()
-        if not db:
+        if db is None:
             flash("Database connection unavailable.")
             return redirect(url_for('admin_dashboard'))
             
@@ -602,11 +650,12 @@ def send_generic_email(to_email, subject, body):
 @admin_required
 def admin_broadcast():
     db = get_db()
-    if not db:
+    if db is None:
         flash("Database unavailable.")
         return redirect(url_for('admin_dashboard'))
     user_count = db.users.count_documents({})
-    return render_template('admin/broadcast.html', user_count=user_count)
+    current_announcement = get_site_setting('global_announcement', '')
+    return render_template('admin/broadcast.html', user_count=user_count, global_announcement=current_announcement)
 
 @app.route('/api/admin/broadcast', methods=['POST'])
 @admin_required
@@ -638,7 +687,7 @@ def api_admin_broadcast():
 @admin_required
 def admin_user_analytics():
     db = get_db()
-    if not db:
+    if db is None:
         flash("Database connection unavailable. Please check your internet or MONGO_URI.")
         return redirect(url_for('admin_dashboard'))
     
@@ -791,7 +840,9 @@ def saved_builds():
         'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
         'case_id': 'case', 'cooler_id': 'cooler',
         'monitor_id': 'monitor', 'os_id': 'os',
-        'peripherals_id': 'peripherals', 'fans_id': 'fans'
+        'peripherals_id': 'peripherals', 'fans_id': 'fans',
+        'keyboard_id': 'peripherals', 'mouse_id': 'peripherals',
+        'headset_id': 'peripherals', 'webcam_id': 'peripherals'
     }
     
     for build in user_builds:
@@ -819,7 +870,9 @@ def saved_builds():
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
             'case_id': 'cases', 'cooler_id': 'coolers',
             'monitor_id': 'monitors', 'os_id': 'os',
-            'peripherals_id': 'peripherals', 'fans_id': 'fans'
+            'peripherals_id': 'peripherals', 'fans_id': 'fans',
+            'keyboard_id': 'peripherals', 'mouse_id': 'peripherals',
+            'headset_id': 'peripherals', 'webcam_id': 'peripherals'
         }
 
         for key, cat in col_map.items():
@@ -834,7 +887,10 @@ def saved_builds():
                 except:
                     build_details['components'][key.replace('_id', '').upper()] = "Unknown Component"
             else:
-                build_details['components'][key.replace('_id', '').upper()] = "None Selected"
+                # Only show essential components if none selected, hide others to avoid clutter
+                essentials = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id']
+                if key in essentials:
+                    build_details['components'][key.replace('_id', '').upper()] = "None Selected"
         
         build_details['project_total'] = format_price(total_unit_cost * qty)
         
@@ -950,6 +1006,23 @@ def api_os():
 
 @app.route('/api/peripherals')
 def api_peripherals():
+    sub_cat = request.args.get('sub_category')
+    if sub_cat:
+        # Filter by sub_category
+        try:
+            items = list(db.components.find(
+                {'category': 'peripherals', 'sub_category': sub_cat},
+                {'name': 1, 'status': 1, 'brand': 1}
+            ).sort('name', 1))
+            return jsonify([{
+                'id': str(item['_id']),
+                'name': item.get('name', 'Unknown'),
+                'status': item.get('status', 'Active'),
+                'brand': item.get('brand', 'Unknown')
+            } for item in items])
+        except Exception as e:
+            app.logger.error(f"Error fetching peripherals sub_category {sub_cat}: {e}")
+            return jsonify([])
     return jsonify(get_component_list('peripherals'))
 
 @app.route('/api/fans')
@@ -1021,6 +1094,10 @@ def save_build():
             'monitor_id': data.get('monitor_id'),
             'os_id': data.get('os_id'),
             'peripherals_id': data.get('peripherals_id'),
+            'keyboard_id': data.get('keyboard_id'),
+            'mouse_id': data.get('mouse_id'),
+            'headset_id': data.get('headset_id'),
+            'webcam_id': data.get('webcam_id'),
             'fans_id': data.get('fans_id'),
             'quantity': quantity
         }
@@ -1224,6 +1301,10 @@ def api_simulate_upgrade():
                         'MONITOR': get_name(build.get('monitor_id')),
                         'OS': get_name(build.get('os_id')),
                         'PERIPHERALS': get_name(build.get('peripherals_id')),
+                        'KEYBOARD': get_name(build.get('keyboard_id')),
+                        'MOUSE': get_name(build.get('mouse_id')),
+                        'HEADSET': get_name(build.get('headset_id')),
+                        'WEBCAM': get_name(build.get('webcam_id')),
                         'FANS': get_name(build.get('fans_id'))
                     }
             except:
@@ -1244,6 +1325,10 @@ def api_simulate_upgrade():
                 'MONITOR': get_name(orig.get('monitor_id')),
                 'OS': get_name(orig.get('os_id')),
                 'PERIPHERALS': get_name(orig.get('peripherals_id')),
+                'KEYBOARD': get_name(orig.get('keyboard_id')),
+                'MOUSE': get_name(orig.get('mouse_id')),
+                'HEADSET': get_name(orig.get('headset_id')),
+                'WEBCAM': get_name(orig.get('webcam_id')),
                 'FANS': get_name(orig.get('fans_id'))
             }
 
@@ -1260,6 +1345,10 @@ def api_simulate_upgrade():
             'MONITOR': get_name(upgrades.get('monitor_id')),
             'OS': get_name(upgrades.get('os_id')),
             'PERIPHERALS': get_name(upgrades.get('peripherals_id')),
+            'KEYBOARD': get_name(upgrades.get('keyboard_id')),
+            'MOUSE': get_name(upgrades.get('mouse_id')),
+            'HEADSET': get_name(upgrades.get('headset_id')),
+            'WEBCAM': get_name(upgrades.get('webcam_id')),
             'FANS': get_name(upgrades.get('fans_id'))
         }
 
@@ -1574,6 +1663,10 @@ def api_ai_engine_recommend():
             component_pool['ram'] = [c['name'] for c in db.components.find({'category': 'ram'}, {'name': 1}).limit(15)]
             component_pool['storage'] = [c['name'] for c in db.components.find({'category': 'storage'}, {'name': 1}).limit(15)]
             component_pool['psu'] = [c['name'] for c in db.components.find({'category': 'psu'}, {'name': 1}).limit(15)]
+            component_pool['keyboards'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'keyboard'}, {'name': 1}).limit(10)]
+            component_pool['mice'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'mouse'}, {'name': 1}).limit(10)]
+            component_pool['headsets'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'headset'}, {'name': 1}).limit(10)]
+            component_pool['webcams'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'webcam'}, {'name': 1}).limit(10)]
         except Exception as e:
             app.logger.warning(f"Could not fetch component pool: {e}")
             component_pool = None
@@ -1590,20 +1683,27 @@ def api_ai_engine_recommend():
         # Try to match AI recommendations to actual database components
         matched_components = {}
         if not recommendation.get('fallback', False):
-            for comp_type in ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler']:
+            # Categories to match
+            cats = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'keyboard', 'mouse', 'headset', 'webcam']
+            for comp_type in cats:
                 ai_suggestion = recommendation.get(comp_type, '')
                 if ai_suggestion:
-                    collection = comp_type + 's' if comp_type != 'psu' else 'psu'
-                    if collection == 'rams':
-                        collection = 'ram'
+                    # Generic matching against unified components table
+                    search_term = ai_suggestion.split()[0]
+                    query = {'name': {'$regex': search_term, '$options': 'i'}}
                     
-                    search_terms = ai_suggestion.split()[:3]
-                    regex_pattern = '|'.join(search_terms)
-                    
+                    # Add category/sub-category filters for more accurate matching
+                    subcat_map = {'keyboard': 'keyboard', 'mouse': 'mouse', 'headset': 'headset', 'webcam': 'webcam'}
+                    if comp_type in subcat_map:
+                        query['category'] = 'peripherals'
+                        query['sub_category'] = subcat_map[comp_type]
+                    elif comp_type in ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'fans']:
+                        # Map to storage/psu/cpu/gpu etc
+                        cat_map = {'cpu':'cpu', 'gpu':'gpu', 'motherboard':'motherboard', 'ram':'ram', 'storage':'storage', 'psu':'psu', 'case':'case', 'cooler':'cooler', 'fans':'fans'}
+                        query['category'] = cat_map.get(comp_type, comp_type)
+
                     try:
-                        match = db[collection].find_one(
-                            {'name': {'$regex': regex_pattern, '$options': 'i'}}
-                        )
+                        match = db.components.find_one(query)
                         if match:
                             matched_components[comp_type + '_id'] = str(match['_id'])
                             matched_components[comp_type + '_name'] = match['name']
@@ -1678,6 +1778,7 @@ def api_ai_engine_compatibility():
         cols = {
             'storage_id': 'STORAGE', 'case_id': 'CASE', 'cooler_id': 'COOLER',
             'monitor_id': 'MONITOR', 'os_id': 'OS', 'peripherals_id': 'PERIPHERALS', 
+            'keyboard_id': 'KEYBOARD', 'mouse_id': 'MOUSE', 'headset_id': 'HEADSET', 'webcam_id': 'WEBCAM',
             'fans_id': 'FANS'
         }
         for key, label in cols.items():
@@ -2003,9 +2104,18 @@ def get_build_insights_data(build):
         psu = get_component_by_id(build.get('psu_id'))
         case = get_component_by_id(build.get('case_id'))
         cooler = get_component_by_id(build.get('cooler_id'))
+        keyboard = get_component_by_id(build.get('keyboard_id'))
+        mouse = get_component_by_id(build.get('mouse_id'))
+        headset = get_component_by_id(build.get('headset_id'))
+        webcam = get_component_by_id(build.get('webcam_id'))
+        fans = get_component_by_id(build.get('fans_id'))
 
         # 1. Overview & Difficulty
-        comp_keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id']
+        comp_keys = [
+            'cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 
+            'case_id', 'cooler_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id',
+            'fans_id', 'peripherals_id', 'monitor_id', 'os_id'
+        ]
         comp_count = sum(1 for k in comp_keys if build.get(k) and build.get(k) != "None Selected")
         
         difficulty = calculate_build_difficulty(build)
@@ -2015,7 +2125,11 @@ def get_build_insights_data(build):
         cat_map = {
             'cpu': ('cpu_id', 'cpus'), 'gpu': ('gpu_id', 'gpus'), 'motherboard': ('motherboard_id', 'motherboards'),
             'ram': ('ram_id', 'ram'), 'storage': ('storage_id', 'storage'), 'psu': ('psu_id', 'psu'),
-            'case': ('case_id', 'cases'), 'cooler': ('cooler_id', 'coolers')
+            'case': ('case_id', 'cases'), 'cooler': ('cooler_id', 'coolers'),
+            'keyboard': ('keyboard_id', 'keyboards'), 'mouse': ('mouse_id', 'mice'),
+            'headset': ('headset_id', 'headsets'), 'webcam': ('webcam_id', 'webcams'),
+            'fans': ('fans_id', 'fans'), 'peripherals': ('peripherals_id', 'peripherals'),
+            'monitor': ('monitor_id', 'monitors'), 'os': ('os_id', 'os')
         }
         
         for cat, (key, est_cat) in cat_map.items():
@@ -2171,7 +2285,15 @@ def order_components():
                 'storage': request_data.get('storage_id'),
                 'psu': request_data.get('psu_id'),
                 'case': request_data.get('case_id'),
-                'cooler': request_data.get('cooler_id')
+                'cooler': request_data.get('cooler_id'),
+                'fans': request_data.get('fans_id'),
+                'monitor': request_data.get('monitor_id'),
+                'os': request_data.get('os_id'),
+                'peripherals': request_data.get('peripherals_id'),
+                'keyboard': request_data.get('keyboard_id'),
+                'mouse': request_data.get('mouse_id'),
+                'headset': request_data.get('headset_id'),
+                'webcam': request_data.get('webcam_id')
             }
         else:
             build = db.saved_builds.find_one({
@@ -2188,7 +2310,15 @@ def order_components():
                 'storage': build.get('storage_id'),
                 'psu': build.get('psu_id'),
                 'case': build.get('case_id'),
-                'cooler': build.get('cooler_id')
+                'cooler': build.get('cooler_id'),
+                'fans': build.get('fans_id'),
+                'monitor': build.get('monitor_id'),
+                'os': build.get('os_id'),
+                'peripherals': build.get('peripherals_id'),
+                'keyboard': build.get('keyboard_id'),
+                'mouse': build.get('mouse_id'),
+                'headset': build.get('headset_id'),
+                'webcam': build.get('webcam_id')
             }
 
         results = []
@@ -2205,6 +2335,8 @@ def order_components():
             comp = get_component_by_id(comp_id)
             if not comp:
                 continue
+            
+            app.logger.info(f"Order: Searching for {category}: {comp.get('name')}")
 
             query = f"{comp.get('name')} {category}"
             cache_query = f"{query}_{session.get('currency', 'USD')}"
@@ -2299,9 +2431,11 @@ def order_components():
                     # Sometimes the unified table has placeholders like 404 or 0. Fetch real price if so:
                     if not comp_price or comp_price == 404 or comp_price == 0:
                         col_map = {
-                            'cpu': 'cpus', 'gpu': 'gpus', 'motherboard': 'motherboards',
-                            'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-                            'case': 'cases', 'cooler': 'coolers'
+                            'cpu': 'components', 'gpu': 'components', 'motherboard': 'components',
+                            'ram': 'components', 'storage': 'components', 'psu': 'components',
+                            'case': 'components', 'cooler': 'components', 'fans': 'components',
+                            'monitor': 'components', 'os': 'components', 'peripherals': 'components',
+                            'keyboard': 'components', 'mouse': 'components', 'headset': 'components', 'webcam': 'components'
                         }
                         spec_col = col_map.get(category, category)
                         spec_comp = db[spec_col].find_one({'_id': ObjectId(comp_id)})
@@ -3395,18 +3529,23 @@ def api_get_vault_data(build_id):
         price_cat_map = {
             'cpu': 'cpus', 'gpu': 'gpus', 'motherboard': 'motherboards',
             'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-            'case': 'cases', 'cooler': 'coolers'
+            'case': 'cases', 'cooler': 'coolers',
+            'keyboard': 'keyboards', 'mouse': 'mice', 'headset': 'headsets', 'webcam': 'webcams',
+            'fans': 'fans', 'monitor': 'monitors', 'os': 'os'
         }
         
         warranty_terms = {
             'cpu': 3, 'gpu': 3, 'motherboard': 3, 'ram': 10,
-            'storage': 5, 'psu': 7, 'case': 2, 'cooler': 3
+            'storage': 5, 'psu': 7, 'case': 2, 'cooler': 3,
+            'keyboard': 2, 'mouse': 2, 'headset': 2, 'webcam': 2, 'fans': 1, 'monitor': 3, 'os': 0
         }
 
         col_map = {
             'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard',
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-            'case_id': 'case', 'cooler_id': 'cooler'
+            'case_id': 'case', 'cooler_id': 'cooler',
+            'keyboard_id': 'keyboard', 'mouse_id': 'mouse', 'headset_id': 'headset', 'webcam_id': 'webcam',
+            'fans_id': 'fans', 'monitor_id': 'monitor', 'os_id': 'os'
         }
 
         total_original_cost = 0
@@ -3648,7 +3787,11 @@ def export_build(build_id):
         col_map = {
             'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard',
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-            'case_id': 'case', 'cooler_id': 'cooler'
+            'case_id': 'case', 'cooler_id': 'cooler',
+            'monitor_id': 'monitor', 'os_id': 'os',
+            'peripherals_id': 'peripherals', 'fans_id': 'fans',
+            'keyboard_id': 'peripherals', 'mouse_id': 'peripherals',
+            'headset_id': 'peripherals', 'webcam_id': 'peripherals'
         }
         
         components = {}
@@ -3965,13 +4108,15 @@ def admin_ai_analytics():
             pass
 
         custom_api_keys = get_site_setting('api_keys', {})
+        preferred_provider = get_site_setting('preferred_ai_provider', 'auto')
 
         return render_template('admin/ai_analytics.html', 
                              stats=ai_stats,
                              recent_requests=recent_requests,
                              provider_stats=provider_stats,
                              health=health,
-                             custom_keys=custom_api_keys)
+                             custom_keys=custom_api_keys,
+                             preferred_ai_provider=preferred_provider)
     except Exception as e:
         app.logger.error(f"AI analytics error: {e}")
         return f"Error: {e}", 500
@@ -4249,7 +4394,10 @@ def admin_get_components(category):
     cat_map = {
         'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
         'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-        'cases': 'case', 'coolers': 'cooler'
+        'cases': 'case', 'coolers': 'cooler', 'fans': 'fans',
+        'monitors': 'monitor', 'os': 'os', 'peripherals': 'peripherals',
+        'keyboards': 'peripherals', 'mice': 'peripherals',
+        'headsets': 'peripherals', 'webcams': 'peripherals'
     }
     
     if category not in cat_map:
@@ -4258,11 +4406,24 @@ def admin_get_components(category):
     target_cat = cat_map[category]
     query = {'category': target_cat}
     
+    # Handle sub-category mapping for admin filtering
+    subcat_map = {
+        'keyboards': 'keyboard',
+        'mice': 'mouse',
+        'headsets': 'headset',
+        'webcams': 'webcam'
+    }
+    
+    if category in subcat_map:
+        query['sub_category'] = subcat_map[category]
+    
     status_filter = request.args.get('status')
     if status_filter:
         query['status'] = status_filter
 
-    items = list(db.components.find(query))
+    # Generic query to components table
+    items = list(db.components.find(query).sort('name', 1))
+    app.logger.info(f"Hardware Query: {query} -> Found {len(items)} items")
     for item in items:
         item['_id'] = str(item['_id'])
         if 'status' not in item: item['status'] = 'Active'
@@ -4274,7 +4435,10 @@ def admin_add_component(category):
     cat_map = {
         'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
         'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-        'cases': 'case', 'coolers': 'cooler'
+        'cases': 'case', 'coolers': 'cooler', 'fans': 'fans',
+        'monitors': 'monitor', 'os': 'os', 'peripherals': 'peripherals',
+        'keyboards': 'peripherals', 'mice': 'peripherals',
+        'headsets': 'peripherals', 'webcams': 'peripherals'
     }
     target_cat = cat_map.get(category)
     if not target_cat:
@@ -4284,8 +4448,22 @@ def admin_add_component(category):
     if not data or 'name' not in data:
         return jsonify({'status': 'error', 'message': 'Name is required'}), 400
     
+    # Auto-assign sub-category if applicable
+    subcat_map = {
+        'keyboards': 'keyboard',
+        'mice': 'mouse',
+        'headsets': 'headset',
+        'webcams': 'webcam'
+    }
+    if category in subcat_map:
+        data['sub_category'] = subcat_map[category]
+    
     # Check for duplicates
-    if db.components.find_one({'category': target_cat, 'name': data['name']}):
+    query = {'category': target_cat, 'name': data['name']}
+    if category in subcat_map:
+        query['sub_category'] = subcat_map[category]
+        
+    if db.components.find_one(query):
         return jsonify({'status': 'error', 'message': 'Component already exists'}), 400
     
     # Ensure default status and category
@@ -4797,6 +4975,10 @@ def api_component_prices():
             'monitor': data.get('monitor_id'),
             'os': data.get('os_id'),
             'peripherals': data.get('peripherals_id'),
+            'keyboard': data.get('keyboard_id'),
+            'mouse': data.get('mouse_id'),
+            'headset': data.get('headset_id'),
+            'webcam': data.get('webcam_id'),
             'fans': data.get('fans_id')
         }
         
@@ -5082,20 +5264,27 @@ def api_calculate_group_build():
         components = {}
         total_unit_cost = 0
         
-        # Mapping build keys to categories
+        # Mapping build keys to categories (Aligned with frontend)
         key_map = {
             'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard',
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-            'case_id': 'case', 'cooler_id': 'cooler'
+            'case_id': 'case', 'cooler_id': 'cooler',
+            'keyboard_id': 'keyboard', 'mouse_id': 'mouse',
+            'headset_id': 'headset', 'webcam_id': 'webcam', 'fans_id': 'fans', 
+            'peripherals_id': 'peripherals', 'monitor_id': 'monitor', 'os_id': 'os'
         }
         
         for key, cat in key_map.items():
             comp_id = base_build.get(key)
+            app.logger.info(f"Group Calc: Processing {key} ({cat}) with ID {comp_id}")
             if comp_id:
                 details = get_comp_details(comp_id, cat)
                 if details:
+                    app.logger.info(f"Group Calc: Found {cat}: {details['name']}")
                     components[cat] = details
                     total_unit_cost += details['price']
+                else:
+                    app.logger.warning(f"Group Calc: Component {comp_id} NOT FOUND for {cat}")
                     
         # 4. Calculate totals
         total_group_cost = total_unit_cost * quantity
@@ -5140,6 +5329,31 @@ def api_save_group_build():
         
     except Exception as e:
         app.logger.error(f"Group save error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/delete-group-build/<plan_id>', methods=['DELETE'])
+@login_required
+def api_delete_group_build(plan_id):
+    """Delete a saved group build plan"""
+    print(f"DEBUG: api_delete_group_build hit for plan_id: {plan_id}")
+    if not plan_id or len(str(plan_id).strip()) < 10:
+        return jsonify({'status': 'error', 'message': 'Invalid plan ID provided'}), 400
+        
+    try:
+        user_id = session.get('user_id')
+        plan_id_clean = str(plan_id).strip()
+        result = db.group_builds.delete_one({
+            '_id': ObjectId(plan_id_clean),
+            'user_id': user_id
+        })
+        
+        if result.deleted_count > 0:
+            return jsonify({'status': 'success', 'message': 'Project plan deleted successfully'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Project plan not found or access denied'}), 404
+            
+    except Exception as e:
+        app.logger.error(f"Group delete error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/export-group-build/<plan_id>', endpoint='api_export_group_build')
@@ -5313,11 +5527,38 @@ def api_update_profile():
 def api_revoke_session():
     # Simulations for revoking other sessions
     # In a real app, this would involve invalidating session tokens/IDs in the DB
-    return jsonify({'success': True, 'message': 'Session revoked successfully'})
+    return jsonify({'success': True, 'message': 'Session revoked'})
+@app.route('/api/profile/update-preferences', methods=['POST'])
+@login_required
+def api_update_preferences():
+    """Update user market and display preferences"""
+    try:
+        data = request.json
+        currency = data.get('currency', 'USD')
+        units = data.get('units', 'Metric')
+        
+        user_id = session.get('user_id')
+        db.users.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$set': {
+                'preferred_currency': currency,
+                'preferred_units': units
+            }}
+        )
+        
+        # Update session for immediate UI feedback
+        session['currency'] = currency
+        session['currency_symbol'] = CURRENCY_SYMBOLS.get(currency, '$')
+        session['units'] = units
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Regional preferences updated',
+            'symbol': session['currency_symbol']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-# ============================================================================
-
-# USER PROFILE PAGE
 @app.route('/profile')
 @login_required
 def profile():
@@ -5334,14 +5575,20 @@ def profile():
         
         recent_builds = list(db.saved_builds.find(
             {'user_id': user_id}
-        ).sort('created_at', -1).limit(5))
+        ).sort('created_at', -1).limit(3))
+        
+        recent_groups = list(db.group_builds.find(
+            {'user_id': user_id}
+        ).sort('created_at', -1).limit(3))
         
         return render_template(
             'profile.html',
             user=user,
             build_count=build_count,
             group_count=group_count,
-            recent_builds=recent_builds
+            recent_builds=recent_builds,
+            recent_groups=recent_groups,
+            all_currencies=CURRENCY_SYMBOLS
         )
     except Exception as e:
         app.logger.error(f"Profile error: {e}")

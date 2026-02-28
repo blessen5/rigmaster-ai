@@ -184,7 +184,15 @@
                 <button class="cat-btn" onclick="loadCategory('fans', this)">Case Fans</button>
                 <button class="cat-btn" onclick="loadCategory('monitors', this)">Monitors</button>
                 <button class="cat-btn" onclick="loadCategory('os', this)">Operating Systems</button>
-                <button class="cat-btn" onclick="loadCategory('peripherals', this)">Peripherals</button>
+                <button class="cat-btn" onclick="loadCategory('peripherals', this)">All Peripherals</button>
+                <div style="height: 1px; background: var(--border); margin: 0.5rem 0;"></div>
+                <button class="cat-btn" onclick="loadCategory('keyboards', this)"><i class="bi bi-keyboard"></i>
+                    Keyboards</button>
+                <button class="cat-btn" onclick="loadCategory('mice', this)"><i class="bi bi-mouse"></i> Mice</button>
+                <button class="cat-btn" onclick="loadCategory('headsets', this)"><i class="bi bi-headphones"></i>
+                    Headsets</button>
+                <button class="cat-btn" onclick="loadCategory('webcams', this)"><i class="bi bi-camera-video"></i>
+                    Webcams</button>
 
                 <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
                     <label
@@ -342,6 +350,7 @@
                 if (currentCategory === 'cpus') return `Socket: ${comp.socket || 'N/A'} | Cores: ${comp.core_count || 'N/A'} | TDP: ${comp.tdp || '0'}W`;
                 if (currentCategory === 'gpus') return `Chipset: ${comp.chipset || 'N/A'} | VRAM: ${comp.memory || 'N/A'} GB | Power: ${comp.tdp || comp.power_usage || '0'}W`;
                 if (currentCategory === 'motherboards') return `Socket: ${comp.socket || 'N/A'} | Memory: ${comp.memory_type || 'N/A'} | Form: ${comp.form_factor || 'N/A'}`;
+                if (['keyboards', 'mice', 'headsets', 'webcams'].includes(currentCategory)) return `Brand: ${comp.brand || 'N/A'} | Type: ${comp.sub_category || 'N/A'}`;
                 return 'Standard Component';
             }
 

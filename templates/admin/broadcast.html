@@ -129,6 +129,70 @@
                 </div>
             </div>
 
+            <!-- Global Announcement Section -->
+            <div
+                style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.3); padding: 2rem; border-radius: var(--radius-md); margin-bottom: 2.5rem;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z"
+                            stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <path
+                            d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21"
+                            stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-main);">Global Announcement</h3>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    Display a banner message at the top of every page for all users. Leave empty to hide the banner.
+                </p>
+
+                {% if global_announcement %}
+                <div id="current-announcement-preview"
+                    style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.1rem;">📢</span>
+                    <div>
+                        <span
+                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Currently
+                            Active</span>
+                        <p id="preview-text" style="margin: 0; color: #fbbf24; font-weight: 500;">{{ global_announcement
+                            }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div id="current-announcement-preview"
+                    style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.1rem;">🔕</span>
+                    <p id="preview-text" style="margin: 0; color: var(--text-muted); font-style: italic;">No
+                        announcement is currently active.</p>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; gap: 0.75rem;">
+                    <input type="text" id="announcement-text" value="{{ global_announcement }}"
+                        placeholder="e.g. Server maintenance tonight at 10 PM" class="form-control" style="flex: 1;"
+                        oninput="updatePreview(this.value)">
+                    <button class="btn btn-primary" onclick="updateAnnouncement()"
+                        style="white-space: nowrap; padding: 0.75rem 1.5rem;">
+                        Update
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAnnouncement()"
+                        style="white-space: nowrap; padding: 0.75rem 1rem; color: #f87171; border-color: rgba(248, 113, 113, 0.3);"
+                        title="Clear announcement">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem;">
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                <span
+                    style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Email
+                    Broadcast</span>
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            </div>
+
             <form id="broadcastForm" onsubmit="sendBroadcast(event)">
                 <div class="form-group">
                     <label class="form-label">Subject</label>
@@ -155,6 +219,67 @@
     </main>
 
     <script>
+        // --- Global Announcement Functions ---
+        function updatePreview(text) {
+            const preview = document.getElementById('current-announcement-preview');
+            const previewText = document.getElementById('preview-text');
+            if (text.trim()) {
+                preview.style.background = 'rgba(251, 191, 36, 0.1)';
+                preview.style.border = '1px solid rgba(251, 191, 36, 0.3)';
+                preview.querySelector('span').textContent = '📢';
+                previewText.style.color = '#fbbf24';
+                previewText.style.fontStyle = 'normal';
+                previewText.style.fontWeight = '500';
+                previewText.textContent = text;
+                // Add/update the label
+                let label = preview.querySelector('.preview-label');
+                if (!label) {
+                    const wrapper = document.createElement('div');
+                    label = document.createElement('span');
+                    label.className = 'preview-label';
+                    label.style.cssText = 'font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;';
+                    label.textContent = 'Preview';
+                    wrapper.appendChild(label);
+                    wrapper.appendChild(previewText);
+                    preview.querySelector('div') ? null : preview.appendChild(wrapper);
+                }
+            } else {
+                preview.style.background = 'rgba(255,255,255,0.03)';
+                preview.style.border = '1px dashed var(--border)';
+                preview.querySelector('span').textContent = '🔕';
+                previewText.style.color = 'var(--text-muted)';
+                previewText.style.fontStyle = 'italic';
+                previewText.textContent = 'No announcement is currently active.';
+            }
+        }
+
+        async function updateAnnouncement() {
+            const text = document.getElementById('announcement-text').value;
+            try {
+                const res = await fetch('/api/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ global_announcement: text })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    alert(text ? 'Announcement updated successfully!' : 'Announcement cleared.');
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (e) {
+                alert('Connection failed');
+            }
+        }
+
+        async function clearAnnouncement() {
+            if (!confirm('Are you sure you want to remove the current announcement?')) return;
+            document.getElementById('announcement-text').value = '';
+            await updateAnnouncement();
+        }
+
+        // --- Email Broadcast Function ---
         async function sendBroadcast(e) {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');

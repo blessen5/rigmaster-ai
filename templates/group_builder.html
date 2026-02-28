@@ -372,7 +372,8 @@
                         <div class="col-md-4">
                             <div class="stat-card">
                                 <div class="stat-label">Cost Per Unit</div>
-                                <div class="stat-value text-info" id="unitCost">$0.00</div>
+                                <div class="stat-value text-info" id="unitCost">{{ session.get('currency_symbol', '$')
+                                    }}0.00</div>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -380,7 +381,8 @@
                                 style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2);">
                                 <div class="stat-label text-success">Total Project Cost</div>
                                 <div class="stat-value" id="totalCost"
-                                    style="background: none; -webkit-text-fill-color: #34d399;">$0.00</div>
+                                    style="background: none; -webkit-text-fill-color: #34d399;">{{
+                                    session.get('currency_symbol', '$') }}0.00</div>
                             </div>
                         </div>
                     </div>
@@ -463,8 +465,17 @@
                     {% if group_builds %}
                     <div class="plans-grid">
                         {% for plan in group_builds %}
-                        <div class="plan-card">
-                            <span class="plan-badge">Ready</span>
+                        <div class="plan-card" id="plan-{{ plan._id }}">
+                            <div
+                                style="position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                                <button onclick="deleteGroupBuild('{{ plan._id }}')" class="btn btn-sm p-0 border-0"
+                                    style="color: #f87171; background: transparent; opacity: 0.6; transition: 0.3s;"
+                                    onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6"
+                                    title="Delete Project">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <span class="plan-badge" style="position: static;">Ready</span>
+                            </div>
                             <div class="plan-icon-wrapper">
                                 <i class="bi bi-box-seam-fill"></i>
                             </div>
@@ -479,12 +490,14 @@
                                 </div>
                                 <div class="plan-stat-item">
                                     <span class="plan-stat-label">Project Val.</span>
-                                    <span class="plan-stat-value highlight">${{ "{:,.0f}".format(plan.total_cost) if
+                                    <span class="plan-stat-value highlight">{{ session.get('currency_symbol', '$') }}{{
+                                        "{:,.0f}".format(plan.total_cost) if
                                         plan.total_cost is number else plan.total_cost }}</span>
                                 </div>
                                 <div class="plan-stat-item mt-2">
                                     <span class="plan-stat-label">Unit Cost</span>
-                                    <span class="plan-stat-value">${{ "{:,.2f}".format(plan.unit_cost) if plan.unit_cost
+                                    <span class="plan-stat-value">{{ session.get('currency_symbol', '$') }}{{
+                                        "{:,.2f}".format(plan.unit_cost) if plan.unit_cost
                                         is number else plan.unit_cost }}</span>
                                 </div>
                             </div>
@@ -604,7 +617,15 @@
                 { key: 'storage', label: 'Storage Drive', icon: 'bi-hdd' },
                 { key: 'psu', label: 'Power Supply', icon: 'bi-plug' },
                 { key: 'case', label: 'Chassis / Case', icon: 'bi-pc-display' },
-                { key: 'cooler', label: 'CPU Cooling', icon: 'bi-fan' }
+                { key: 'cooler', label: 'CPU Cooling', icon: 'bi-fan' },
+                { key: 'monitor', label: 'Monitor', icon: 'bi-tv' },
+                { key: 'os', label: 'Operating System', icon: 'bi-window-sidebar' },
+                { key: 'keyboard', label: 'Keyboard', icon: 'bi-keyboard' },
+                { key: 'mouse', label: 'Mouse', icon: 'bi-mouse2' },
+                { key: 'headset', label: 'Headset', icon: 'bi-headphones' },
+                { key: 'webcam', label: 'Webcam', icon: 'bi-camera-video' },
+                { key: 'fans', label: 'Case Fans', icon: 'bi-wind' },
+                { key: 'peripherals', label: 'Other Peripherals', icon: 'bi-joystick' }
             ];
 
             categories.forEach(cat => {
@@ -667,8 +688,45 @@
             }
         }
 
+        async function deleteGroupBuild(planId) {
+            console.log("Attempting to delete plan:", planId);
+            if (!confirm('Are you sure you want to delete this deployment project?')) return;
+
+            try {
+                const response = await fetch(`/api/delete-group-build/${planId}`, {
+                    method: 'DELETE',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("Delete failed with status:", response.status, errorText);
+                    alert(`Error: Server returned ${response.status}. Please check console for details.`);
+                    return;
+                }
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    const card = document.getElementById(`plan-${planId}`);
+                    if (card) {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(10px)';
+                        setTimeout(() => card.remove(), 400);
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Delete operation error:', error);
+                alert('Fatal Error: Failed to communicate with server.');
+            }
+        }
+
         function formatCurrency(num) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+            return new Intl.NumberFormat('{% if session.get("currency") == "EUR" %}de-DE{% elif session.get("currency") == "GBP" %}en-GB{% else %}en-US{% endif %}', {
+                style: 'currency',
+                currency: '{{ session.get("currency", "USD") }}'
+            }).format(num);
         }
     </script>
 </body>

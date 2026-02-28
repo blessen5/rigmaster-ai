@@ -1,28 +1,50 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
 
-{% block title %}Application Error{% endblock %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error | RigMaster AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
 
-{% block content %}
-<div class="container my-5" style="max-width: 600px;">
-    <div class="card bg-dark border-danger text-light shadow-lg">
-        <div class="card-body text-center p-5">
-            <i class="bi bi-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
-            <h2 class="mt-4 mb-3">Something Went Wrong</h2>
-            <div class="alert alert-danger">
-                {{ message | default('An unexpected error occurred.') }}
-            </div>
-            <p class="text-muted mt-4">
-                Our team has been notified. Please try again later.
-            </p>
-            <div class="mt-4">
-                <a href="{{ url_for('home') }}" class="btn btn-outline-light me-2">
-                    <i class="bi bi-house me-2"></i>Return Home
-                </a>
-                <a href="javascript:history.back()" class="btn btn-primary">
-                    <i class="bi bi-arrow-left me-2"></i>Go Back
-                </a>
+<body style="background: #020617; color: white; min-height: 100vh; display: flex; flex-direction: column;">
+    {% include 'shared/navbar.html' %}
+
+    <div class="container my-auto py-5" style="max-width: 600px;">
+        <div class="card bg-dark border-danger text-light shadow-lg"
+            style="background: rgba(15, 23, 42, 0.8) !important; backdrop-filter: blur(12px); border-radius: 24px;">
+            <div class="card-body text-center p-5">
+                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 5rem;"></i>
+                <h2 class="mt-4 mb-3" style="font-family: 'Outfit', sans-serif; font-weight: 700;">Something Went Wrong
+                </h2>
+                <div class="alert alert-danger"
+                    style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 12px;">
+                    {{ message | default('An unexpected error occurred.') }}
+                </div>
+                <p class="text-muted mt-4">
+                    The requested page could not be loaded. Please try refreshing or return home.
+                </p>
+                <div class="mt-4 d-flex gap-2 justify-content-center">
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-light px-4 py-2"
+                        style="border-radius: 12px;">
+                        <i class="bi bi-house me-2"></i>Home
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-primary px-4 py-2"
+                        style="background: #6366f1; border: none; border-radius: 12px;">
+                        <i class="bi bi-arrow-left me-2"></i>Go Back
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+
+    <footer
+        style="margin-top: auto; padding: 2rem 0; border-top: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); text-align: center; font-size: 0.85rem;">
+        &copy; 2026 RigMaster AI. All rights reserved.
+    </footer>
+</body>
+
+</html>
