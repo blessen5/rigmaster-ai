@@ -184,9 +184,55 @@
 
                 <div class="form-group">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Peripherals</label>
-                    <select id="peripherals-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Peripherals...</option>
+                    <button type="button" onclick="togglePeripherals()" id="periph-btn"
+                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.95rem; transition: all 0.3s;">
+                        <span>Select Peripherals (Keyboard, Mouse, etc.)</span>
+                        <span id="periph-icon" style="font-size: 1.2rem; transition: transform 0.3s;">+</span>
+                    </button>
+                    <div id="peripherals-panel"
+                        style="display: none; padding: 1rem; background: rgba(124, 58, 237, 0.03); border: 1px solid var(--border); border-radius: 12px;">
+                        <div style="display: grid; gap: 1rem;">
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">⌨️
+                                    Keyboard</label>
+                                <select id="keyboard-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    <option value="">Select Keyboard...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">🖱️
+                                    Mouse</label>
+                                <select id="mouse-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    <option value="">Select Mouse...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">🎧
+                                    Headset</label>
+                                <select id="headset-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    <option value="">Select Headset...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">📷
+                                    Webcam</label>
+                                <select id="webcam-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    <option value="">Select Webcam...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Hidden select to maintain backward compatibility -->
+                    <select id="peripherals-select" style="display: none;">
+                        <option value=""></option>
                     </select>
                 </div>
 
@@ -355,11 +401,47 @@
             }
         }
 
+        function togglePeripherals() {
+            const panel = document.getElementById('peripherals-panel');
+            const icon = document.getElementById('periph-icon');
+            const btn = document.getElementById('periph-btn');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                icon.textContent = '×';
+                btn.style.borderColor = 'var(--primary-light)';
+                btn.style.color = 'white';
+            } else {
+                panel.style.display = 'none';
+                icon.textContent = '+';
+                btn.style.borderColor = 'var(--border)';
+                btn.style.color = 'var(--text-muted)';
+            }
+        }
+
+        async function fetchPeripheralSubcategory(subcat, elementId) {
+            const select = document.getElementById(elementId);
+            try {
+                const response = await fetch(`/api/peripherals?sub_category=${subcat}`);
+                const data = await response.json();
+                select.innerHTML = `<option value="">Select ${subcat}...</option>`;
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error(`Error loading ${subcat}:`, error);
+                select.innerHTML = `<option value="">No ${subcat}s available</option>`;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Add change listeners for status tracking
             ['cpu-select', 'gpu-select', 'mobo-select', 'ram-select', 'storage-select', 'psu-select', 'case-select',
                 'cooler-select', 'monitor-select', 'os-select', 'peripherals-select', 'fans-select'].forEach(id => {
-                    document.getElementById(id).addEventListener('change', checkLifecycleStatus);
+                    const el = document.getElementById(id);
+                    if (el) el.addEventListener('change', checkLifecycleStatus);
                 });
             // Load all components
             await Promise.all([
@@ -373,8 +455,12 @@
                 fetchComponents('coolers', 'cooler-select'),
                 fetchComponents('monitors', 'monitor-select'),
                 fetchComponents('os', 'os-select'),
-                fetchComponents('peripherals', 'peripherals-select'),
-                fetchComponents('fans', 'fans-select')
+                fetchComponents('fans', 'fans-select'),
+                // Peripheral sub-categories
+                fetchPeripheralSubcategory('keyboard', 'keyboard-select'),
+                fetchPeripheralSubcategory('mouse', 'mouse-select'),
+                fetchPeripheralSubcategory('headset', 'headset-select'),
+                fetchPeripheralSubcategory('webcam', 'webcam-select')
             ]);
 
             // Check if we need to load a specific build
@@ -396,7 +482,16 @@
                         if (b.cooler_id) document.getElementById('cooler-select').value = b.cooler_id;
                         if (b.monitor_id) document.getElementById('monitor-select').value = b.monitor_id;
                         if (b.os_id) document.getElementById('os-select').value = b.os_id;
-                        if (b.peripherals_id) document.getElementById('peripherals-select').value = b.peripherals_id;
+                        if (b.keyboard_id) document.getElementById('keyboard-select').value = b.keyboard_id;
+                        if (b.mouse_id) document.getElementById('mouse-select').value = b.mouse_id;
+                        if (b.headset_id) document.getElementById('headset-select').value = b.headset_id;
+                        if (b.webcam_id) document.getElementById('webcam-select').value = b.webcam_id;
+                        if (b.keyboard_id || b.mouse_id || b.headset_id || b.webcam_id) {
+                            document.getElementById('peripherals-panel').style.display = 'block';
+                            document.getElementById('periph-icon').textContent = '×';
+                            document.getElementById('periph-btn').style.borderColor = 'var(--primary-light)';
+                            document.getElementById('periph-btn').style.color = 'white';
+                        }
                         if (b.fans_id) document.getElementById('fans-select').value = b.fans_id;
                         if (b.name) document.getElementById('build-name').value = b.name;
                         if (b.quantity) document.getElementById('build-quantity').value = b.quantity;
@@ -448,6 +543,10 @@
                 monitor: 'monitor-select',
                 os: 'os-select',
                 peripherals: 'peripherals-select',
+                keyboard: 'keyboard-select',
+                mouse: 'mouse-select',
+                headset: 'headset-select',
+                webcam: 'webcam-select',
                 fans: 'fans-select'
             };
 
@@ -479,6 +578,10 @@
                 monitor_id: document.getElementById('monitor-select').value,
                 os_id: document.getElementById('os-select').value,
                 peripherals_id: document.getElementById('peripherals-select').value,
+                keyboard_id: document.getElementById('keyboard-select').value,
+                mouse_id: document.getElementById('mouse-select').value,
+                headset_id: document.getElementById('headset-select').value,
+                webcam_id: document.getElementById('webcam-select').value,
                 fans_id: document.getElementById('fans-select').value
             };
 

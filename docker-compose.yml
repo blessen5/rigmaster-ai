@@ -1,0 +1,29 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - rigmaster-network
+    command: gunicorn --bind 0.0.0.0:5000 --reload app:app
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - rigmaster-network
+
+volumes:
+  mongo_data:
+
+
+networks:
+  rigmaster-network:
+    driver: bridge
