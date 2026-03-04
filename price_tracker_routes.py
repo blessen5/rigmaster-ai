@@ -20,14 +20,22 @@ def api_component_prices():
             'storage': data.get('storage_id'),
             'psu': data.get('psu_id'),
             'case': data.get('case_id'),
-            'cooler': data.get('cooler_id')
+            'cooler': data.get('cooler_id'),
+            'monitor': data.get('monitor_id'),
+            'os': data.get('os_id'),
+            'peripherals': data.get('peripherals_id'),
+            'keyboard': data.get('keyboard_id'),
+            'mouse': data.get('mouse_id'),
+            'headset': data.get('headset_id'),
+            'webcam': data.get('webcam_id'),
+            'fans': data.get('fans_id')
         }
         
         prices = {}
         total_cost = 0
         
         for category, comp_id in component_ids.items():
-            if not comp_id or comp_id == "None Selected":
+            if not comp_id or comp_id == "None Selected" or comp_id == "null" or comp_id == "":
                 continue
                 
             try:
@@ -39,7 +47,10 @@ def api_component_prices():
                     col_map = {
                         'cpu': 'cpus', 'gpu': 'gpus', 'motherboard': 'motherboards',
                         'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-                        'case': 'cases', 'cooler': 'coolers'
+                        'case': 'cases', 'cooler': 'coolers', 'monitor': 'monitors',
+                        'os': 'os', 'fans': 'fans', 'keyboard': 'peripherals',
+                        'mouse': 'peripherals', 'headset': 'peripherals',
+                        'webcam': 'peripherals', 'peripherals': 'peripherals'
                     }
                     col = col_map.get(category, category)
                     comp = db[col].find_one({'_id': ObjectId(comp_id)})

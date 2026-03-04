@@ -397,10 +397,7 @@ def hardware_encyclopedia():
             query['name'] = {'$regex': search, '$options': 'i'}
             
         # Generic query to components table
-        print(f"DEBUG: hardware_encyclopedia - DB: {db.name}, Collections: {db.list_collection_names()}")
-        print(f"DEBUG: hardware_encyclopedia - req_cat: {req_cat}, query: {query}")
         items = list(db.components.find(query).sort('name', 1))
-        print(f"DEBUG: Found {len(items)} items")
         for item in items:
             item['_id'] = str(item['_id'])
             
@@ -953,7 +950,6 @@ def get_component_list(category_name):
         
         # sort by name, include status and brand for builder logic
         items = list(db.components.find({'category': target_cat}, {'name': 1, 'status': 1, 'brand': 1}).sort('name', 1))
-        print(f"API Debug: Category '{target_cat}' returned {len(items)} items")
         return [{
             'id': str(item['_id']), 
             'name': item.get('name', 'Unknown'),
