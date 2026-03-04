@@ -1,1 +1,20 @@
-{'cpus': 962, 'gpus': 3596, 'motherboards': 4974, 'ram': 3512, 'storage': 1896, 'psu': 2147, 'cases': 4218, 'coolers': 2338}
+Total components: 20
+
+One component with category matching 'cpu' (case insensitive):
+None found
+
+One component of any kind:
+{
+  "_id": {
+    "$oid": "69a7d06656338792724c0cfd"
+  },
+  "name": "Intel Core i9-14900K",
+  "type": "cpu",
+  "price": 589,
+  "performanceScore": 98,
+  "description": "High-end gaming and workstation CPU",
+  "socket": "LGA1700",
+  "wattage": 125,
+  "generation": "14th Gen",
+  "__v": 0
+}
