@@ -4181,16 +4181,84 @@ def admin_system_health():
             'processor': platform.processor()
         }
         
+        # 1. CREATE SNAPSHOT (Calculated in memory)
+        health_snapshot = {
+            'timestamp': datetime.now(timezone.utc),
+            'overall_status': 'Healthy' if auth_status == 'Operational' and ai_services_running else 'Degraded',
+            'database': health['database'],
+            'collections': health['collections'],
+            'ai_providers': health['ai_providers'],
+            'services': health['services'],
+            'db_stats': db_stats,
+            'server_info': server_info
+        }
+
+        # 2. SAVE TO MONGODB (THE PRIMARY SOURCE OF TRUTH)
+        try:
+            db.system_health_logs.insert_one(health_snapshot)
+        except Exception as log_err:
+            app.logger.error(f"Failed to record health log: {log_err}")
+
+        # 3. FETCH THE LATEST DATA BACK FROM THE TABLE FOR THE UI
+        # This ensures the UI is strictly showing what is recorded in the database
+        health_history = []
+        display_health = health # Fallback
+        try:
+            health_history = list(db.system_health_logs.find().sort('timestamp', -1).limit(10))
+            if health_history:
+                # Use the latest record from the table for the main display
+                latest_log = health_history[0]
+                display_health = {
+                    'database': latest_log.get('database'),
+                    'collections': latest_log.get('collections', []),
+                    'ai_providers': latest_log.get('ai_providers', {}),
+                    'services': latest_log.get('services', {})
+                }
+                # Also ensure we use the logged db_stats and server_info if available
+                db_stats = latest_log.get('db_stats', db_stats)
+                server_info = latest_log.get('server_info', server_info)
+                
+                # Format logs for history table
+                for log in health_history:
+                    log['_id'] = str(log['_id'])
+                    if 'timestamp' in log and log['timestamp']:
+                        log['date_str'] = log['timestamp'].strftime('%Y-%m-%d %H:%M')
+        except Exception as fetch_err:
+            app.logger.warning(f"Fetch from history failed: {fetch_err}")
+
         return render_template('admin/system_health.html', 
-                             health=health, 
+                             health=display_health, 
                              db_stats=db_stats,
                              server_info=server_info,
+                             health_history=health_history,
                              python_version=sys.version.split(' ')[0])
     except Exception as e:
         app.logger.error(f"System health error: {e}")
         return f"Error: {e}", 500
 
 # Export routes
+@app.route('/api/admin/system-health/logs', methods=['GET'])
+@admin_required
+def api_get_health_logs():
+    """Fetch structured historical health data from MongoDB"""
+    try:
+        # Fetch last 50 health snapshots
+        logs = list(db.system_health_logs.find().sort('timestamp', -1).limit(50))
+        for log in logs:
+            log['_id'] = str(log['_id'])
+            if 'timestamp' in log and log['timestamp']:
+                # Convert datetime to ISO string for JSON transport
+                log['timestamp'] = log['timestamp'].isoformat() if hasattr(log['timestamp'], 'isoformat') else str(log['timestamp'])
+        
+        return jsonify({
+            'status': 'success',
+            'count': len(logs),
+            'logs': logs
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching health logs: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/admin/export/users')
 @admin_required
 def admin_export_users():
