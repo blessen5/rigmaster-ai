@@ -289,6 +289,53 @@
             </div>
         </div>
 
+        <!-- Health History (Historical Tracking) -->
+        <div
+            style="background: var(--bg-card); border: 1px solid var(--border); padding: 2rem; border-radius: var(--radius-lg); margin-top: 2rem;">
+            <h2 style="margin-bottom: 1.5rem;">🕒 Health History (Historical Tracking)</h2>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                            <th style="padding: 1rem;">Timestamp</th>
+                            <th style="padding: 1rem;">Status</th>
+                            <th style="padding: 1rem;">Database</th>
+                            <th style="padding: 1rem;">AI Availability</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in health_history %}
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 1rem; color: var(--text-muted);">{{ log.date_str }}</td>
+                            <td style="padding: 1rem;">
+                                <span
+                                    class="status-indicator {% if log.overall_status == 'Healthy' %}status-healthy{% else %}status-warning{% endif %}"></span>
+                                {{ log.overall_status }}
+                            </td>
+                            <td style="padding: 1rem;">{{ log.database.status }} ({{ log.database.storage_size_mb }} MB)
+                            </td>
+                            <td style="padding: 1rem;">
+                                {% set active_ai = 0 %}
+                                {% for p, s in log.ai_providers.items() %}
+                                {% if 'Available' in s or 'Running' in s %}
+                                {% set active_ai = active_ai + 1 %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ active_ai }} / {{ log.ai_providers|length }} Active
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not health_history %}
+                        <tr>
+                            <td colspan="4" style="padding: 2rem; text-align: center; color: var(--text-muted);">No
+                                history logs found yet. Access this page to generate logs.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Quick Actions -->
         <div
             style="background: var(--bg-card); border: 1px solid var(--border); padding: 2rem; border-radius: var(--radius-lg); margin-top: 2rem;">

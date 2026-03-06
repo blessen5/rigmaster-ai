@@ -647,8 +647,8 @@ Return ONLY valid JSON with this structure:
             logger.warning("huggingface_hub library not installed. Skipping HF provider.")
             return None
             
-        # Using Llama 3.2 3B Instruct - Extremely stable on HF free tier
-        model = "meta-llama/Llama-3.2-3B-Instruct"
+        # Using a popular open-source model available on the free tier
+        model = "mistralai/Mistral-7B-Instruct-v0.2"
         
         try:
             client = InferenceClient(token=self.hf_key)
