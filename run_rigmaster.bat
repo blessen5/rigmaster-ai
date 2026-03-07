@@ -4,7 +4,7 @@ set MONGO_PATH="C:\Program Files\MongoDB\Server\%VERSION%\bin\mongod.exe"
 set DB_PATH="C:\data\db"
 
 echo ====================================================================
-echo   🚀 RIGMASTER AI - SUPER STARTUP (Port 5001)
+echo   🚀 RIGMASTER AI - SUPER STARTUP (Port 5005)
 echo ====================================================================
 echo.
 
@@ -41,7 +41,7 @@ echo.
 REM Step 4: Start RigMaster
 echo [4/4] Starting RigMaster AI...
 echo ====================================================================
-echo   Web Interface will be at: http://127.0.0.1:5001
+echo   Web Interface will be at: http://127.0.0.1:5005
 echo ====================================================================
 echo.
 

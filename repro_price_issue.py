@@ -2,7 +2,7 @@
 import requests
 import json
 
-base_url = "http://127.0.0.1:5001"
+base_url = "http://127.0.0.1:5005"
 
 # We need some real IDs from the database to test
 # I'll just use the check_unified_counts.py results but I need actual ObjectIds

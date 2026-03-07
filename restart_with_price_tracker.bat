@@ -20,7 +20,7 @@ echo  RESTART COMPLETE!
 echo ============================================================
 echo.
 echo  The Price Tracker feature is now active!
-echo  Navigate to: http://localhost:5001/analysis
+echo  Navigate to: http://localhost:5005/analysis
 echo.
 echo  New Features Available:
 echo   - Real-time component pricing

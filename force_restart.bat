@@ -14,7 +14,7 @@ timeout /t 3 /nobreak >nul
 echo [3/3] Starting RigMaster AI with UPDATED code...
 echo.
 echo ========================================
-echo   Access at: http://localhost:5001
+echo   Access at: http://localhost:5005
 echo ========================================
 echo.
 

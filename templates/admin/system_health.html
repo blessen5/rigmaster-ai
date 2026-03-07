@@ -312,7 +312,12 @@
                                     class="status-indicator {% if log.overall_status == 'Healthy' %}status-healthy{% else %}status-warning{% endif %}"></span>
                                 {{ log.overall_status }}
                             </td>
-                            <td style="padding: 1rem;">{{ log.database.status }} ({{ log.database.storage_size_mb }} MB)
+                            <td style="padding: 1rem;">
+                                {% if log.database is mapping %}
+                                {{ log.database.status }} ({{ log.database.storage_size_mb }} MB)
+                                {% else %}
+                                {{ log.database }} (N/A MB)
+                                {% endif %}
                             </td>
                             <td style="padding: 1rem;">
                                 {% set active_ai = 0 %}
