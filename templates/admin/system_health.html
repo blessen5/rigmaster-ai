@@ -320,6 +320,7 @@
                                 {% endif %}
                             </td>
                             <td style="padding: 1rem;">
+                                {% if log.ai_providers %}
                                 {% set active_ai = 0 %}
                                 {% for p, s in log.ai_providers.items() %}
                                 {% if 'Available' in s or 'Running' in s %}
@@ -327,6 +328,9 @@
                                 {% endif %}
                                 {% endfor %}
                                 {{ active_ai }} / {{ log.ai_providers|length }} Active
+                                {% else %}
+                                <span style="color: var(--text-muted);">Data Unavailable</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
