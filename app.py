@@ -4185,7 +4185,10 @@ def admin_system_health():
         health_snapshot = {
             'timestamp': datetime.now(timezone.utc),
             'overall_status': 'Healthy' if auth_status == 'Operational' and ai_services_running else 'Degraded',
-            'database': health['database'],
+            'database': {
+                'status': health['database'],
+                'storage_size_mb': round(db_stats.get('storageSize', 0) / 1024 / 1024, 2)
+            },
             'collections': health['collections'],
             'ai_providers': health['ai_providers'],
             'services': health['services'],
@@ -4208,8 +4211,16 @@ def admin_system_health():
             if health_history:
                 # Use the latest record from the table for the main display
                 latest_log = health_history[0]
+                
+                # Normalize database status string for the main badge display
+                db_data = latest_log.get('database')
+                if isinstance(db_data, dict):
+                    db_status_str = db_data.get('status', 'Unknown')
+                else:
+                    db_status_str = str(db_data)
+
                 display_health = {
-                    'database': latest_log.get('database'),
+                    'database': db_status_str,
                     'collections': latest_log.get('collections', []),
                     'ai_providers': latest_log.get('ai_providers', {}),
                     'services': latest_log.get('services', {})
@@ -5705,9 +5716,9 @@ def rigmaster_chat_endpoint():
 if __name__ == '__main__':
     # On Windows, use_reloader=True can sometimes cause "OSError: [WinError 10038] An operation was attempted on something that is not a socket"
     # Disabling the reloader is a common workaround for this development server stability issue.
-    # Port changed to 5001 to avoid conflicts with Windows built-in services like AirPlay.
+    # Port changed to 5005 to avoid conflicts with Windows built-in services like AirPlay.
     print("\n" + "*" * 50)
     print("  RIGMASTER IS LIVE")
-    print("  Open your browser at: http://127.0.0.1:5001")
+    print("  Open your browser at: http://127.0.0.1:5005")
     print("*" * 50 + "\n")
-    app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False, threaded=True)
+    app.run(host='0.0.0.0', port=5005, debug=True, use_reloader=False, threaded=True)
