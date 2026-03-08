@@ -44,7 +44,7 @@ Modern admin dashboard with:
 - User build history
 - Export build data
 
-### **AI Analytics** (`/admin/ai-analytics`)
+### **AI Engine Console** (`/admin/ai-engine-console`)
 - Total AI requests
 - Cache hit rate
 - Provider usage statistics
@@ -96,7 +96,7 @@ Visit: `http://localhost:5000/admin`
 | **Users** | `/admin/users` | Manage all users |
 | **Components** | `/admin/components` | Manage hardware components |
 | **Builds** | `/admin/builds` | View and analyze builds |
-| **AI Analytics** | `/admin/ai-analytics` | Monitor AI usage |
+| **AI Engine Console** | `/admin/ai-engine-console` | Monitor AI usage |
 | **System Health** | `/admin/system-health` | Check system status |
 | **Export Users** | `/admin/export/users` | Download user data |
 | **Export Builds** | `/admin/export/builds` | Download build data |
@@ -116,7 +116,7 @@ Visit: `http://localhost:5000/admin`
 1. **Copy admin routes** to `app.py`
 2. **Make yourself admin** in database
 3. **Create remaining templates**:
-   - `templates/admin/ai_analytics.html`
+   - `templates/admin/ai_engine_console.html`
    - `templates/admin/system_health.html`
 4. **Test all features**
 5. **Customize styling** to match your theme

@@ -79,7 +79,7 @@ Try these URLs:
 - **User Management**: `/admin/users`
 - **Components**: `/admin/components`
 - **Builds**: `/admin/builds`
-- **AI Analytics**: `/admin/ai-analytics`
+- **AI Engine Console**: `/admin/ai-engine-console`
 - **System Health**: `/admin/system-health`
 - **Export Users**: `/admin/export/users`
 - **Export Builds**: `/admin/export/builds`
@@ -99,7 +99,7 @@ Try these URLs:
 - Delete users
 - View build counts
 
-### ✅ AI Analytics
+### ✅ AI Engine Console
 - Total AI requests
 - Cache hit rate
 - Provider status
@@ -171,7 +171,7 @@ Then in `dashboard.html`:
 
 1. `admin_routes.py` - All backend routes
 2. `templates/admin/dashboard.html` - Main dashboard
-3. `templates/admin/ai_analytics.html` - AI analytics page
+3. `templates/admin/ai_engine_console.html` - AI engine console page
 4. `templates/admin/system_health.html` - System health page
 5. `ADMIN_FEATURES_SUMMARY.md` - Feature documentation
 6. `ADMIN_FEATURES_PLAN.md` - Planning document

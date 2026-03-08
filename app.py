@@ -4051,10 +4051,10 @@ def api_clear_cache():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/admin/ai-analytics')
+@app.route('/admin/ai-engine-console')
 @admin_required
-def admin_ai_analytics():
-    """View AI usage analytics"""
+def admin_ai_engine_console():
+    """View AI usage analytics and management console"""
     try:
         # AI cache stats
         ai_stats = {
@@ -4106,7 +4106,7 @@ def admin_ai_analytics():
         custom_api_keys = get_site_setting('api_keys', {})
         preferred_provider = get_site_setting('preferred_ai_provider', 'auto')
 
-        return render_template('admin/ai_analytics.html', 
+        return render_template('admin/ai_engine_console.html', 
                              stats=ai_stats,
                              recent_requests=recent_requests,
                              provider_stats=provider_stats,
@@ -4114,7 +4114,7 @@ def admin_ai_analytics():
                              custom_keys=custom_api_keys,
                              preferred_ai_provider=preferred_provider)
     except Exception as e:
-        app.logger.error(f"AI analytics error: {e}")
+        app.logger.error(f"AI engine console error: {e}")
         return f"Error: {e}", 500
 
 @app.route('/admin/system-health')
