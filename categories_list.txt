@@ -1,1 +1,0 @@
-case, cooler, cpu, fans, gpu, monitor, motherboard, os, peripherals, psu, ram, storage

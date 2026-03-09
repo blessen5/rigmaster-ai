@@ -19,8 +19,6 @@ from email.mime.multipart import MIMEMultipart
 import random
 import string
 
-# Auto-startup: Automatically start Ollama and warm up models
-import auto_startup
 
 load_dotenv()
 from pymongo import MongoClient
@@ -247,15 +245,28 @@ def ensure_db():
             _last_db_retry = now
             db = get_db()
     
+    # Dynamically sync API keys from Database to AI Engine
     try:
         from ai_engine import get_ai_engine
         ai_engine = get_ai_engine()
         ai_engine.preferred_provider = get_site_setting('preferred_ai_provider', 'auto')
-        custom_api_keys = get_site_setting('api_keys', {})
-        if custom_api_keys:
-            ai_engine.update_api_keys(custom_api_keys)
-    except:
-        pass
+        
+        # Priority: 1. Admin UI 'api_keys' dict, 2. Individual DB settings, 3. Env variables
+        custom_keys = get_site_setting('api_keys', {})
+        
+        db_keys = {
+            'groq_key': custom_keys.get('groq_key') or get_site_setting('GROQ_API_KEY') or os.getenv('GROQ_API_KEY'),
+            'gemini_key': custom_keys.get('gemini_key') or get_site_setting('GEMINI_API_KEY') or os.getenv('GEMINI_API_KEY'),
+            'mistral_key': custom_keys.get('mistral_key') or get_site_setting('MISTRAL_API_KEY') or os.getenv('MISTRAL_API_KEY'),
+            'deepseek_key': custom_keys.get('deepseek_key') or get_site_setting('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API_KEY'),
+            'hf_key': custom_keys.get('hf_key') or get_site_setting('HF_API_KEY') or os.getenv('HF_API_KEY'),
+            'openrouter_key': custom_keys.get('openrouter_key') or get_site_setting('OPENROUTER_API_KEY') or os.getenv('OPENROUTER_API_KEY'),
+            'cohere_key': custom_keys.get('cohere_key') or get_site_setting('COHERE_API_KEY') or os.getenv('COHERE_API_KEY')
+        }
+        ai_engine.update_api_keys(db_keys)
+    except Exception as e:
+        app.logger.error(f"Failed to sync AI keys: {e}")
+
 
 # Global System Settings Helpers
 def get_site_setting(key, default=None):
@@ -471,11 +482,12 @@ def support_page():
 
 
 def send_contact_email(name, email, req_type, message):
-    """Send contact form details via email using SMTP settings from .env"""
-    smtp_server = os.getenv('SMTP_SERVER')
-    smtp_port = os.getenv('SMTP_PORT')
-    smtp_email = os.getenv('SMTP_EMAIL')
-    smtp_password = os.getenv('SMTP_PASSWORD')
+    """Send contact form details via email using SMTP settings from DB (fallback to .env)"""
+    smtp_server = get_site_setting('SMTP_SERVER', os.getenv('SMTP_SERVER'))
+    smtp_port = get_site_setting('SMTP_PORT', os.getenv('SMTP_PORT'))
+    smtp_email = get_site_setting('SMTP_EMAIL', os.getenv('SMTP_EMAIL'))
+    smtp_password = get_site_setting('SMTP_PASSWORD', os.getenv('SMTP_PASSWORD'))
+
 
     if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
         print(f"[MOCK CONTACT EMAIL] SMTP not configured. From: {name} ({email}) - Type: {req_type}")
@@ -616,10 +628,11 @@ def send_generic_email(to_email, subject, body):
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    smtp_server = os.getenv('SMTP_SERVER')
-    smtp_port = os.getenv('SMTP_PORT')
-    smtp_email = os.getenv('SMTP_EMAIL')
-    smtp_password = os.getenv('SMTP_PASSWORD')
+    smtp_server = get_site_setting('SMTP_SERVER', os.getenv('SMTP_SERVER'))
+    smtp_port = get_site_setting('SMTP_PORT', os.getenv('SMTP_PORT'))
+    smtp_email = get_site_setting('SMTP_EMAIL', os.getenv('SMTP_EMAIL'))
+    smtp_password = get_site_setting('SMTP_PASSWORD', os.getenv('SMTP_PASSWORD'))
+
 
     if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
         print(f"[MOCK EMAIL] To: {to_email} | Subject: {subject} | Body: {body}")
@@ -4041,14 +4054,19 @@ def admin_components():
 @app.route('/api/admin/clear-cache', methods=['POST'])
 @admin_required
 def api_clear_cache():
+    """Clear AI and shopping cache."""
     try:
         db = get_db()
         if db is not None:
-            db.shopping_cache.delete_many({})
-            db.ai_cache.delete_many({})
-            return jsonify({'status': 'success'})
+            if 'shopping_cache' in db.list_collection_names():
+                db.shopping_cache.delete_many({})
+            if 'ai_cache' in db.list_collection_names():
+                db.ai_cache.delete_many({})
+            app.logger.info(f"Admin {session.get('username')} cleared all caches")
+            return jsonify({'status': 'success', 'message': 'Caches cleared successfully'})
         return jsonify({'status': 'error', 'message': 'Database disconnected'}), 500
     except Exception as e:
+        app.logger.error(f"Clear cache error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/admin/ai-engine-console')
@@ -4091,20 +4109,21 @@ def admin_ai_engine_console():
                 'mistral': 'Available' if ai_engine.mistral_key else 'Not configured',
                 'gemini': 'Available' if ai_engine.gemini_key else 'Not configured',
                 'deepseek': 'Available' if ai_engine.deepseek_key else 'Not configured',
-                'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured'),
-                'ollama': 'Checking...'
+                'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured')
             }
-            import requests
-            try:
-                resp = requests.get('http://localhost:11434/api/tags', timeout=1)
-                health['ai_providers']['ollama'] = 'Running' if resp.status_code == 200 else 'Not running'
-            except:
-                health['ai_providers']['ollama'] = 'Not running'
         except:
             pass
 
         custom_api_keys = get_site_setting('api_keys', {})
         preferred_provider = get_site_setting('preferred_ai_provider', 'auto')
+        
+        # Additional settings for the console
+        smtp_settings = {
+            'server': get_site_setting('SMTP_SERVER', os.getenv('SMTP_SERVER', '')),
+            'port': get_site_setting('SMTP_PORT', os.getenv('SMTP_PORT', '587')),
+            'email': get_site_setting('SMTP_EMAIL', os.getenv('SMTP_EMAIL', '')),
+            'password': get_site_setting('SMTP_PASSWORD', os.getenv('SMTP_PASSWORD', ''))
+        }
 
         return render_template('admin/ai_engine_console.html', 
                              stats=ai_stats,
@@ -4112,10 +4131,77 @@ def admin_ai_engine_console():
                              provider_stats=provider_stats,
                              health=health,
                              custom_keys=custom_api_keys,
+                             smtp_settings=smtp_settings,
                              preferred_ai_provider=preferred_provider)
     except Exception as e:
         app.logger.error(f"AI engine console error: {e}")
         return f"Error: {e}", 500
+
+@app.route('/api/admin/settings', methods=['GET', 'POST'])
+@admin_required
+def admin_settings_api():
+    """Generic endpoint to get or update any site-wide setting in the settings collection."""
+    if request.method == 'GET':
+        try:
+            settings = list(db.settings.find())
+            return jsonify({s['key']: s['value'] for s in settings})
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+            
+        for key, value in data.items():
+            # Special handling for api_keys to merge instead of overwrite if needed
+            if key == 'api_keys' and isinstance(value, dict):
+                current = get_site_setting('api_keys', {})
+                current.update(value)
+                db.settings.update_one(
+                    {'key': 'api_keys'},
+                    {'$set': {'value': current, 'updated_at': datetime.now(timezone.utc)}},
+                    upsert=True
+                )
+            else:
+                db.settings.update_one(
+                    {'key': key},
+                    {'$set': {'value': value, 'updated_at': datetime.now(timezone.utc)}},
+                    upsert=True
+                )
+        
+        app.logger.info(f"Admin {session.get('username')} updated settings: {list(data.keys())}")
+        return jsonify({'status': 'success', 'message': 'Settings updated successfully'})
+    except Exception as e:
+        app.logger.error(f"Settings update error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/admin/settings/delete', methods=['POST'])
+@admin_required
+def admin_delete_setting():
+    """Delete a setting from the database to allow fallback or full removal."""
+    try:
+        data = request.get_json()
+        key = data.get('key')
+        nested_key = data.get('nested_key') # For api_keys dictionary
+        
+        if not key:
+            return jsonify({'status': 'error', 'message': 'Setting key required'}), 400
+            
+        if nested_key and key == 'api_keys':
+            # Remove from the nested dictionary
+            db.settings.update_one(
+                {'key': 'api_keys'},
+                {'$unset': {f'value.{nested_key}': ""}}
+            )
+        else:
+            # Delete the entire setting row
+            db.settings.delete_one({'key': key})
+            
+        return jsonify({'status': 'success', 'message': f'Setting {key} deleted'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/admin/system-health')
 @admin_required
@@ -4137,17 +4223,8 @@ def admin_system_health():
                 'mistral': 'Available' if ai_engine.mistral_key else 'Not configured',
                 'gemini': 'Available' if ai_engine.gemini_key else 'Not configured',
                 'deepseek': 'Available' if ai_engine.deepseek_key else 'Not configured',
-                'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured'),
-                'ollama': 'Checking...'
+                'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured')
             }
-            
-            # Check Ollama
-            import requests
-            try:
-                resp = requests.get('http://localhost:11434/api/tags', timeout=2)
-                health['ai_providers']['ollama'] = 'Running' if resp.status_code == 200 else 'Not running'
-            except:
-                health['ai_providers']['ollama'] = 'Not running'
         except Exception as e:
             health['ai_providers'] = {'error': f'AI engine not available: {str(e)}'}
             
@@ -4387,35 +4464,6 @@ def admin_create_user():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@app.route('/api/admin/settings', methods=['GET', 'POST'])
-@admin_required
-def admin_settings_api():
-    """Get or update global site settings"""
-    if request.method == 'GET':
-        settings = list(db.settings.find())
-        return jsonify({s['key']: s['value'] for s in settings})
-    
-    try:
-        data = request.json
-        for key, value in data.items():
-            db.settings.update_one({'key': key}, {'$set': {'value': value}}, upsert=True)
-        app.logger.info(f"Admin {session.get('username')} updated settings: {data}")
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
-@app.route('/api/admin/clear-cache', methods=['POST'])
-@admin_required
-def admin_clear_cache():
-    """Clear AI cache in emergency"""
-    try:
-        if 'ai_cache' in db.list_collection_names():
-            db.ai_cache.delete_many({})
-        app.logger.info(f"Admin {session.get('username')} cleared AI cache")
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/api/admin/users/<user_id>/make-admin', methods=['POST'])

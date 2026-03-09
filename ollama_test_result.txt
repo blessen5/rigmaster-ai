@@ -1,6 +1,0 @@
-OLLAMA STATUS: RUNNING
-Models installed: 1
-
-  - deepseek-r1:latest
-
-OK - Ollama is fully working!

@@ -1,4 +1,0 @@
-monitor: 1367
-os: 12
-peripherals: 2516
-fans: 1000
