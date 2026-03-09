@@ -1,1 +1,0 @@
-﻿[{'_id': ObjectId('6984ad954267f656ed550bbd'), 'name': 'AMD 2650'}, {'_id': ObjectId('6984ad954267f656ed550d39'), 'name': 'AMD 3850'}, {'_id': ObjectId('6984ad954267f656ed550dd6'), 'name': 'AMD 5150'}, {'_id': ObjectId('6984ad954267f656ed550c92'), 'name': 'AMD 5350'}, {'_id': ObjectId('6984ad954267f656ed550d61'), 'name': 'AMD A10-5700'}]

@@ -1,1 +1,0 @@
-['ram', 'complaints', 'components', 'saved_builds', 'motherboards', 'gpus', 'group_projects', 'settings', 'cpus', 'coolers', 'shopping_cache', 'cases', 'ai_cache', 'group_builds', 'users', 'psu', 'storage']

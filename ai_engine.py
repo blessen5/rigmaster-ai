@@ -29,31 +29,9 @@ class AIEngine:
         self.gemini_key = os.getenv('GEMINI_API_KEY')
         self.deepseek_key = os.getenv('DEEPSEEK_API_KEY')
         self.hf_key = os.getenv('HF_API_KEY')
+        self.openrouter_key = os.getenv('OPENROUTER_API_KEY')
+        self.cohere_key = os.getenv('COHERE_API_KEY')
         self.is_hf_installed = InferenceClient is not None
-        self.ollama_url = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-        
-        # Ollama models rotation (fast models with no rate limits)
-        # Ordered by performance: fastest first, then by quality
-        # ALL MODELS ARE 100% FREE - No API keys, no rate limits!
-        self.ollama_models = [
-            # Ultra-Fast Tier (< 20s response time)
-            'qwen2.5:1.5b',         # Alibaba's 1.5B - FASTEST! (13.95s first load)
-            'gemma2:2b',            # Google's 2B - Very fast (19.90s first load)
-            'llama3.2:1b',          # Meta's 1B - Fast, excellent quality (21.92s first load)
-            
-            # Fast Tier (20-40s response time)
-            'phi3:mini',            # Microsoft's 3.8B - Best quality for size (39.94s)
-            'qwen2.5:3b',           # Alibaba's 3B - Balanced speed/quality
-            'llama3.2:3b',          # Meta's 3B - Great for reasoning
-            
-            # Quality Tier (40-60s response time, better reasoning)
-            'mistral:7b',           # Mistral's 7B - Excellent for technical tasks
-            'llama3.1:latest',      # Meta's 8B - Excellent all-rounder (using :latest tag)
-            
-            # Premium Tier (slower but highest quality)
-            'deepseek-r1:latest',   # DeepSeek's 7B reasoning model - FREE local version!
-        ]
-        self.current_ollama_model_index = 0
         
         # Provider rotation index
         self.current_provider_index = 0
@@ -70,13 +48,16 @@ class AIEngine:
         if self.mistral_key:
             self.providers.append('mistral')
         if self.deepseek_key:
-            self.providers.append('deepseek') # Fallback
+            self.providers.append('deepseek')
+        if self.openrouter_key:
+            self.providers.append('openrouter')
+        if self.cohere_key:
+            self.providers.append('cohere')
 
 
         
 
         logger.info(f"AI Engine initialized with providers: {self.providers}")
-        logger.info(f"Ollama models available: {self.ollama_models}")
 
     def update_api_keys(self, keys: Dict[str, str]):
         """Update API keys dynamically from database settings."""
@@ -85,6 +66,8 @@ class AIEngine:
         if keys.get('gemini_key'): self.gemini_key = keys.get('gemini_key')
         if keys.get('deepseek_key'): self.deepseek_key = keys.get('deepseek_key')
         if keys.get('hf_key'): self.hf_key = keys.get('hf_key')
+        if keys.get('openrouter_key'): self.openrouter_key = keys.get('openrouter_key')
+        if keys.get('cohere_key'): self.cohere_key = keys.get('cohere_key')
         
         # Rebuild providers list
         self.providers = []
@@ -93,6 +76,8 @@ class AIEngine:
         if self.gemini_key: self.providers.append('gemini')
         if self.mistral_key: self.providers.append('mistral')
         if self.deepseek_key: self.providers.append('deepseek')
+        if self.openrouter_key: self.providers.append('openrouter')
+        if self.cohere_key: self.providers.append('cohere')
         
         # Reset provider index if it's out of bounds
         if self.providers and self.current_provider_index >= len(self.providers):
@@ -603,42 +588,6 @@ Return ONLY valid JSON with this structure:
             logger.error(f"Gemini API error: {e}")
             raise
     
-    def _call_ollama(self, system_prompt: str, user_prompt: str, json_mode: bool) -> Optional[str]:
-        """Call local Ollama instance with model rotation (Unlimited, no rate limits)."""
-        # Get next model in rotation
-        model = self.ollama_models[self.current_ollama_model_index]
-        self.current_ollama_model_index = (self.current_ollama_model_index + 1) % len(self.ollama_models)
-        
-        url = f"{self.ollama_url}/api/generate"
-        
-        payload = {
-            "model": model,
-            "prompt": f"{system_prompt}\n\nUser Request: {user_prompt}",
-            "stream": False
-        }
-        
-        if json_mode:
-            payload["format"] = "json"
-        
-        try:
-            logger.info(f"Calling Ollama with model: {model}")
-            response = requests.post(url, json=payload, timeout=60)
-            response.raise_for_status()
-            return response.json()['response']
-        except Exception as e:
-            logger.warning(f"Ollama model {model} failed: {e}")
-            # Try one more model if the current one fails
-            if len(self.ollama_models) > 1:
-                fallback_model = self.ollama_models[self.current_ollama_model_index]
-                logger.info(f"Trying fallback Ollama model: {fallback_model}")
-                payload["model"] = fallback_model
-                try:
-                    response = requests.post(url, json=payload, timeout=60)
-                    response.raise_for_status()
-                    return response.json()['response']
-                except Exception as e2:
-                    logger.error(f"Ollama fallback model {fallback_model} also failed: {e2}")
-            raise
 
 
     def _call_hf(self, system_prompt: str, user_prompt: str, json_mode: bool) -> Optional[str]:

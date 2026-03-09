@@ -1,6 +1,0 @@
-Status Code: 200
-Body: {
-  "message": "MongoDB connection successful",
-  "status": "ok"
-}
-

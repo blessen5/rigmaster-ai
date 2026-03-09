@@ -1,5 +1,0 @@
-﻿Local Count: 28540
-Atlas Count: 27442
-Finding missing items...
-Detected 0 missing items.
-Final Atlas Count: 27442

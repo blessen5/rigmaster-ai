@@ -1,9 +1,0 @@
-Total: 23643
-cpus: 962
-gpus: 3596
-motherboards: 4974
-ram: 3512
-psu: 2147
-storage: 1896
-cases: 4218
-coolers: 2338

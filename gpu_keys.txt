@@ -1,1 +1,0 @@
-﻿GPU Keys: ['_id', 'name', 'price', 'vram', 'tdp', 'cuda_cores', 'status', 'category']
