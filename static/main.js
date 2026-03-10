@@ -1,6 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
     const navbar = document.getElementById('navbar');
+    const mobileToggle = document.querySelector('.mobile-toggle');
+    const navLinks = document.querySelector('.nav-links');
+    const navActions = document.querySelector('.nav-actions');
 
+    // Mobile Menu Toggle
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', () => {
+            mobileToggle.classList.toggle('active');
+            navLinks.classList.toggle('nav-active');
+            if (navActions) {
+                navActions.classList.toggle('nav-active');
+            }
+        });
+    }
 
     // Sticky Navbar on Scroll
     window.addEventListener('scroll', () => {
