@@ -487,6 +487,74 @@
             opacity: 1;
         }
     }
+
+    /* Mobile Responsive - AI Assistant */
+    @media (max-width: 768px) {
+        .nexus-root {
+            bottom: 1rem;
+            right: 1rem;
+        }
+
+        .nexus-launcher {
+            width: 56px;
+            height: 56px;
+        }
+
+        .nexus-label-bubble {
+            display: none;
+        }
+
+        .nexus-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0;
+            z-index: 2147483647;
+        }
+
+        .nexus-header {
+            padding: 1rem;
+        }
+
+        .nexus-header h3 {
+            font-size: 1rem;
+        }
+
+        .nexus-chat-body {
+            padding: 1rem;
+        }
+
+        .nexus-message {
+            max-width: 90%;
+            font-size: 0.9rem;
+            padding: 0.85rem 1rem;
+        }
+
+        .nexus-input-container {
+            padding: 1rem;
+        }
+
+        .nexus-input-wrapper input {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .nexus-send-btn {
+            width: 42px;
+            height: 42px;
+        }
+
+        .support-launcher {
+            bottom: 80px;
+            right: 1rem;
+            width: 44px;
+            height: 44px;
+        }
+    }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
