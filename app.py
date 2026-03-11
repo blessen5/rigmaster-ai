@@ -110,6 +110,35 @@ def get_estimated_price(comp_name, cat):
         return 30
     return 100
 
+# Shared price-reading fallback map (used by saved_builds & analysis routes)
+_PRICE_CAT_MAP = {
+    'cpu_id': 'cpus', 'gpu_id': 'gpus', 'motherboard_id': 'motherboards',
+    'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
+    'case_id': 'cases', 'cooler_id': 'coolers',
+    'monitor_id': 'monitors', 'os_id': 'os',
+    'peripherals_id': 'peripherals', 'fans_id': 'fans',
+    'keyboard_id': 'keyboards', 'mouse_id': 'mice',
+    'headset_id': 'headsets', 'webcam_id': 'webcams'
+}
+
+def get_comp_price_usd(comp, id_key=None, est_cat=None):
+    """Return the USD price for a component document.
+    Reads the real 'price'/'msrp'/'cost' field first; falls back to
+    keyword-based heuristics if no price field is stored."""
+    if comp is None:
+        return 0.0
+    raw = comp.get('price') or comp.get('msrp') or comp.get('cost')
+    if raw is not None:
+        try:
+            return float(str(raw).replace('$', '').replace(',', '').strip())
+        except (ValueError, TypeError):
+            pass
+    # Determine fallback category
+    fallback_cat = est_cat
+    if fallback_cat is None and id_key:
+        fallback_cat = _PRICE_CAT_MAP.get(id_key, 'peripherals')
+    return get_estimated_price(comp.get('name', ''), fallback_cat or 'peripherals')
+
 def get_component_by_id(comp_id):
     if db is None or not comp_id: return None
     try:
@@ -156,7 +185,18 @@ def set_currency():
         currency = data.get('currency', 'USD')
         if currency in EXCHANGE_RATES:
             session['currency'] = currency
-            return jsonify({'status': 'success', 'currency': currency})
+            session['currency_symbol'] = CURRENCY_SYMBOLS.get(currency, '$')
+            # Persist to DB for logged-in users so it survives future logins
+            user_id = session.get('user_id')
+            if user_id and db is not None:
+                try:
+                    db.users.update_one(
+                        {'_id': ObjectId(user_id)},
+                        {'$set': {'preferred_currency': currency}}
+                    )
+                except Exception:
+                    pass  # Non-critical — session is already updated
+            return jsonify({'status': 'success', 'currency': currency, 'symbol': CURRENCY_SYMBOLS.get(currency, '$')})
         return jsonify({'status': 'error', 'message': f'Invalid currency: {currency}'}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -428,6 +468,56 @@ def hardware_encyclopedia():
 @login_required
 def builder():
     return render_template('builder.html')
+
+@app.route('/api/my_builds')
+@login_required
+def api_my_builds():
+    """Return a lightweight list of the current user's saved builds for dropdown selectors."""
+    try:
+        if db is None:
+            return jsonify([])
+        user_id = session.get('user_id')
+        user_ids = [user_id]
+        try:
+            user_ids.append(ObjectId(user_id))
+        except:
+            pass
+        builds = list(db.saved_builds.find(
+            {'user_id': {'$in': user_ids}},
+            {'name': 1, 'created_at': 1,
+             'cpu_id': 1, 'gpu_id': 1, 'motherboard_id': 1, 'ram_id': 1,
+             'storage_id': 1, 'psu_id': 1, 'case_id': 1, 'cooler_id': 1,
+             'monitor_id': 1, 'os_id': 1, 'fans_id': 1,
+             'keyboard_id': 1, 'mouse_id': 1, 'headset_id': 1,
+             'webcam_id': 1, 'peripherals_id': 1}
+        ).sort('created_at', -1))
+        result = []
+        for b in builds:
+            result.append({
+                'id': str(b['_id']),
+                'name': b.get('name') or 'Custom Rig',
+                'date': b.get('created_at', '').strftime('%Y-%m-%d') if hasattr(b.get('created_at', ''), 'strftime') else '',
+                'cpu_id': b.get('cpu_id') or '',
+                'gpu_id': b.get('gpu_id') or '',
+                'motherboard_id': b.get('motherboard_id') or '',
+                'ram_id': b.get('ram_id') or '',
+                'storage_id': b.get('storage_id') or '',
+                'psu_id': b.get('psu_id') or '',
+                'case_id': b.get('case_id') or '',
+                'cooler_id': b.get('cooler_id') or '',
+                'monitor_id': b.get('monitor_id') or '',
+                'os_id': b.get('os_id') or '',
+                'fans_id': b.get('fans_id') or '',
+                'keyboard_id': b.get('keyboard_id') or '',
+                'mouse_id': b.get('mouse_id') or '',
+                'headset_id': b.get('headset_id') or '',
+                'webcam_id': b.get('webcam_id') or '',
+                'peripherals_id': b.get('peripherals_id') or '',
+            })
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"Error fetching user builds: {e}")
+        return jsonify([])
 
 @app.route('/analysis')
 @login_required
@@ -808,6 +898,18 @@ def login():
                 session['username'] = user['username']
                 session['is_admin'] = user.get('is_admin', False)
                 
+                # Restore user's saved currency preference into session
+                preferred_currency = user.get('preferred_currency', 'USD')
+                if preferred_currency in EXCHANGE_RATES:
+                    session['currency'] = preferred_currency
+                    session['currency_symbol'] = CURRENCY_SYMBOLS.get(preferred_currency, '$')
+                else:
+                    session['currency'] = 'USD'
+                    session['currency_symbol'] = '$'
+                
+                # Restore units preference
+                session['units'] = user.get('preferred_units', 'Metric')
+                
                 if session['is_admin']:
                     return redirect(url_for('admin_dashboard'))
                 return redirect(url_for('home'))
@@ -874,16 +976,6 @@ def saved_builds():
         }
         
         total_unit_cost = 0
-        # For price calculation, we need to map id keys to the categories used in get_estimated_price
-        price_cat_map = {
-            'cpu_id': 'cpus', 'gpu_id': 'gpus', 'motherboard_id': 'motherboards',
-            'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-            'case_id': 'cases', 'cooler_id': 'coolers',
-            'monitor_id': 'monitors', 'os_id': 'os',
-            'peripherals_id': 'peripherals', 'fans_id': 'fans',
-            'keyboard_id': 'peripherals', 'mouse_id': 'peripherals',
-            'headset_id': 'peripherals', 'webcam_id': 'peripherals'
-        }
 
         for key, cat in col_map.items():
             comp_id = build.get(key)
@@ -893,16 +985,21 @@ def saved_builds():
                     if comp:
                         cname = comp.get('name', 'Unknown')
                         build_details['components'][key.replace('_id', '').upper()] = cname
-                        total_unit_cost += get_estimated_price(cname, price_cat_map.get(key))
-                except:
-                    build_details['components'][key.replace('_id', '').upper()] = "Unknown Component"
+                        total_unit_cost += get_comp_price_usd(comp, id_key=key)
+                    else:
+                        build_details['components'][key.replace('_id', '').upper()] = "Unknown Component (ID: " + str(comp_id) + ")"
+                except Exception:
+                    build_details['components'][key.replace('_id', '').upper()] = "Invalid Component Reference"
             else:
                 # Only show essential components if none selected, hide others to avoid clutter
                 essentials = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id']
                 if key in essentials:
                     build_details['components'][key.replace('_id', '').upper()] = "None Selected"
-        
-        build_details['project_total'] = format_price(total_unit_cost * qty)
+                else:
+                    # Optionally show others as None too for consistency
+                    build_details['components'][key.replace('_id', '').upper()] = "None"
+
+        build_details['project_total'] = format_price(total_unit_cost)
         
         # Add difficulty info
         diff_info = calculate_build_difficulty(build)
@@ -1398,42 +1495,77 @@ def api_analyze_upgrade():
             try: return db[col].find_one({'_id': ObjectId(comp_id)})
             except: return None
 
-        cpu = get_comp('cpus', data.get('cpu_id'))
-        mobo = get_comp('motherboards', data.get('motherboard_id'))
-        psu = get_comp('psu', data.get('psu_id'))
-        gpu = get_comp('gpus', data.get('gpu_id'))
-        ram = get_comp('ram', data.get('ram_id'))
-
+        # Initialize ALL categories with defaults so the frontend never gets undefined
         results = {
-            'ram': {'status': 'Ready', 'message': 'Expansion slots available.'},
-            'storage': {'status': 'Ready', 'message': 'M.2 and SATA ports detected.'},
-            'gpu': {'status': 'Ready', 'message': 'PSU headroom looks sufficient.'},
-            'cpu': {'status': 'Ready', 'message': 'Modern socket supports future chips.'}
+            'ram':     {'status': 'Ready', 'message': 'Memory slots available for expansion.'},
+            'storage': {'status': 'Ready', 'message': 'Multiple expansion slots available for high-speed storage.'},
+            'gpu':     {'status': 'Ready', 'message': 'GPU slot clear for current and next-gen cards.'},
+            'cpu':     {'status': 'Ready', 'message': 'Platform supports current-generation processors.'},
+            'psu':     {'status': 'Ready', 'message': 'Power supply provides growth capacity.'},
+            'case':    {'status': 'Ready', 'message': 'Standard ATX case clearance expected.'},
+            'cooling': {'status': 'Ready', 'message': 'Mounting patterns support standard AIO and high-end air cooling.'},
         }
+        
+        cpu = get_comp('components', data.get('cpu_id'))
+        mobo = get_comp('components', data.get('motherboard_id'))
+        psu = get_comp('components', data.get('psu_id'))
+        gpu = get_comp('components', data.get('gpu_id'))
+        ram = get_comp('components', data.get('ram_id'))
+        storage = get_comp('components', data.get('storage_id'))
+        case = get_comp('components', data.get('case_id'))
+        cooler = get_comp('components', data.get('cooler_id'))
 
-        # 1. RAM Check
+        # 1. RAM & Storage Readiness
         if mobo and ram:
-            # Assume 4 slots for most, 2 for ITX
             max_slots = 4
             if 'ITX' in str(mobo.get('name', '')).upper(): max_slots = 2
-            
-            # Simple heuristic: if name contains "2x" or "4x"
             ram_name = str(ram.get('name', '')).upper()
             if f'{max_slots}X' in ram_name:
                 results['ram'] = {'status': 'Limited', 'message': 'All memory slots occupied. Requires full replacement to upgrade.'}
         
-        # 2. GPU / PSU Check
+        # 2. GPU / PSU Readiness
         power = run_power_analysis(data)
         if power.get('adequacy_status') != 'Safe':
             results['gpu'] = {'status': 'Limited', 'message': 'Estimated power draw is near PSU limits. PSU upgrade recommended for higher-tier GPUs.'}
+            results['psu'] = {'status': 'Limited', 'message': 'Current PSU has low headroom for high-power modern components.'}
+        else:
+             results['psu'] = {'status': 'Ready', 'message': 'Power supply provides significant growth capacity.'}
 
-        # 3. CPU Check
+        # 3. CPU / Platform Readiness
         if cpu:
             name = str(cpu.get('name', '')).upper()
             if 'AM4' in name or 'LGA1200' in name or 'LGA1151' in name:
                 results['cpu'] = {'status': 'Limited', 'message': 'End-of-life socket. Significant upgrades require a new motherboard.'}
             elif 'AM5' in name or 'LGA1700' in name:
                 results['cpu'] = {'status': 'Ready', 'message': 'Active socket. Supports latest and upcoming processor generations.'}
+
+        # 4. Cooling & Case Readiness
+        if cooler and cpu:
+            tdp = int(cpu.get('tdp', '65').replace('W','')) if isinstance(cpu.get('tdp'), str) else 65
+            c_type = str(cooler.get('type' if 'type' in cooler else 'name', '')).upper()
+            if 'LIQUID' in c_type or 'AIO' in c_type:
+                results['cooling'] = {'status': 'Ready', 'message': 'Liquid cooling provided massive thermal headroom for overclocking.'}
+            elif tdp > 125:
+                 results['cooling'] = {'status': 'Limited', 'message': 'High TDP CPU may benefit from a more robust cooling solution.'}
+            else:
+                 results['cooling'] = {'status': 'Ready', 'message': 'Cooling solution is well-matched for this processor.'}
+        else:
+            results['cooling'] = {'status': 'Ready', 'message': 'Mounting patterns support standard AIO and high-end air cooling.'}
+            
+        if case:
+            results['case'] = {'status': 'Ready', 'message': 'Chassis internal volume supports top-tier GPU sizes.'}
+        else:
+            results['case'] = {'status': 'Ready', 'message': 'Standard ATX case clearance expected.'}
+
+        # 5. Storage Analysis
+        if storage:
+            s_type = str(storage.get('type', '')).upper()
+            if 'NVME' in s_type:
+                 results['storage'] = {'status': 'Ready', 'message': 'High-speed NVMe storage detected. Rapid boot and load times.'}
+            else:
+                 results['storage'] = {'status': 'Limited', 'message': 'SATA storage detected. Upgrade to NVMe for significantly faster performance.'}
+        else:
+             results['storage'] = {'status': 'Ready', 'message': 'Multiple expansion slots available for high-speed storage.'}
 
         return jsonify(results)
     except Exception as e:
@@ -1639,6 +1771,33 @@ def run_validation_logic(data):
 
         if not messages and status == "Compatible":
             messages.append("Core components (CPU, Motherboard, RAM) are compatible!")
+        
+        # 4. Cooling Recommendation
+        if cpu:
+            tdp = cpu.get('tdp', 0)
+            if isinstance(tdp, str):
+                import re
+                nums = re.findall(r'\d+', tdp)
+                tdp = int(nums[0]) if nums else 0
+            
+            if tdp > 125:
+                cooler_id = data.get('cooler_id')
+                if not cooler_id or cooler_id == "None Selected":
+                    messages.append("Advisory: High-TDP CPU selected. An aftermarket cooler is strongly recommended for stability.")
+                    if status == "Compatible": status = "Borderline"
+                else:
+                    cooler = get_doc(cooler_id)
+                    if cooler:
+                        c_type = normalize(cooler.get('type') or cooler.get('name'))
+                        if 'LIQUID' not in c_type and 'AIO' not in c_type and tdp > 170:
+                            messages.append("Advisory: Extreme performance CPU. Ensure your air cooler is rated for high wattage or consider liquid cooling.")
+
+        # 5. Generic completion check
+        all_slots = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id']
+        missing = [s.replace('_id','').upper() for s in all_slots if not data.get(s) or data.get(s) == "None Selected"]
+        if missing:
+             messages.append(f"Incomplete Build: Missing {', '.join(missing)}. Performance potential will be limited.")
+             if status == "Compatible": status = "Borderline"
 
         return {'status': status, 'messages': messages}
 
@@ -1672,10 +1831,16 @@ def api_ai_engine_recommend():
             component_pool['ram'] = [c['name'] for c in db.components.find({'category': 'ram'}, {'name': 1}).limit(15)]
             component_pool['storage'] = [c['name'] for c in db.components.find({'category': 'storage'}, {'name': 1}).limit(15)]
             component_pool['psu'] = [c['name'] for c in db.components.find({'category': 'psu'}, {'name': 1}).limit(15)]
+            component_pool['cases'] = [c['name'] for c in db.components.find({'category': 'case'}, {'name': 1}).limit(15)]
+            component_pool['coolers'] = [c['name'] for c in db.components.find({'category': 'cooler'}, {'name': 1}).limit(15)]
+            component_pool['monitors'] = [c['name'] for c in db.components.find({'category': 'monitor'}, {'name': 1}).limit(10)]
+            component_pool['os'] = [c['name'] for c in db.components.find({'category': 'os'}, {'name': 1}).limit(5)]
+            component_pool['fans'] = [c['name'] for c in db.components.find({'category': 'fans'}, {'name': 1}).limit(10)]
             component_pool['keyboards'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'keyboard'}, {'name': 1}).limit(10)]
             component_pool['mice'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'mouse'}, {'name': 1}).limit(10)]
             component_pool['headsets'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'headset'}, {'name': 1}).limit(10)]
             component_pool['webcams'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'webcam'}, {'name': 1}).limit(10)]
+            component_pool['peripherals'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'other'}, {'name': 1}).limit(10)]
         except Exception as e:
             app.logger.warning(f"Could not fetch component pool: {e}")
             component_pool = None
@@ -1692,8 +1857,8 @@ def api_ai_engine_recommend():
         # Try to match AI recommendations to actual database components
         matched_components = {}
         if not recommendation.get('fallback', False):
-            # Categories to match
-            cats = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'keyboard', 'mouse', 'headset', 'webcam']
+            # Categories to match (All 16)
+            cats = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals']
             for comp_type in cats:
                 ai_suggestion = recommendation.get(comp_type, '')
                 if ai_suggestion:
@@ -1945,18 +2110,39 @@ def run_power_analysis(data):
         else:
             power_breakdown['storage'] = 0
 
-        # 5. Fans Power
+        # 5. Fans & Cooler Power
         fans = get_component_by_id(data.get('fans_id'))
+        cooler = get_component_by_id(data.get('cooler_id'))
+        
         fans_power = 0
         if fans:
-            # Estimate ~15W for a kit or ~5W for single
             fans_power = 15 if 'KIT' in str(fans.get('name', '')).upper() or '3-PACK' in str(fans.get('name', '')).upper() else 5
+        
+        cooler_power = 0
+        if cooler:
+            c_name = str(cooler.get('name', '')).upper()
+            c_type = str(cooler.get('type', '')).upper()
+            if 'LIQUID' in c_name or 'AIO' in c_name or 'LIQUID' in c_type:
+                cooler_power = 15 # Pump draw
+            else:
+                cooler_power = 5 # Fan draw
             
         power_breakdown['fans'] = fans_power
-        total_base_watts += fans_power
+        power_breakdown['cooler'] = cooler_power
+        total_base_watts += (fans_power + cooler_power)
 
-        # 6. Motherboard (Base Overhead)
-        base_overhead = 35 # 35W for mobo
+        # 6. Peripherals Power (External Draw awareness)
+        # Often negligible for PSU but good for total system context
+        periph_keys = ['keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id']
+        periph_power = 0
+        for pk in periph_keys:
+            if data.get(pk): periph_power += 3 # Nominal 3W
+        
+        power_breakdown['peripherals'] = periph_power
+        total_base_watts += periph_power
+
+        # 7. Motherboard (Base Overhead)
+        base_overhead = 40 # 40W for modern mobo
         power_breakdown['other'] = base_overhead
         total_base_watts += base_overhead
 
@@ -2146,7 +2332,7 @@ def get_build_insights_data(build):
             if cid and cid != "None Selected":
                 comp = get_component_by_id(cid)
                 if comp:
-                    total_cost += get_estimated_price(comp.get('name', ''), est_cat)
+                    total_cost += get_comp_price_usd(comp, est_cat=est_cat)
 
         quantity = int(build.get('quantity', 1))
         overview = {
@@ -2514,112 +2700,146 @@ def api_ai_recommend():
 
         data = request.json
         raw_budget = float(data.get('budget', 0))
-        # Convert budget to USD for internal processing
         user_currency = session.get('currency', 'USD')
         rate = EXCHANGE_RATES.get(user_currency, 1.0)
-        budget = raw_budget / rate
+        budget = raw_budget / rate  # work in USD internally
         usage = data.get('usage', 'gaming')
         requirements = data.get('requirements', '')
 
         if budget <= 0:
             return jsonify({'status': 'error', 'message': 'Please enter a valid budget'}), 400
 
-        # 1. Check Global AI Cache (v12 - budget matching)
+        # --- Cache check ---
         import hashlib
-        cache_key = f"rec_v12_{budget}_{usage}_{hashlib.md5(requirements.encode()).hexdigest()}"
+        cache_key = f"rec_v16_{int(budget)}_{usage}_{hashlib.md5(requirements.encode()).hexdigest()}"
         cached = db.ai_cache.find_one({'cache_key': cache_key})
         if cached:
             app.logger.info(f"Serving cached recommendation for {cache_key}")
+            symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
             return jsonify({
                 'status': 'success',
                 'build': cached.get('build'),
                 'total_estimated_cost': cached.get('total_estimated_cost'),
                 'explanation': cached.get('explanation'),
-                'cached': True
+                'cached': True,
+                'currency': user_currency,
+                'currency_symbol': symbol,
+                'exchange_rate': rate
             })
 
-        # Fetch a reasonable subset from each collection, prioritizing a range of tiers
-        def fetch_sample(col, limit=250):
-            # Sort by price DESCENDING to get highest tiers first
-            # We fetch more to allow for a wider selection in Python
-            return list(db[col].find(
-                {'status': {'$ne': 'Discontinued'}}, 
-                {'name': 1, 'socket': 1, 'memory_type': 1, 'type': 1, 'chipset': 1, 'tdp': 1, 'wattage': 1, 'watts': 1, 'status': 1, 'price': 1}
-            ).sort([('price', -1)]).limit(limit))
+        # --- All 16 component slots with budget allocation caps ---
+        COMPONENT_SLOTS = [
+            # (display_key, db_category,  budget_pct_cap)
+            ('CPU',         'cpu',         0.30),
+            ('GPU',         'gpu',         0.50),
+            ('Motherboard', 'motherboard', 0.15),
+            ('RAM',         'ram',         0.12),
+            ('Storage',     'storage',     0.12),
+            ('PSU',         'psu',         0.10),
+            ('Case',        'case',        0.10),
+            ('Cooler',      'cooler',      0.10),
+            ('Monitor',     'monitor',     0.25),
+            ('OS',          'os',          0.08),
+            ('Fans',        'fans',        0.05),
+            ('Keyboard',    'peripherals', 0.08),
+            ('Mouse',       'peripherals', 0.06),
+            ('Headset',     'peripherals', 0.07),
+            ('Webcam',      'peripherals', 0.06),
+            ('Peripherals', 'peripherals', 0.05),
+        ]
 
-        sample_data = {
-            'CPUs': fetch_sample('cpus'),
-            'GPUs': fetch_sample('gpus'),
-            'Motherboards': fetch_sample('motherboards'),
-            'RAM': fetch_sample('ram'),
-            'Storage': fetch_sample('storage'),
-            'PSU': fetch_sample('psu'),
-            'Cases': fetch_sample('cases'),
-            'Coolers': fetch_sample('coolers'),
-            'Monitors': fetch_sample('monitors'),
-            'OperatingSystems': fetch_sample('os'),
-            'Peripherals': fetch_sample('peripherals'),
-            'Fans': fetch_sample('fans')
+        # Sub-category filters for peripherals
+        PERIPH_SUBCATS = {
+            'Keyboard': 'keyboard',
+            'Mouse':    'mouse',
+            'Headset':  'headset',
+            'Webcam':   'webcam',
         }
 
-        # Format component list for the AI - including logic to pick diverse tiers
-        engine_pool = {}
-        allowed_items = {}
-        for cat_key, items in sample_data.items():
-            pool_items = []
-            category_allowed = []
-            category = cat_key.lower()
-            if category == 'rams': category = 'ram'
-            
-            # FIRST: Apply budget filters to the entire sample to get VALID items
-            valid_items = []
-            for i in items:
-                p = i.get('price')
-                if not p or p == 0 or str(p) == '---':
-                    p = get_estimated_price(i['name'], category)
-                
-                try:
-                    p_float = float(str(p).replace('$', '').replace(',', '').strip())
-                    # Strict budget percentage caps per category
-                    if category == 'gpus' and p_float > (budget * 0.55): continue
-                    if category == 'cpus' and p_float > (budget * 0.35): continue
-                    if category == 'motherboards' and p_float > (budget * 0.18): continue
-                    if category == 'ram' and p_float > (budget * 0.15): continue
-                    if category == 'psu' and p_float > (budget * 0.12): continue
-                    if category == 'storage' and p_float > (budget * 0.12): continue
-                    if category in ['cases', 'coolers'] and p_float > (budget * 0.12): continue
-                    
-                    # Store derived price back into item for easier formatting
-                    i['_pool_price'] = p_float
-                    valid_items.append(i)
-                except: continue
+        # Build the component pool for the AI (from unified components collection)
+        engine_pool = {}   # slot_key -> list of "ID:...|Name|Price:$..." strings
+        allowed_items = {} # slot_key -> list of raw component dicts
+        # Mapping from slot key to estimate category for pricing fallback
+        _est_cat_map = {
+            'CPU': 'cpus', 'GPU': 'gpus', 'Motherboard': 'motherboards',
+            'RAM': 'ram', 'Storage': 'storage', 'PSU': 'psu',
+            'Case': 'cases', 'Cooler': 'coolers', 'Monitor': 'monitors',
+            'OS': 'os', 'Fans': 'fans',
+            'Keyboard': 'keyboards', 'Mouse': 'mice',
+            'Headset': 'headsets', 'Webcam': 'webcams', 'Peripherals': 'peripherals',
+        }
 
-            # SECOND: Pick diverse tiers from the VALID items only
-            total_valid = len(valid_items)
-            if total_valid > 0:
-                indices = []
-                if total_valid <= 35:
-                    indices = range(total_valid)
-                else:
-                    # Pick 15 from top, 15 from middle, 5 from bottom of valid list
-                    indices.extend(range(0, 15))
-                    indices.extend(range(total_valid // 2 - 7, total_valid // 2 + 8))
-                    indices.extend(range(total_valid - 5, total_valid))
-                
-                selected_indices = sorted(list(set(indices)))
-                for idx in selected_indices:
-                    if idx < 0 or idx >= total_valid: continue
-                    i = valid_items[idx]
-                    pool_items.append(f"ID:{i['_id']}|{i['name']}|Price:${i['_pool_price']}")
-                    category_allowed.append(i)
-            
-            engine_pool[cat_key.lower()] = pool_items
-            allowed_items[cat_key] = category_allowed
+        for slot_key, db_cat, cap_pct in COMPONENT_SLOTS:
+            max_price_usd = budget * cap_pct
+            query = {
+                'category': db_cat,
+                'status': {'$ne': 'Discontinued'}
+            }
+            if slot_key in PERIPH_SUBCATS:
+                query['sub_category'] = PERIPH_SUBCATS[slot_key]
 
-        # Tiered Rotation for Recommendation (Unified Engine)
+            raw_items = list(db.components.find(
+                query,
+                {'name': 1, 'price': 1, 'msrp': 1, 'cost': 1, 'status': 1,
+                 'sub_category': 1, 'socket': 1, 'memory_type': 1, 'chipset': 1,
+                 'tdp': 1, 'wattage': 1, 'watts': 1, 'type': 1}
+            ).sort('name', 1).limit(300))
+
+            # If sub_category filter gave nothing, try without it (fallback for peripherals)
+            if not raw_items and slot_key in PERIPH_SUBCATS:
+                query_fallback = {'category': db_cat, 'status': {'$ne': 'Discontinued'}}
+                raw_items = list(db.components.find(
+                    query_fallback,
+                    {'name': 1, 'price': 1, 'msrp': 1, 'cost': 1, 'status': 1,
+                     'sub_category': 1, 'socket': 1, 'memory_type': 1, 'chipset': 1,
+                     'tdp': 1, 'wattage': 1, 'watts': 1, 'type': 1}
+                ).sort('name', 1).limit(100))
+
+            # Price every item — use heuristic estimate when no real price is stored
+            est_cat = _est_cat_map.get(slot_key, 'peripherals')
+            for item in raw_items:
+                p = get_comp_price_usd(item)
+                if p <= 0:
+                    p = get_estimated_price(item.get('name', ''), est_cat)
+                if p <= 0:
+                    p = 10  # absolute safety floor so nothing is ever skipped
+                item['_usd_price'] = p
+
+            # Apply budget cap — but always keep at least the 5 cheapest as fallback
+            within_budget = [it for it in raw_items if it['_usd_price'] <= max_price_usd]
+            if not within_budget and raw_items:
+                # All items over budget — take the cheapest 5 so the AI has something to pick
+                within_budget = sorted(raw_items, key=lambda x: x['_usd_price'])[:5]
+            valid = within_budget
+
+            # Pick a highly curated sample to avoid "Payload Too Large" errors (Error 413)
+            # We take fewer items per category to keep the total prompt size small
+            n = len(valid)
+            if n <= 12:
+                selected = valid
+            else:
+                # 4 from top, 4 from middle, 4 from bottom
+                top = valid[:4]
+                mid = valid[n//2 - 2: n//2 + 2]
+                bot = valid[max(0, n-4):]
+                seen = set()
+                selected = []
+                for it in top + mid + bot:
+                    sid = str(it['_id'])
+                    if sid not in seen:
+                        seen.add(sid)
+                        selected.append(it)
+
+            pool_strs = [
+                f"ID:{it['_id']}|{it['name']}|${it['_usd_price']:.0f}"
+                for it in selected
+            ]
+            engine_pool[slot_key.lower()] = pool_strs
+            allowed_items[slot_key] = selected   # raw_items kept for heuristic fallback
+
+
+        # --- Call AI engine ---
         ai_engine = get_ai_engine()
-        result = None
-        
         recommendation = ai_engine.get_pc_recommendation(
             budget=f"${int(budget)}",
             use_case=usage,
@@ -2627,225 +2847,146 @@ def api_ai_recommend():
             component_pool=engine_pool
         )
 
+        # --- Budget allocation ratios (used for heuristic selection when AI fails) ---
+        alloc_pcts = {s[0]: s[2] for s in COMPONENT_SLOTS}
+
+        # --- Parse AI response: extract IDs or fall back to name matching ---
+        raw_build = {}  # slot_key -> 24-char hex ID str  OR  plain name str (fallback)
         if recommendation:
-            result = {
-                'build': {},
-                'total_estimated_cost': budget,
-                'explanation': recommendation.get('reasoning', ''),
-                'provider': 'RigMaster Engine'
-            }
-
-            id_mapping = {
-                'cpu': 'CPU', 'gpu': 'GPU', 'motherboard': 'Motherboard', 
-                'ram': 'RAM', 'storage': 'Storage', 'psu': 'PSU', 
-                'case': 'Case', 'cooler': 'Cooler', 'monitor': 'Monitor', 
-                'os': 'OS', 'peripherals': 'Peripherals', 'fans': 'Fans'
-            }
-            for ai_key, target_key in id_mapping.items():
-                val = str(recommendation.get(ai_key, ''))
-                import re
-                id_match = re.search(r'ID:([0-9a-fA-F]{24})', val)
+            for slot_key, _, _ in COMPONENT_SLOTS:
+                ai_key = slot_key.lower()
+                val = str(recommendation.get(ai_key, '')).strip()
+                if not val or val.lower() in ('none', 'null', ''):
+                    continue
+                # Tier 1: proper ID embedded in AI response
+                id_match = re.search(r'[0-9a-fA-F]{24}', val)
                 if id_match:
-                    result['build'][target_key] = id_match.group(1)
+                    raw_build[slot_key] = id_match.group(0)
+                    continue
+                # Tier 2: fuzzy name match inside the pre-built allowed pool
+                val_up = val.upper()
+                for item in allowed_items.get(slot_key, []):
+                    item_name = str(item.get('name', '')).upper()
+                    if item_name and (val_up in item_name or item_name in val_up):
+                        raw_build[slot_key] = str(item['_id'])
+                        break
                 else:
-                    cat_name = target_key + 's' if target_key != 'PSU' else 'PSU'
-                    cat_name = next((k for k in allowed_items.keys() if k.lower() == cat_name.lower()), cat_name)
-                    # Use allowed_items instead of sample_data to force budget compliance
-                    for item in allowed_items.get(cat_name, []):
-                        if val.upper() in str(item['name']).upper() or str(item['name']).upper() in val.upper():
-                            result['build'][target_key] = str(item['_id'])
-                            break
-                    if target_key not in result['build']: result['build'][target_key] = val
+                    # Store raw name for last-chance lookup later
+                    raw_build[slot_key] = val
 
-        # FINAL FAILSAFE: Heuristic Recommendation with Budget Allocation
-        if not result:
-            app.logger.info("Using local heuristic fallback for recommendation")
-            
-            # Budget allocation strategy (percentages)
-            allocations = {
-                'CPUs': 0.15,
-                'GPUs': 0.25,
-                'Motherboards': 0.10,
-                'RAM': 0.08,
-                'Storage': 0.08,
-                'PSU': 0.06,
-                'Cases': 0.05,
-                'Coolers': 0.04,
-                'Monitors': 0.12,
-                'OperatingSystems': 0.03,
-                'Peripherals': 0.02,
-                'Fans': 0.02
-            }
-            
-            fallback_build = {}
-            mapping = {
-                'CPUs': 'CPU', 'GPUs': 'GPU', 'Motherboards': 'Motherboard',
-                'RAM': 'RAM', 'Storage': 'Storage', 'PSU': 'PSU',
-                'Cases': 'Case', 'Coolers': 'Cooler', 'Monitors': 'Monitor',
-                'OperatingSystems': 'OS', 'Peripherals': 'Peripherals', 'Fans': 'Fans'
-            }
-            
-            for cat_key, items in sample_data.items():
-                if items:
-                    # Calculate target price for this category
-                    target_price = budget * allocations.get(cat_key, 0.10)
-                    
-                    # Find component with price closest to target
-                    active_items = [i for i in items if i.get('status') == 'Active']
-                    search_pool = active_items if active_items else items
-                    
-                    # Select component closest to target price
-                    best_match = min(search_pool, 
-                                   key=lambda x: abs(x.get('price', x.get('estimated_price', 100)) - target_price))
-                    
-                    target_key = mapping.get(cat_key, cat_key[:-1].upper())
-                    fallback_build[target_key] = str(best_match['_id'])
-            
-            result = {
-                'build': fallback_build,
-                'total_estimated_cost': budget,
-                'explanation': "### RigMaster Heuristic Recommendation\nLive AI nodes are currently under heavy load. I've generated this balanced build using our local compatibility matrix based on your budget and usage requirements.",
-                'provider': 'RigMaster Local'
-            }
+        # --- Tier 3 guarantee: any slot still missing → pick by budget allocation ---
+        for slot_key, _, _ in COMPONENT_SLOTS:
+            if slot_key not in raw_build and allowed_items.get(slot_key):
+                target = budget * alloc_pcts.get(slot_key, 0.05)
+                best = min(allowed_items[slot_key],
+                           key=lambda x: abs(x.get('_usd_price', 0) - target))
+                raw_build[slot_key] = str(best['_id'])
 
-        # Helper Wrappers (Global)
-        clean_name = clean_comp_name 
-        est_price = get_estimated_price
-
-        # POST-PROCESSING: Normalize and Resolve IDs to Full Objects for Frontend
+        # --- Post-process: resolve every slot to a real DB document ---
         final_build = {}
-        target_keys = ['CPU', 'GPU', 'Motherboard', 'RAM', 'Storage', 'PSU', 'Case', 'Cooler', 'Monitor', 'OS', 'Peripherals', 'Fans']
-        col_map = {
-            'CPU': 'cpus', 'GPU': 'gpus', 'Motherboard': 'motherboards',
-            'RAM': 'ram', 'Storage': 'storage', 'PSU': 'psu',
-            'Case': 'cases', 'Cooler': 'coolers', 'Monitor': 'monitors',
-            'OS': 'os', 'Peripherals': 'peripherals', 'Fans': 'fans'
-        }
-        
-        raw_build = result.get('build', {})
-        total_calculated_cost = 0
-        
-        for key in target_keys:
-            comp_data = None
-            possible_keys = [key, key.lower(), key.upper(), key.lower() + 's', key.upper() + 's', key.replace('CPU', 'processor').lower(), key.replace('GPU', 'graphics').lower()]
-            for pk in possible_keys:
-                if pk in raw_build:
-                    comp_data = raw_build[pk]
-                    break
-            
+        total_usd = 0.0
+
+        for slot_key, db_cat, _ in COMPONENT_SLOTS:
+            comp_data = raw_build.get(slot_key)
             if not comp_data:
                 continue
-            
-            best_name = "Unknown Component"
-            best_price = "---"
-            comp_id = None
-            
-            # Extract ID aggressively - prioritize finding the hex ID
-            if isinstance(comp_data, str):
-                # First try: extract any 24-char hex string
-                match = re.search(r'[0-9a-fA-F]{24}', comp_data)
-                if match: 
-                    comp_id = match.group(0)
-                    # Don't trust the AI string - use placeholder until DB lookup
-                    best_name = "Component"
-                else:
-                    # No ID found, use the string as name (fallback)
-                    best_name = comp_data
-            elif isinstance(comp_data, dict):
-                for k_id in ['id', 'ID', '_id', 'oid']:
-                    if k_id in comp_data:
-                        match = re.search(r'[0-9a-fA-F]{24}', str(comp_data[k_id]))
-                        if match: 
-                            comp_id = match.group(0)
-                            break
-                # Only use dict name if no ID was found
-                if not comp_id:
-                    best_name = comp_data.get('name') or comp_data.get('label') or best_name
-                best_price = comp_data.get('price') or comp_data.get('estimated_price') or best_price
-            
-            # Database lookup - ALWAYS prioritize DB name over AI string
-            if comp_id:
-                try:
-                    from bson.objectid import ObjectId
-                    col = col_map[key]
-                    db_comp = db[col].find_one({'_id': ObjectId(comp_id)})
-                    if db_comp:
-                        # CRITICAL: Always use database name, never trust AI string
-                        best_name = db_comp.get('name', 'Unknown Component')
-                        price_val = db_comp.get('price') or db_comp.get('estimated_price')
-                        if price_val and str(price_val) != '---' and price_val != 0:
-                            best_price = price_val
-                except: pass
-            
-            # Only clean the name if we didn't get it from database
-            # (Database names are already clean)
-            if best_name == "Component" or best_name == "Unknown Component":
-                # Name came from AI or fallback, needs cleaning
-                best_name = clean_comp_name(best_name) if best_name != "Component" else "Unknown Component"
-            
-            # Ensure price is valid (v9 improvement)
-            price_raw = str(best_price).replace('$', '').replace(',', '').strip()
-            use_heuristic = False
-            if price_raw == "---" or not price_raw:
-                use_heuristic = True
-            else:
-                try:
-                    p_num = float(price_raw)
-                    if p_num <= 0: use_heuristic = True
-                except: use_heuristic = True
-            
-            if use_heuristic:
-                best_price = est_price(best_name, col_map[key])
 
-            final_build[key] = {
-                'id': comp_id or "",
-                'name': best_name,
-                'estimated_price': str(best_price).replace('$', '').strip()
+            comp_doc = None
+
+            # Step A: ObjectId lookup in unified components collection
+            id_match = re.search(r'[0-9a-fA-F]{24}', str(comp_data))
+            if id_match:
+                try:
+                    comp_doc = db.components.find_one({'_id': ObjectId(id_match.group(0))})
+                except Exception:
+                    pass
+
+            # Step B: name search in pre-built allowed pool
+            if not comp_doc and allowed_items.get(slot_key):
+                val_up = str(comp_data).upper()
+                for item in allowed_items[slot_key]:
+                    item_name = str(item.get('name', '')).upper()
+                    if item_name and (val_up in item_name or item_name in val_up):
+                        comp_doc = item
+                        break
+
+            # Step C: name search across entire category in db.components
+            if not comp_doc:
+                name_str = str(comp_data)
+                if len(name_str) > 3:
+                    try:
+                        comp_doc = db.components.find_one(
+                            {'category': db_cat, 'name': {'$regex': re.escape(name_str[:20]), '$options': 'i'}}
+                        )
+                    except Exception:
+                        pass
+
+            # Step D (ultimate fallback): pick best from allowed_items by budget allocation
+            if not comp_doc and allowed_items.get(slot_key):
+                target = budget * alloc_pcts.get(slot_key, 0.05)
+                comp_doc = min(allowed_items[slot_key],
+                               key=lambda x: abs(x.get('_usd_price', 0) - target))
+
+            if not comp_doc:
+                # Absolute last fallback — find ANY item in this category so we don't return null
+                comp_doc = db.components.find_one({'category': db_cat})
+                if not comp_doc:
+                    continue  # truly nothing in DB for this category — skip
+
+            comp_id = str(comp_doc['_id'])
+            comp_name = comp_doc.get('name', 'Unknown Component')
+            price_usd = comp_doc.get('_usd_price') or get_comp_price_usd(comp_doc)
+
+            final_build[slot_key] = {
+                'id': comp_id,
+                'name': comp_name,
+                'estimated_price': round(price_usd, 2)
             }
-            
-            try:
-                p_val = str(final_build[key]['estimated_price']).replace(',', '').strip()
-                total_calculated_cost += float(p_val)
-            except: pass
-        
-        result['build'] = final_build
-        if total_calculated_cost > 0:
-            result['total_estimated_cost'] = round(total_calculated_cost, 2)
+            total_usd += price_usd
 
-        # FINAL BUDGET SANITY CHECK: If AI totally overshot (>10% over), 
-        # warn specifically and provide a note. If over 30%, it's a failure.
-        if result.get('provider') == 'RigMaster Engine' and total_calculated_cost > (budget * 1.10):
-            app.logger.warning(f"AI Overshot budget ($ {total_calculated_cost} vs $ {budget}).")
-            result['explanation'] = "⚠️ **Budget Warning:** Our calculation nodes indicate this specific configuration ($ {total_calculated_cost}) slightly exceeds your target budget ($ {budget}). " + result.get('explanation', '')
-            
-            if total_calculated_cost > (budget * 1.30):
-                result['explanation'] = "⚠️ **Crucial Note:** This AI recommendation is significantly over your budget. We recommend adjusting individual parts or lowering the hardware tier for a more balanced total." + result.get('explanation', '')
+        ai_reasoning = (recommendation or {}).get('reasoning', '').strip()
+        if ai_reasoning:
+            explanation = ai_reasoning
+        else:
+            explanation = (
+                f"### RigMaster Smart Build — {usage}\n\n"
+                f"AI inference nodes are currently unavailable. This complete build was assembled "
+                f"**directly from your database** by allocating your **${int(budget):,} budget** proportionally "
+                f"across all 16 component categories and selecting the best-matched real component for each slot.\n\n"
+                f"Every component listed is a real item from your MongoDB components collection."
+            )
 
-        # Save to Cache
+        provider_label = 'ai assistant' if recommendation else 'RigMaster DB Selection'
+        result = {
+            'build': final_build,
+            'total_estimated_cost': round(total_usd, 2),
+            'explanation': explanation,
+            'provider': provider_label
+        }
+
+        # Save to cache
         try:
             db.ai_cache.update_one(
                 {'cache_key': cache_key},
                 {'$set': {
                     'cache_key': cache_key,
-                    'build': result.get('build'),
-                    'total_estimated_cost': result.get('total_estimated_cost'),
-                    'explanation': result.get('explanation'),
+                    'build': result['build'],
+                    'total_estimated_cost': result['total_estimated_cost'],
+                    'explanation': result['explanation'],
                     'created_at': datetime.now(timezone.utc)
                 }},
                 upsert=True
             )
-        except: pass
+        except Exception:
+            pass
 
-        user_currency = session.get('currency', 'USD')
-        rate = EXCHANGE_RATES.get(user_currency, 1.0)
         symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
-
         return jsonify({
             'status': 'success',
-            'build': result.get('build'),
-            'total_estimated_cost': result.get('total_estimated_cost'),
-            'explanation': result.get('explanation'),
-            'provider': result.get('provider'),
+            'build': result['build'],
+            'total_estimated_cost': result['total_estimated_cost'],
+            'explanation': result['explanation'],
+            'provider': result['provider'],
             'cached': False,
             'currency': user_currency,
             'currency_symbol': symbol,
@@ -2853,68 +2994,84 @@ def api_ai_recommend():
         })
 
     except Exception as e:
-        app.logger.error(f"Recommendation error: {e}")
+        app.logger.error(f"Recommendation error: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'Failed to generate recommendation. Please try again.'}), 500
 
 @app.route('/ai-assistant', methods=['POST'])
 @login_required
 def ai_assistant():
+    """Unified RigMaster Nexus AI Assistant endpoint — gives database-backed help."""
     try:
         data = request.json
         user_message = data.get('message')
-        # Current selection context
         context_ids = data.get('context', {})
-        budget = data.get('budget', 'Not specified')
-        usage = data.get('usage', 'Not specified')
-
+        
         if not user_message:
             return jsonify({'status': 'error', 'message': 'Message is required'}), 400
 
-        # Resolve component IDs to names for AI context
+        # Resolve component IDs to names for AI context (using unified components collection)
+        # Supports all 16 slots plus any other build context
         resolved_context = {}
-        col_map = {
-            'cpu_id': 'cpus', 'gpu_id': 'gpus', 'motherboard_id': 'motherboards',
-            'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu'
-        }
-        
         for key, comp_id in context_ids.items():
-            if comp_id and db is not None:
-                col_name = col_map.get(key)
-                if col_name:
-                    try:
-                        comp = db[col_name].find_one({'_id': ObjectId(comp_id)})
-                        if comp:
-                            resolved_context[key.replace('_id', '').upper()] = comp.get('name')
-                    except:
-                        pass
+            if comp_id and len(str(comp_id)) == 24:
+                try:
+                    comp = db.components.find_one({'_id': ObjectId(comp_id)})
+                    if comp:
+                        label = key.replace('_id', '').replace('-', ' ').replace('_', ' ').upper()
+                        resolved_context[label] = comp.get('name')
+                except:
+                    pass
+
+        # --- DATABASE HARDWARE CONTEXT (Comprehensive Sample) ---
+        db_context_list = []
+        try:
+            # Sample across top-selling categories to give AI a broad overview of inventory
+            # We take 2-3 top items per slot to prevent prompt overload while covering all 16
+            CORE_CATS = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler']
+            EXTRA_CATS = ['monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals']
+            
+            for cat in CORE_CATS + EXTRA_CATS:
+                items = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                           .sort('price', -1).limit(2))
+                for it in items:
+                    p = it.get('price') or it.get('msrp') or 0
+                    db_context_list.append(f"{cat.upper()}: {it.get('name')} (${p})")
+        except Exception as e:
+            app.logger.warning(f"Failed to fetch assistant DB context: {e}")
 
         # Construct system prompt
         system_role = (
-            "You are the RigMaster AI Assistant, an expert in computer hardware and PC building. "
-            "Help the user with their build questions, explain component choices, compatibility, and upgrades. "
-            "Be clear, educational, and helpful. Do not force decisions. Do not hallucinate hardware. "
-            "Current selection context: " + (", ".join([f"{k}: {v}" for k, v in resolved_context.items()]) if resolved_context else "No components selected yet.")
+            "You are ai assistant, the ultimate AI assistant for PC enthusiasts. "
+            "You provide technical guidance on all 16 components of a PC ecosystem, "
+            "including core hardware, peripherals, and software.\n\n"
+            "INVENTORY SAMPLE (Current high-end items in our database):\n"
+            + ("\n".join(db_context_list) if db_context_list else "Database temporarily offline.") + 
+            "\n\nUSER'S CURRENT BUILD CONTEXT:\n" + 
+            ("\n".join([f"- {k}: {v}" for k, v in resolved_context.items()]) if resolved_context else "No specific components selected yet.") +
+            "\n\nRULES:\n"
+            "1. Ground your advice in the hardware listed above.\n"
+            "2. If asked for recommendations, consider the user's existing choices.\n"
+            "3. Use Markdown. Be technical, helpful, and concise."
         )
 
-        # AI API configuration
-        # Use unified AI Engine for chat
         ai_engine = get_ai_engine()
-        
         ai_response = ai_engine.generate_chat_response(system_role, user_message)
-        provider_used = 'RigMaster AI Assistant'
 
         if not ai_response:
-             return jsonify({'status': 'error', 'message': 'AI services are currently overloaded. Please try again in a few minutes.'}), 503
+             # Heuristic simple fallback for basic chat
+             if "hello" in user_message.lower():
+                 ai_response = "Greetings. I am ai assistant. How can I assist you with your PC hardware needs today?"
+             else:
+                 return jsonify({'status': 'error', 'message': 'AI nodes are currently offline. Please try again shortly.'}), 503
 
         return jsonify({
             'status': 'success',
             'response': ai_response,
-            'provider': provider_used
+            'provider': 'RigMaster Nexus AI'
         })
-
     except Exception as e:
-        app.logger.error(f"AI Assistant endpoint error: {e}")
-        return jsonify({'status': 'error', 'message': 'AI assistant temporarily unavailable'}), 500
+        app.logger.error(f"AI Assistant Error: {e}")
+        return jsonify({'status': 'error', 'message': 'Assistant unavailable'}), 500
 
 @app.route('/api/compare-builds', methods=['POST'])
 @login_required
@@ -3013,186 +3170,10 @@ def compare_builds():
 # ============================================================
 # RIGMASTER NEXUS - UNIFIED AI ASSISTANT ENDPOINT
 # ============================================================
-@app.route('/ai-assistant', methods=['POST'])
-@login_required
-def ai_assistant_chat():
-    try:
-        data = request.json
-        message = data.get('message')
-        provider = data.get('provider', 'Groq')
-        context = data.get('context', {})
-        
-        # Construct Contextual Prompt
-        system_instruction = "You are RigMaster Nexus, an elite PC building expert. "
-        if context:
-            system_instruction += f"The user is currently viewing: {context}. "
-        system_instruction += "Provide concise, accurate technical advice. Formatting: Use Markdown."
+# AI Assistant chat route consolidated above
 
-        response_text = "I am currently calibrating. Please try again."
+# AI Assistant chat logic consolidated in the primary ai_assistant() route above.
 
-        # ---------------------------------------------------------
-        # PROVIDER HANDLERS
-        # ---------------------------------------------------------
-        if provider == 'Groq':
-            api_key = os.getenv('GROQ_API_KEY')
-            if not api_key: raise Exception("Groq configuration missing")
-            
-            payload = {
-                "messages": [
-                    {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": message}
-                ],
-                "model": "llama3-8b-8192",
-                "temperature": 0.6
-            }
-            resp = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {api_key}"}
-            )
-            if resp.status_code != 200: 
-                app.logger.error(f"Groq API Error: {resp.text}")
-                return jsonify({'status': 'error', 'message': "Groq Overloaded"}), 503
-            response_text = resp.json()['choices'][0]['message']['content']
-
-        elif provider == 'Gemini':
-            api_key = os.getenv('GEMINI_API_KEY')
-            if not api_key: raise Exception("Gemini configuration missing")
-            
-            # Gemini REST API (Simplified)
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-            payload = {
-                "contents": [{
-                    "parts": [{"text": f"{system_instruction}\n\nUser: {message}"}]
-                }]
-            }
-            resp = requests.post(url, json=payload)
-            if resp.status_code != 200: return jsonify({'status': 'error', 'message': "Gemini Busy"}), 503
-            response_text = resp.json()['candidates'][0]['content']['parts'][0]['text']
-
-        elif provider == 'DeepSeek':
-            api_key = os.getenv('DEEPSEEK_API_KEY')
-            if not api_key: raise Exception("DeepSeek configuration missing")
-            
-            resp = requests.post(
-                "https://api.deepseek.com/chat/completions",
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": system_instruction},
-                        {"role": "user", "content": message}
-                    ]
-                },
-                headers={"Authorization": f"Bearer {api_key}"}
-            )
-            if resp.status_code != 200: return jsonify({'status': 'error', 'message': "DeepSeek Busy"}), 503
-            response_text = resp.json()['choices'][0]['message']['content']
-
-        elif provider == 'Mistral':
-            api_key = os.getenv('MISTRAL_API_KEY')
-            if not api_key: raise Exception("Mistral configuration missing")
-            
-            resp = requests.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                json={
-                    "model": "mistral-small-latest",
-                    "messages": [
-                        {"role": "system", "content": system_instruction},
-                        {"role": "user", "content": message}
-                    ]
-                },
-                headers={"Authorization": f"Bearer {api_key}"}
-            )
-            if resp.status_code != 200: return jsonify({'status': 'error', 'message': "Mistral Busy"}), 503
-            response_text = resp.json()['choices'][0]['message']['content']
-
-        elif provider == 'HuggingFace':
-            api_key = os.getenv('HUGGINGFACE_API_KEY')
-            headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-            
-            # Reliable Free Tier Strategy: Cycle through high-availability models
-            models = [
-                "HuggingFaceH4/zephyr-7b-beta",
-                "microsoft/Phi-3-mini-4k-instruct",
-                "google/gemma-1.1-7b-it"
-            ]
-            
-            last_error = "No models available"
-            response_text = None
-            
-            for model in models:
-                try:
-                    # Adjust prompt based on model family (simplified for broad compatibility)
-                    if "zephyr" in model:
-                        prompt = f"<|system|>\n{system_instruction}</s>\n<|user|>\n{message}</s>\n<|assistant|>"
-                    elif "Phi" in model:
-                        prompt = f"<|user|>\n{system_instruction}\n\n{message}<|end|>\n<|assistant|>"
-                    else: # Gemma / General
-                        prompt = f"<start_of_turn>user\n{system_instruction}\n\n{message}<end_of_turn>\n<start_of_turn>model\n"
-                    
-                    # API endpoint updated to new router URL
-                    api_url = f"https://router.huggingface.co/models/{model}"
-                    payload = {
-                        "inputs": prompt,
-                        "parameters": {
-                            "max_new_tokens": 512, 
-                            "temperature": 0.7, 
-                            "return_full_text": False
-                        }
-                    }
-                    
-                    # app.logger.info(f"Attempting HF Model: {model}")
-                    resp = requests.post(api_url, headers=headers, json=payload, timeout=25)
-                    
-                    if resp.status_code == 200:
-                        result = resp.json()
-                        if isinstance(result, list) and 'generated_text' in result[0]:
-                            response_text = result[0]['generated_text'].strip()
-                            # Clean up if model leaked prompt
-                            if "<|assistant|>" in response_text: response_text = response_text.split("<|assistant|>")[-1].strip()
-                            break # Success!
-                    
-                    elif resp.status_code == 503:
-                        last_error = f"{model} is loading (503)"
-                        continue # Try next
-                    else:
-                        last_error = f"{model} error {resp.status_code}"
-                        
-                except Exception as e:
-                    last_error = f"{model} failed: {str(e)}"
-                    continue
-
-            if response_text:
-                # Success
-                pass # Already set
-            else:
-                 return jsonify({'status': 'error', 'message': f"HF All Busy: {last_error}"}), 503
-
-        elif provider == 'Ollama':
-            # Assumes Ollama is running on the SERVER (localhost:11434)
-            try:
-                resp = requests.post(
-                    "http://localhost:11434/api/generate",
-                    json={
-                        "model": "llama3",
-                        "prompt": f"{system_instruction}\n\nUser: {message}",
-                        "stream": False
-                    },
-                    timeout=5
-                )
-                if resp.status_code != 200: raise Exception("Ollama Error")
-                response_text = resp.json()['response']
-            except:
-                return jsonify({'status': 'error', 'message': "Local AI Offline"}), 503
-            
-        else:
-            return jsonify({'status': 'error', 'message': "Unknown Provider"}), 400
-
-        return jsonify({'status': 'success', 'response': response_text})
-
-    except Exception as e:
-        app.logger.error(f"Nexus AI Error ({provider}): {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # ============================================================
 # AI ASSISTANT ANALYSIS (DeepSeek-R1)
@@ -3796,11 +3777,10 @@ def export_build(build_id):
         col_map = {
             'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard',
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-            'case_id': 'case', 'cooler_id': 'cooler',
-            'monitor_id': 'monitor', 'os_id': 'os',
-            'peripherals_id': 'peripherals', 'fans_id': 'fans',
-            'keyboard_id': 'peripherals', 'mouse_id': 'peripherals',
-            'headset_id': 'peripherals', 'webcam_id': 'peripherals'
+            'case_id': 'case', 'cooler_id': 'cooler', 'monitor_id': 'monitor',
+            'os_id': 'os', 'fans_id': 'fans', 'keyboard_id': 'keyboard',
+            'mouse_id': 'mouse', 'headset_id': 'headset', 'webcam_id': 'webcam',
+            'peripherals_id': 'peripherals'
         }
         
         components = {}
@@ -5727,38 +5707,7 @@ def profile():
 
 
 
-@app.route('/ai-assistant', methods=['POST'])
-@login_required
-def rigmaster_chat_endpoint():
-    """Endpoint for AI Assistant (Smart AI)"""
-    try:
-        data = request.json
-        user_message = data.get('message')
-        context = data.get('context', {})
-        
-        if not user_message:
-            return jsonify({'status': 'error', 'message': 'No message provided'}), 400
-            
-        system_role = (
-            "You are RigMaster Nexus, an advanced AI assistant for PC building. "
-            "Help the user with complex hardware questions, compatibility, troubleshooting, and advice. "
-            "Be concise, use Markdown. If asked for recommendations, ask about budget/use-case first."
-        )
-        
-        if context:
-            system_role += f"\n\nContext: {json.dumps(context)}"
-            
-        ai_engine = get_ai_engine() 
-        response_text = ai_engine.generate_chat_response(system_role, user_message)
-        
-        if response_text:
-            return jsonify({'status': 'success', 'response': response_text})
-        else:
-            return jsonify({'status': 'error', 'message': 'AI failed to respond'}), 500
-            
-    except Exception as e:
-        app.logger.error(f"AI Assistant Error: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+# Chatbot consolidated above
 
 
 if __name__ == '__main__':

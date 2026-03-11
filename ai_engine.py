@@ -126,9 +126,9 @@ class AIEngine:
                 logger.warning(f"Provider {provider} failed: {e}")
                 continue
         
-        # All providers failed - return heuristic fallback
-        logger.warning("All AI providers failed, using heuristic fallback")
-        return self._heuristic_fallback(budget, use_case)
+        # All AI providers failed — return None so the caller uses real DB data instead
+        logger.warning("All AI providers failed. Returning None so app.py selects from DB pool.")
+        return None
     
     def analyze_compatibility(
         self, 
@@ -597,7 +597,8 @@ Return ONLY valid JSON with this structure:
             return None
             
         # Using a popular open-source model available on the free tier
-        model = "mistralai/Mistral-7B-Instruct-v0.2"
+        # Mistral-7B-v0.3 is more widely supported on modern inference providers
+        model = "mistralai/Mistral-7B-Instruct-v0.3"
         
         try:
             client = InferenceClient(token=self.hf_key)
@@ -625,18 +626,18 @@ Return ONLY valid JSON with this structure:
     
     def _build_system_prompt(self) -> str:
         """Build system prompt for PC recommendation."""
-        return """You are an expert PC hardware architect. Your goal is to design a high-performance build within the user's budget using ONLY the provided hardware list.
+        return """You are an expert PC hardware architect. Your goal is to design a complete, high-performance build within the user's budget using ONLY the provided hardware list.
 
 Return ONLY a valid JSON object. No conversational text.
 
 CRITICAL RULES:
-1. BUDGET LOCK: The 'estimated_total' MUST NOT exceed the target budget. It should be between 95% and 100% of the budget.
-2. SACRIFICE PERFORMANCE FOR BUDGET: If you cannot hit the budget target with high-tier parts, you MUST drop to a lower-tier part (e.g. drop from i9 to i7, or 4080 to 4070).
-3. PRICE MATH: Every item in your JSON must include the price from the pool. Sum them exactly.
-4. SELECTION: Use components from the 'Available Components' list provided. Ensure they are compatible.
-5. FORMAT: Strict JSON only.
+1. BUDGET LOCK: The 'estimated_total' MUST NOT exceed the target budget.
+2. COMPLETE BUILD: You MUST select ALL 16 component slots listed below. Every slot must have a value from the provided pool.
+3. IDs REQUIRED: Always use the format "ID:<24-char-hex>|Component Name" from the pool.
+4. SELECTION: Use ONLY components from the 'Available Components' list. Ensure compatibility.
+5. FORMAT: Strict JSON only. No markdown, no code blocks.
 
-JSON STRUCTURE:
+JSON STRUCTURE (all 16 fields required):
 {
     "cpu": "ID:69...|Component Name",
     "gpu": "ID:69...|Component Name",
@@ -646,12 +647,21 @@ JSON STRUCTURE:
     "psu": "ID:69...|Component Name",
     "case": "ID:69...|Component Name",
     "cooler": "ID:69...|Component Name",
+    "monitor": "ID:69...|Component Name",
+    "os": "ID:69...|Component Name",
+    "fans": "ID:69...|Component Name",
+    "keyboard": "ID:69...|Component Name",
+    "mouse": "ID:69...|Component Name",
+    "headset": "ID:69...|Component Name",
+    "webcam": "ID:69...|Component Name",
+    "peripherals": "ID:69...|Component Name",
     "estimated_total": 1500,
-    "reasoning": "Markdown explanation of why these parts were chosen for this specific budget (emphasize why high-tier parts were selected to hit the budget).",
+    "reasoning": "Markdown explanation of choices and budget allocation.",
     "performance_notes": "Expected FPS/Benchmarks"
 }
 
-Ensure all components (including Case and Cooler) are selected to create a complete, ready-to-build system."""
+Select ALL slots. Allocate budget proportionally across all 16 components."""
+
     
     def _build_recommendation_prompt(
         self, 
@@ -682,113 +692,70 @@ Use Case: {use_case}"""
     def _parse_recommendation_response(self, response: str) -> Optional[Dict]:
         """Parse and validate AI recommendation response."""
         try:
-            data = json.loads(response)
-            
-            # Validate required fields
-            required_fields = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu']
-            for field in required_fields:
-                if field not in data:
-                    logger.warning(f"Missing required field: {field}")
-                    return None
-            
+            # Strip markdown code fences if the model wrapped JSON in ```
+            clean = response.strip()
+            if clean.startswith('```'):
+                lines = clean.split('\n')
+                lines = [l for l in lines if not l.strip().startswith('```')]
+                clean = '\n'.join(lines).strip()
+
+            data = json.loads(clean)
+
+            # Accept any response that has at least one recognised component key
+            component_keys = [
+                'cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu',
+                'case', 'cooler', 'monitor', 'os', 'fans',
+                'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'
+            ]
+            found = [k for k in component_keys if k in data]
+            if not found:
+                logger.warning("AI response has no recognisable component keys")
+                return None
+
             return data
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse AI response as JSON: {e}")
+            logger.error(f"Failed to parse AI response as JSON: {e}\nRaw: {response[:300]}")
             return None
     
-    def _heuristic_fallback(self, budget: str, use_case: str) -> Dict[str, Any]:
-        """Heuristic fallback when all AI providers fail."""
-        # Extract numeric budget
-        import re
-        budget_match = re.search(r'(\d+)', budget.replace(',', ''))
-        budget_num = int(budget_match.group(1)) if budget_match else 1000
-        
-        # Simple rule-based recommendation
-        use_case_lower = use_case.lower()
-        
-        if 'gaming' in use_case_lower or 'stream' in use_case_lower:
-            if budget_num >= 2000:
-                tier = 'high_end_gaming'
-            elif budget_num >= 1200:
-                tier = 'mid_gaming'
-            else:
-                tier = 'budget_gaming'
-        elif 'workstation' in use_case_lower or 'editing' in use_case_lower:
-            tier = 'workstation'
-        else:
-            tier = 'general'
-        
-        recommendations = {
-            'high_end_gaming': {
-                'cpu': 'AMD Ryzen 7 7800X3D or Intel Core i7-14700K',
-                'gpu': 'NVIDIA RTX 4080 or AMD RX 7900 XTX',
-                'motherboard': 'B650 or Z790 ATX',
-                'ram': '32GB DDR5-6000',
-                'storage': '2TB NVMe Gen4 SSD',
-                'psu': '850W 80+ Gold',
-                'case': 'Mid-Tower with good airflow',
-                'cooler': '280mm AIO or high-end air cooler',
-                'estimated_total': '$2000-2500',
-                'reasoning': 'High-end gaming build for 1440p/4K gaming',
-                'performance_notes': '144+ FPS at 1440p, 60+ FPS at 4K in AAA games'
-            },
-            'mid_gaming': {
-                'cpu': 'AMD Ryzen 5 7600X or Intel Core i5-13600K',
-                'gpu': 'NVIDIA RTX 4070 or AMD RX 7800 XT',
-                'motherboard': 'B650 or B760 ATX',
-                'ram': '16GB DDR5-5600 or 32GB DDR4-3200',
-                'storage': '1TB NVMe Gen4 SSD',
-                'psu': '650W 80+ Gold',
-                'case': 'Mid-Tower ATX',
-                'cooler': 'Tower air cooler or 240mm AIO',
-                'estimated_total': '$1200-1500',
-                'reasoning': 'Balanced gaming build for 1080p/1440p',
-                'performance_notes': '100+ FPS at 1080p, 60+ FPS at 1440p in most games'
-            },
-            'budget_gaming': {
-                'cpu': 'AMD Ryzen 5 5600 or Intel Core i3-12100F',
-                'gpu': 'NVIDIA RTX 4060 or AMD RX 7600',
-                'motherboard': 'B550 or B660 mATX',
-                'ram': '16GB DDR4-3200',
-                'storage': '500GB NVMe SSD',
-                'psu': '550W 80+ Bronze',
-                'case': 'Budget Mid-Tower',
-                'cooler': 'Stock or budget tower cooler',
-                'estimated_total': '$700-900',
-                'reasoning': 'Budget-friendly 1080p gaming build',
-                'performance_notes': '60+ FPS at 1080p in most games'
-            },
-            'workstation': {
-                'cpu': 'AMD Ryzen 9 7950X or Intel Core i9-14900K',
-                'gpu': 'NVIDIA RTX 4070 or AMD RX 7800 XT',
-                'motherboard': 'X670 or Z790 ATX',
-                'ram': '64GB DDR5-5600',
-                'storage': '2TB NVMe Gen4 SSD',
-                'psu': '850W 80+ Gold',
-                'case': 'Full-Tower with excellent airflow',
-                'cooler': '360mm AIO',
-                'estimated_total': '$2500-3000',
-                'reasoning': 'Professional workstation for content creation',
-                'performance_notes': 'Excellent for video editing, 3D rendering, and multitasking'
-            },
-            'general': {
-                'cpu': 'AMD Ryzen 5 5600 or Intel Core i5-12400',
-                'gpu': 'Integrated or GTX 1650',
-                'motherboard': 'B550 or B660 mATX',
-                'ram': '16GB DDR4-3200',
-                'storage': '512GB NVMe SSD',
-                'psu': '500W 80+ Bronze',
-                'case': 'Compact mATX case',
-                'cooler': 'Stock cooler',
-                'estimated_total': '$600-800',
-                'reasoning': 'General purpose PC for productivity and light gaming',
-                'performance_notes': 'Suitable for office work, web browsing, and casual gaming'
-            }
+        base_rec = {
+            'cpu': 'AMD Ryzen 5 5600' if budget_num < 1000 else 'AMD Ryzen 7 7800X3D',
+            'gpu': 'NVIDIA RTX 4060' if budget_num < 1000 else 'NVIDIA RTX 4080',
+            'motherboard': 'B550 ATX' if budget_num < 1000 else 'X670 ATX',
+            'ram': '16GB DDR4-3200' if budget_num < 1000 else '32GB DDR5-6000',
+            'storage': '1TB NVMe SSD',
+            'psu': '650W 80+ Bronze' if budget_num < 1000 else '850W 80+ Gold',
+            'case': 'Mid-Tower ATX Case',
+            'cooler': 'Stock Cooler' if budget_num < 1000 else '360mm AIO Liquid Cooler',
+            'monitor': '24" 1080p 144Hz Monitor',
+            'os': 'Windows 11 Home',
+            'fans': '3x 120mm Case Fans',
+            'keyboard': 'Mechanical Gaming Keyboard',
+            'mouse': 'Optical Gaming Mouse',
+            'headset': 'Gaming Headset with Mic',
+            'webcam': '1080p HD Webcam',
+            'peripherals': 'Misc Cable Management Kit',
+            'estimated_total': f"${budget_num}",
+            'reasoning': f"Heuristic selection for {use_case} build.",
+            'performance_notes': "Solid performance for target use case."
         }
         
-        result = recommendations.get(tier, recommendations['general'])
-        result['fallback'] = True
+        # Customize based on tier
+        if tier == 'high_end_gaming':
+            base_rec.update({
+                'cpu': 'AMD Ryzen 7 7800X3D',
+                'gpu': 'NVIDIA RTX 4080 Super',
+                'storage': '2TB NVMe Gen4 SSD',
+                'monitor': '27" 1440p 240Hz Gaming Monitor'
+            })
+        elif tier == 'budget_gaming':
+            base_rec.update({
+                'cpu': 'Intel Core i3-12100F',
+                'gpu': 'NVIDIA RTX 3060 12GB',
+                'monitor': '24" 1080p 75Hz Monitor'
+            })
         
+        result = base_rec
+        result['fallback'] = True
         return result
     
     def _heuristic_performance_fallback(self, gpu_name: str) -> Dict[str, Any]:

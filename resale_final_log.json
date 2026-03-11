@@ -1,54 +1,54 @@
 {
-  "total_system_value": "\u20b968,890",
-  "market_advice": "The system has a mix of older and newer components. The AMD A10-7800 CPU and Asus ENGTX570 GPU are outdated, but the ASRock B550 motherboard and ADATA XPG Lancer Blade RGB RAM are relatively modern. Consider upgrading the CPU and GPU for better performance. The system's value is mostly driven by the newer components.",
+  "total_system_value": "\u20b935,690",
+  "market_advice": "The system is relatively outdated, but the components are still active and can be sold for a decent price. It's recommended to sell the components separately to maximize the resale value. The AMD 5350 CPU and ASRock B450M-HDV R4.0 motherboard are the most valuable components, while the ADATA ISSS333-002TD storage and ADATA XPG Core Reactor II PSU are less valuable due to their age and limited capacity.",
   "components": [
     {
       "category": "CPU",
-      "name": "AMD A10-7800",
-      "status": "Active",
-      "estimated_resale": "\u20b94,150"
-    },
-    {
-      "category": "GPU",
-      "name": "Asus ENGTX570 DCII/2DIS/1280MD5",
-      "status": "Active",
-      "estimated_resale": "\u20b95,810"
-    },
-    {
-      "category": "MOTHERBOARD",
-      "name": "ASRock B550 Phantom Gaming 4/ac",
+      "name": "AMD 5350",
       "status": "Active",
       "estimated_resale": "\u20b99,960"
     },
     {
-      "category": "RAM",
-      "name": "ADATA XPG Lancer Blade RGB 16 GB",
-      "status": "Active",
-      "estimated_resale": "\u20b94,980"
-    },
-    {
-      "category": "STORAGE",
-      "name": "HP 718171-B21",
+      "category": "GPU",
+      "name": "AMD 100-300000082",
       "status": "Active",
       "estimated_resale": "\u20b96,640"
     },
     {
+      "category": "MOTHERBOARD",
+      "name": "ASRock B450M-HDV R4.0",
+      "status": "Active",
+      "estimated_resale": "\u20b98,300"
+    },
+    {
+      "category": "RAM",
+      "name": "Corsair CMSO8GX3M1C1600C11 8 GB",
+      "status": "Active",
+      "estimated_resale": "\u20b91,660"
+    },
+    {
+      "category": "STORAGE",
+      "name": "ADATA ISSS333-002TD",
+      "status": "Active",
+      "estimated_resale": "\u20b91,245"
+    },
+    {
       "category": "PSU",
-      "name": "ADATA XPG KYBER",
+      "name": "ADATA XPG Core Reactor II",
+      "status": "Active",
+      "estimated_resale": "\u20b92,490"
+    },
+    {
+      "category": "CASE",
+      "name": "Antec C8 Curve Wood",
       "status": "Active",
       "estimated_resale": "\u20b93,320"
     },
     {
-      "category": "CASE",
-      "name": "ADATA XPG INVADER X",
-      "status": "Active",
-      "estimated_resale": "\u20b94,150"
-    },
-    {
       "category": "COOLER",
-      "name": "ARCTIC Alpine 11 GT Rev. 2",
+      "name": "ABKONCORE CT408",
       "status": "Active",
-      "estimated_resale": "\u20b91,660"
+      "estimated_resale": "\u20b92,075"
     }
   ],
   "provider": "RigMaster AI"

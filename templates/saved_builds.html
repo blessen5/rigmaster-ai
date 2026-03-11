@@ -104,10 +104,7 @@
             border-radius: 8px;
         }
 
-        .visibility-toggle.is-public {
-            border-color: var(--accent-cyan) !important;
-            color: var(--accent-cyan) !important;
-        }
+
 
         @keyframes pulse-cyan {
             0% {
@@ -204,11 +201,6 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-secondary visibility-toggle {{ 'is-public' if build.is_public else '' }}"
-                            onclick="togglePublic('{{ build.id }}')" id="visibility-{{ build.id }}"
-                            style="padding: 0.5rem; font-size: 0.75rem;">
-                            {{ 'Public' if build.is_public else 'Private' }}
-                        </button>
                         <button class="btn btn-secondary" onclick="deleteBuild('{{ build.id }}')"
                             style="padding: 0.5rem; color: #f87171; border-color: rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.05);">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -633,21 +625,7 @@
         }
 
 
-        async function togglePublic(id) {
-            try {
-                const response = await fetch(`/api/toggle_public/${id}`, { method: 'POST' });
-                const data = await response.json();
-                if (data.status === 'success') {
-                    const btn = document.getElementById(`visibility-${id}`);
-                    btn.textContent = data.is_public ? 'Public' : 'Private';
-                    if (data.is_public) {
-                        btn.classList.add('is-public');
-                    } else {
-                        btn.classList.remove('is-public');
-                    }
-                }
-            } catch (e) { console.error(e); }
-        }
+
 
 
         function closeResaleModal() {
