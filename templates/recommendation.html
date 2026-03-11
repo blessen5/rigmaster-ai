@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Architect | RigMaster AI</title>
+    <title>AI Assistant | RigMaster AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -510,8 +510,7 @@
 
             <div id="setup-view">
                 <div class="config-header">
-                    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 0.5rem; font-family: 'Outfit';">AI
-                        Build Architect</h1>
+                    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 0.5rem; font-family: 'Outfit';">AI Recommendation</h1>
                     <p style="color: var(--text-muted); font-size: 1.1rem;">Professional hardware selection powered by
                         multi-provider AI.</p>
                 </div>
@@ -520,19 +519,44 @@
                     <!-- 1. Budget Section -->
                     <div class="input-group-wrapper" style="margin-bottom: 2.5rem;">
                         <label class="section-label">Budget Limit ({{ session.get('currency', 'USD') }})</label>
-                        <div class="budget-control-container">
-                            <div class="budget-input-wrapper">
-                                <span class="currency-symbol" id="input-currency-symbol">{% if session.get('currency')
-                                    == 'INR' %}₹{% elif session.get('currency') == 'GBP' %}£{% elif
-                                    session.get('currency') == 'EUR' %}€{% elif session.get('currency') == 'CAD' %}C${%
-                                    elif session.get('currency') == 'AUD' %}A${% else %}${% endif %}</span>
-                                <input type="number" id="budget-input" class="premium-input budget-input" value="1500"
-                                    min="400" max="10000" step="10" oninput="syncBudget(this.value, 'input')">
-                            </div>
-                            <div class="slider-wrapper" style="flex: 1;">
-                                <input type="range" id="budget-slider" min="400" max="6000" step="50" value="1500"
-                                    oninput="syncBudget(this.value, 'slider')">
-                            </div>
+                        <div class="budget-input-wrapper" style="width: 100%;">
+                            <span class="currency-symbol" id="input-currency-symbol">
+                                {%- set cur = session.get('currency', 'USD') -%}
+                                {%- if cur == 'INR' %}&#8377;
+                                {%- elif cur == 'GBP' %}&#163;
+                                {%- elif cur == 'EUR' %}&#8364;
+                                {%- elif cur == 'CAD' %}C$
+                                {%- elif cur == 'AUD' %}A$
+                                {%- elif cur == 'NZD' %}NZ$
+                                {%- elif cur == 'HKD' %}HK$
+                                {%- elif cur == 'SGD' %}S$
+                                {%- elif cur == 'TWD' %}NT$
+                                {%- elif cur == 'JPY' or cur == 'CNY' %}&#165;
+                                {%- elif cur == 'KRW' %}&#8361;
+                                {%- elif cur == 'TRY' %}&#8378;
+                                {%- elif cur == 'BRL' %}R$
+                                {%- elif cur == 'RUB' %}&#8381;
+                                {%- elif cur == 'ZAR' %}R
+                                {%- elif cur == 'SEK' or cur == 'NOK' or cur == 'DKK' %}kr
+                                {%- elif cur == 'PLN' %}z&#322;
+                                {%- elif cur == 'THB' %}&#3647;
+                                {%- elif cur == 'IDR' %}Rp
+                                {%- elif cur == 'HUF' %}Ft
+                                {%- elif cur == 'CZK' %}K&#269;
+                                {%- elif cur == 'ILS' %}&#8362;
+                                {%- elif cur == 'PHP' %}&#8369;
+                                {%- elif cur == 'AED' %}&#1583;.&#1573;
+                                {%- elif cur == 'MYR' %}RM
+                                {%- elif cur == 'VND' %}&#8363;
+                                {%- elif cur == 'NGN' %}&#8358;
+                                {%- elif cur == 'CHF' %}CHF
+                                {%- elif cur == 'MXN' %}MX$
+                                {%- else %}$
+                                {%- endif %}
+                            </span>
+                            <input type="number" id="budget-input" class="premium-input budget-input" value="1500"
+                                min="1" step="10" placeholder="Enter any amount"
+                                oninput="currentBudget = parseFloat(this.value) || 1500">
                         </div>
                     </div>
 
@@ -615,7 +639,7 @@
                             stroke-width="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
-                        Architect's Analysis
+                        AI Recommendation Analysis
                     </h4>
                     <div id="explanation-box" class="markdown-body">
                         <!-- AI Analysis -->
@@ -634,14 +658,7 @@
         let selectedPurpose = 'Gaming';
         let currentBudget = 1500;
 
-        function syncBudget(val, source) {
-            currentBudget = val;
-            if (source === 'input') {
-                document.getElementById('budget-slider').value = val;
-            } else {
-                document.getElementById('budget-input').value = val;
-            }
-        }
+
 
         function handlePurposeChange(val) {
             selectedPurpose = val;
@@ -672,7 +689,7 @@
                 { s: "Benchmarking", m: "Running virtual performance simulations..." },
                 { s: "Compatibility", m: "Verifying socket and chipset alignment..." },
                 { s: "Optimization", m: "Balancing budget for peak efficiency..." },
-                { s: "Finalizing", m: "Compiling architect's recommendation..." }
+                { s: "Finalizing", m: "Compiling assistant's recommendation..." }
             ];
 
             let phaseIdx = 0;
@@ -727,7 +744,15 @@
                 { k: 'Storage', l: 'Solid State Storage' },
                 { k: 'PSU', l: 'Power Delivery' },
                 { k: 'Case', l: 'Chassis' },
-                { k: 'Cooler', l: 'Thermal System' }
+                { k: 'Cooler', l: 'Thermal System' },
+                { k: 'Monitor', l: 'Display' },
+                { k: 'OS', l: 'Operating System' },
+                { k: 'Fans', l: 'Case Fans' },
+                { k: 'Keyboard', l: 'Keyboard' },
+                { k: 'Mouse', l: 'Mouse' },
+                { k: 'Headset', l: 'Headset' },
+                { k: 'Webcam', l: 'Webcam' },
+                { k: 'Peripherals', l: 'Other Peripherals' },
             ];
 
             const build = data.build || {};
@@ -736,10 +761,33 @@
             const rate = data.exchange_rate || 1.0;
             const currency = data.currency || 'USD';
 
-            const formatVal = (val) => {
-                const converted = val * rate;
-                if (currency === 'INR') return Math.round(converted).toLocaleString();
-                return converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // Currencies that display as whole numbers (no decimal places)
+            const ZERO_DECIMAL = new Set([
+                'JPY', 'KRW', 'IDR', 'VND', 'HUF', 'CLP', 'ISK',
+                'INR', 'TWD', 'NGN', 'PKR', 'BDT', 'MMK'
+            ]);
+
+            // Format a USD amount into the user's active currency
+            const formatVal = (usdAmount) => {
+                const converted = usdAmount * rate;
+                if (ZERO_DECIMAL.has(currency)) {
+                    return Math.round(converted).toLocaleString();
+                }
+                return converted.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            };
+
+            // Format a value that is already in the user's local currency (no rate conversion)
+            const formatLocal = (localAmount) => {
+                if (ZERO_DECIMAL.has(currency)) {
+                    return Math.round(localAmount).toLocaleString();
+                }
+                return parseFloat(localAmount).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
             };
 
             mapping.forEach(item => {
@@ -766,7 +814,8 @@
 
             const totalCost = data.total_estimated_cost || currentBudget;
             document.getElementById('final-total-display').innerText = `${symbol}${formatVal(totalCost)}`;
-            document.getElementById('summary-meta').innerText = `Architected for ${purpose} @ ${symbol}${formatVal(currentBudget)}`;
+            // currentBudget is already in the user's local currency — use formatLocal (no rate multiplication)
+            document.getElementById('summary-meta').innerText = `AI Recommendation for ${purpose} @ ${symbol}${formatLocal(currentBudget)}`;
 
             const explanation = data.explanation || "No tactical breakdown provided.";
             document.getElementById('explanation-box').innerHTML = marked.parse(explanation);
@@ -790,7 +839,15 @@
                         storage_id: build.Storage?.id || build.storage?.id,
                         psu_id: build.PSU?.id || build.psu?.id,
                         case_id: build.Case?.id || build.case?.id,
-                        cooler_id: build.Cooler?.id || build.cooler?.id
+                        cooler_id: build.Cooler?.id || build.cooler?.id,
+                        monitor_id: build.Monitor?.id || build.monitor?.id,
+                        os_id: build.OS?.id || build.os?.id,
+                        fans_id: build.Fans?.id || build.fans?.id,
+                        keyboard_id: build.Keyboard?.id || build.keyboard?.id,
+                        mouse_id: build.Mouse?.id || build.mouse?.id,
+                        headset_id: build.Headset?.id || build.headset?.id,
+                        webcam_id: build.Webcam?.id || build.webcam?.id,
+                        peripherals_id: build.Peripherals?.id || build.peripherals?.id,
                     };
 
                     const res = await fetch('/api/save_build', {

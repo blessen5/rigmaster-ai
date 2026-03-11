@@ -82,7 +82,7 @@
             <form id="builder-form"
                 style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
 
-                <div class="form-group" style="grid-column: 1 / 2; margin-bottom: 2rem;">
+                <div class="form-group" style="grid-column: 1 / -1; margin-bottom: 2rem;">
                     <label
                         style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase;">Build
                         Name</label>
@@ -90,13 +90,7 @@
                         style="width: 100%; padding: 1.25rem; background: rgba(124, 58, 237, 0.03); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem;">
                 </div>
 
-                <div class="form-group" style="grid-column: 2 / 3; margin-bottom: 2rem;">
-                    <label
-                        style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase;">System
-                        Quantity</label>
-                    <input type="number" id="build-quantity" value="1" min="1"
-                        style="width: 100%; padding: 1.25rem; background: rgba(124, 58, 237, 0.03); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem; text-align: center;">
-                </div>
+
 
                 <div class="form-group">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Processor
@@ -494,7 +488,6 @@
                         }
                         if (b.fans_id) document.getElementById('fans-select').value = b.fans_id;
                         if (b.name) document.getElementById('build-name').value = b.name;
-                        if (b.quantity) document.getElementById('build-quantity').value = b.quantity;
 
                         lastSavedBuildId = buildId;
                         document.getElementById('save-btn').style.display = 'none';
@@ -566,7 +559,7 @@
             const nameInput = document.getElementById('build-name');
             const buildData = {
                 name: nameInput ? nameInput.value.trim() : "",
-                quantity: document.getElementById('build-quantity').value || 1,
+                quantity: 1,
                 cpu_id: document.getElementById('cpu-select').value,
                 gpu_id: document.getElementById('gpu-select').value,
                 motherboard_id: document.getElementById('mobo-select').value,

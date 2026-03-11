@@ -118,6 +118,21 @@
             color: #f87171;
             border: 1px solid rgba(239, 158, 11, 0.3);
         }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #build-selector-trigger:hover {
+            border-color: var(--primary-light) !important;
+            box-shadow: 0 4px 24px rgba(124, 58, 237, 0.15);
+        }
+
+        #build-search-input:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+        }
     </style>
 </head>
 
@@ -128,6 +143,42 @@
     <!-- Ultra Compact Analysis Dashboard -->
     <div class="container section" style="margin-top: 80px; max-width: 1200px; padding: 0 1rem;">
         <div class="step-card" style="width: 100%; border: none; background: transparent; padding: 0;">
+
+            <!-- Build Selector Dropdown Bar -->
+            <div id="build-selector-bar" style="margin-bottom: 1.5rem;">
+                <div id="build-selector-trigger"
+                    style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.15);"
+                    onclick="toggleBuildSelector()">
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span id="build-selector-label" style="color: var(--text-main); font-weight: 600; font-size: 0.95rem;">Select a Saved Build to Analyze</span>
+                    </div>
+                    <svg id="build-selector-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="transition: transform 0.3s ease;">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </div>
+
+                <div id="build-selector-dropdown"
+                    style="display: none; margin-top: 0.5rem; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.35); animation: slideDown 0.25s ease-out;">
+                    
+                    <!-- Search filter -->
+                    <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);">
+                        <input id="build-search-input" type="text" placeholder="Search builds..."
+                            style="width: 100%; padding: 0.6rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: white; font-size: 0.9rem; outline: none;"
+                            oninput="filterBuilds(this.value)">
+                    </div>
+
+                    <div id="build-selector-list" style="max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;">
+                        <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                            Loading your builds...
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Premium Responsive Header Row -->
             <div
@@ -277,6 +328,18 @@
                             style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
                             <span>Drive</span> <span class="val" style="font-weight: 600;">0 W</span>
                         </div>
+                        <div id="bd-cooler"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>Cooling</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
+                        <div id="bd-fans"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>Fans</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
+                         <div id="bd-other"
+                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <span>Other</span> <span class="val" style="font-weight: 600;">0 W</span>
+                        </div>
                     </div>
                 </div>
 
@@ -322,6 +385,27 @@
                             <div
                                 style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
                                 CPU</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                        <div id="up-cooling"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                Cooler</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                        <div id="up-psu"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                PSU</div>
+                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
+                        </div>
+                        <div id="up-case"
+                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
+                            <div
+                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
+                                Case</div>
                             <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
                         </div>
                     </div>
@@ -726,6 +810,25 @@
                             <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
                         </div>
 
+                        <!-- Misc Peripherals Price -->
+                        <div class="price-card" data-category="peripherals"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        Misc Peripherals</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                            <div class="retailer-info" style="font-size: 0.75rem; color: var(--text-muted);">--</div>
+                        </div>
+
 
                     </div>
 
@@ -877,7 +980,118 @@
         </div>
     </footer>
     <script>
+        // --- Build Selector Dropdown Logic ---
+        let _allBuilds = [];
+        let _selectorOpen = false;
+
+        function toggleBuildSelector() {
+            const dropdown = document.getElementById('build-selector-dropdown');
+            const arrow = document.getElementById('build-selector-arrow');
+            _selectorOpen = !_selectorOpen;
+            dropdown.style.display = _selectorOpen ? 'block' : 'none';
+            arrow.style.transform = _selectorOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+            document.getElementById('build-selector-trigger').style.borderColor = _selectorOpen ? 'var(--primary-light)' : 'var(--border)';
+            if (_selectorOpen && _allBuilds.length === 0) {
+                loadBuildsList();
+            }
+        }
+
+        async function loadBuildsList() {
+            const listEl = document.getElementById('build-selector-list');
+            try {
+                const res = await fetch('/api/my_builds');
+                _allBuilds = await res.json();
+                renderBuildsList(_allBuilds);
+            } catch (e) {
+                listEl.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: #f87171;">Failed to load builds.</div>';
+            }
+        }
+
+        function renderBuildsList(builds) {
+            const listEl = document.getElementById('build-selector-list');
+            const currentBuildId = new URLSearchParams(window.location.search).get('build_id');
+
+            if (builds.length === 0) {
+                listEl.innerHTML = `
+                    <div style="padding: 2rem; text-align: center;">
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">No saved builds found.</p>
+                        <a href="/builder" class="btn btn-primary" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">Create a Build</a>
+                    </div>`;
+                return;
+            }
+
+            listEl.innerHTML = '';
+            builds.forEach((b, idx) => {
+                const isActive = b.id === currentBuildId;
+                const item = document.createElement('div');
+                item.className = 'build-selector-item';
+                item.dataset.name = (b.name || '').toLowerCase();
+                item.style.cssText = `
+                    display: flex; align-items: center; justify-content: space-between; 
+                    padding: 0.9rem 1.2rem; cursor: pointer; transition: all 0.2s ease;
+                    border-bottom: 1px solid rgba(255,255,255,0.04);
+                    background: ${isActive ? 'rgba(124, 58, 237, 0.12)' : 'transparent'};
+                    border-left: 3px solid ${isActive ? 'var(--primary-light)' : 'transparent'};
+                `;
+                item.onmouseenter = () => { if (!isActive) item.style.background = 'rgba(255,255,255,0.04)'; };
+                item.onmouseleave = () => { if (!isActive) item.style.background = 'transparent'; };
+                item.onclick = () => selectBuildForAnalysis(b);
+
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.8rem; min-width: 0;">
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, ${isActive ? 'var(--primary)' : 'rgba(255,255,255,0.06)'} 0%, ${isActive ? 'var(--primary-light)' : 'rgba(255,255,255,0.02)'} 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isActive ? 'white' : 'var(--text-muted)'}" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                        </div>
+                        <div style="min-width: 0;">
+                            <div style="font-weight: 600; font-size: 0.9rem; color: ${isActive ? 'var(--primary-light)' : 'var(--text-main)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">${b.date || 'No date'}</div>
+                        </div>
+                    </div>
+                    ${isActive ? '<span style="font-size: 0.7rem; color: var(--primary-light); background: rgba(124,58,237,0.2); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 600;">ACTIVE</span>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>'}
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function filterBuilds(query) {
+            const q = query.toLowerCase().trim();
+            const filtered = q ? _allBuilds.filter(b => (b.name || '').toLowerCase().includes(q)) : _allBuilds;
+            renderBuildsList(filtered);
+        }
+
+        function selectBuildForAnalysis(build) {
+            const params = new URLSearchParams();
+            params.set('build_id', build.id);
+            const keys = ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id','case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id','mouse_id','headset_id','webcam_id','peripherals_id'];
+            keys.forEach(k => {
+                if (build[k]) params.set(k, build[k]);
+            });
+            window.location.href = '/analysis?' + params.toString();
+        }
+
+        // Update the trigger label if a build is currently loaded
+        function updateBuildSelectorLabel() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const buildId = urlParams.get('build_id');
+            if (buildId) {
+                // Fetch name from the API to show in the label
+                fetch('/api/my_builds').then(r => r.json()).then(builds => {
+                    _allBuilds = builds;
+                    const active = builds.find(b => b.id === buildId);
+                    if (active) {
+                        document.getElementById('build-selector-label').innerHTML = 
+                            '<span style="color: var(--primary-light);">' + active.name + '</span> <span style="color: var(--text-muted); font-weight: 400; font-size: 0.85rem;">— click to switch build</span>';
+                    }
+                }).catch(() => {});
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
+            updateBuildSelectorLabel();
             const urlParams = new URLSearchParams(window.location.search);
             const buildId = urlParams.get('build_id');
 
@@ -980,7 +1194,17 @@
                 { id: 'motherboard', label: 'Motherboard', api: '/api/motherboards', db_key: 'motherboard_id' },
                 { id: 'ram', label: 'Memory', api: '/api/ram', db_key: 'ram_id' },
                 { id: 'storage', label: 'Storage', api: '/api/storage', db_key: 'storage_id' },
-                { id: 'psu', label: 'Power Supply', api: '/api/psu', db_key: 'psu_id' }
+                { id: 'psu', label: 'Power Supply', api: '/api/psu', db_key: 'psu_id' },
+                { id: 'case', label: 'Case', api: '/api/cases', db_key: 'case_id' },
+                { id: 'cooler', label: 'Cooler', api: '/api/coolers', db_key: 'cooler_id' },
+                { id: 'monitor', label: 'Monitor', api: '/api/monitors', db_key: 'monitor_id' },
+                { id: 'os', label: 'Operating System', api: '/api/os', db_key: 'os_id' },
+                { id: 'fans', label: 'Case Fans', api: '/api/fans', db_key: 'fans_id' },
+                { id: 'keyboard', label: 'Keyboard', api: '/api/peripherals?sub_category=keyboard', db_key: 'keyboard_id' },
+                { id: 'mouse', label: 'Mouse', api: '/api/peripherals?sub_category=mouse', db_key: 'mouse_id' },
+                { id: 'headset', label: 'Headset', api: '/api/peripherals?sub_category=headset', db_key: 'headset_id' },
+                { id: 'webcam', label: 'Webcam', api: '/api/peripherals?sub_category=webcam', db_key: 'webcam_id' },
+                { id: 'peripherals', label: 'Misc Peripherals', api: '/api/peripherals', db_key: 'peripherals_id' }
             ];
 
             for (const cat of categories) {
@@ -1045,7 +1269,7 @@
 
                         // 2. Update lifecycle warning
                         let hasDeprecated = false;
-                        const catIds = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu'];
+                        const catIds = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'];
                         catIds.forEach(cid => {
                             const s = document.getElementById(`sim-select-${cid}`);
                             if (s && s.selectedIndex >= 0) {
@@ -1072,12 +1296,15 @@
 
                 const originalComponents = {};
                 const urlParams = new URLSearchParams(window.location.search);
-                ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id'].forEach(key => {
+                const ALL_SLOTS = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id'];
+                
+                ALL_SLOTS.forEach(key => {
                     originalComponents[key] = urlParams.get(key);
                 });
 
                 const upgrades = {};
-                ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu'].forEach(id => {
+                const slotKeys = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'];
+                slotKeys.forEach(id => {
                     upgrades[id + '_id'] = document.getElementById(`sim-select-${id}`).value;
                 });
 
@@ -1208,10 +1435,11 @@
 
                     const bd = pResult.breakdown;
                     if (bd) {
-                        document.querySelector('#bd-cpu .val').textContent = bd.cpu + ' W';
-                        document.querySelector('#bd-gpu .val').textContent = bd.gpu + ' W';
-                        document.querySelector('#bd-ram .val').textContent = bd.ram + ' W';
-                        document.querySelector('#bd-storage .val').textContent = bd.storage + ' W';
+                        const slots = ['cpu', 'gpu', 'ram', 'storage', 'cooler', 'fans', 'peripherals', 'other'];
+                        slots.forEach(s => {
+                            const el = document.querySelector(`#bd-${s} .val`);
+                            if (el && bd[s] !== undefined) el.textContent = bd[s] + ' W';
+                        });
                     }
 
                     const badge = document.getElementById('psu-adequacy-badge');
@@ -1245,12 +1473,13 @@
                 const uResult = await uResponse.json();
 
                 if (uResult.status !== 'error') {
-                    const categories = ['ram', 'storage', 'gpu', 'cpu'];
+                    const categories = ['ram', 'storage', 'gpu', 'cpu', 'psu', 'case', 'cooling'];
                     const detailsEl = document.getElementById('upgrade-details');
 
                     categories.forEach(cat => {
                         const card = document.getElementById(`up-${cat}`);
                         const info = uResult[cat];
+                        if (!card || !info) return; // safety guard
                         card.querySelector('.status').textContent = info.status;
 
                         card.onmouseover = () => {
