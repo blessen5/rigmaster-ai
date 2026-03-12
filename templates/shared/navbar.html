@@ -123,8 +123,8 @@
                     Return to Admin</a></li>
             {% endif %}
             <li><a href="{{ url_for('home') }}">Home</a></li>
-            <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
             {% if session.get('user_id') %}
+            <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
             <li><a href="{{ url_for('builder') }}">Builder</a></li>
             <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
             <li><a href="{{ url_for('ai_recommendation') }}">AI Recommendation</a></li>
