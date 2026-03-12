@@ -103,24 +103,18 @@
         </button>
         <ul class="nav-links">
             {% if request.path.startswith('/admin') %}
-            <li><a href="{{ url_for('home') }}">Main Site</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
             <li><a href="/admin">Dashboard</a></li>
             <li><a href="/admin/users">Users</a></li>
             <li><a href="/admin/broadcast">Broadcast</a></li>
             <li><a href="/admin/user-analytics">User Analytics</a></li>
             <li><a href="/admin/components">Components</a></li>
             <li><a href="/admin/complaints">Complaints</a></li>
-
             <li><a href="/admin/ai-engine-console">AI Engine Console</a></li>
             <li><a href="/admin/system-health">System Health</a></li>
             {% else %}
             {% if session.get('is_admin') %}
-            <li><a href="/admin"
-                    style="color: var(--primary); font-weight: 800; display: flex; align-items: center; gap: 6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align: middle;">
-                        <path d="M12 2L3 7V12C3 17.5 12 22 12 22C12 22 21 17.5 21 12V7L12 2Z" fill="currentColor" />
-                    </svg>
-                    Return to Admin</a></li>
+            <li><a href="/admin" style="color: var(--primary); font-weight: 700;">Return to Admin</a></li>
             {% endif %}
             <li><a href="{{ url_for('home') }}">Home</a></li>
             {% if session.get('user_id') %}
@@ -185,14 +179,7 @@
             {% endif %}
 
             {% if session.get('user_id') or session.get('username') %}
-            {% if session.get('is_admin') and not request.path.startswith('/admin') %}
-            <a href="/admin" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="vertical-align: middle;">
-                    <path d="M12 2L3 7V12C3 17.5 12 22 12 22C12 22 21 17.5 21 12V7L12 2Z" fill="currentColor" />
-                </svg>
-                Admin
-            </a>
-            {% endif %}
+
             <a href="{{ url_for('profile') }}" class="btn btn-secondary">Profile</a>
             <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
             {% else %}
