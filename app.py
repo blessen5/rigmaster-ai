@@ -2088,16 +2088,18 @@ def run_power_analysis(data):
         total_base_watts = 0
 
         # 1. CPU Power
-        # Field is usually 'tdp' (int) in W.
         if cpu:
-            cpu_tdp = cpu.get('tdp')
-            # Handle string '65W' etc if database has dirty data
+            cpu_tdp = cpu.get('tdp') or cpu.get('power')
             if isinstance(cpu_tdp, str):
                 import re
                 nums = re.findall(r'\d+', cpu_tdp)
-                cpu_tdp = int(nums[0]) if nums else 65
+                cpu_tdp = int(nums[0]) if nums else 105
             elif not isinstance(cpu_tdp, (int, float)):
-                cpu_tdp = 65 # Default estimate
+                name = str(cpu.get('name', '')).upper()
+                if 'I9' in name or 'R9' in name or 'RYZEN 9' in name: cpu_tdp = 125
+                elif 'I7' in name or 'R7' in name or 'RYZEN 7' in name: cpu_tdp = 105
+                elif 'I5' in name or 'R5' in name or 'RYZEN 5' in name: cpu_tdp = 65
+                else: cpu_tdp = 65
             
             power_breakdown['cpu'] = cpu_tdp
             total_base_watts += cpu_tdp
@@ -2105,16 +2107,21 @@ def run_power_analysis(data):
             power_breakdown['cpu'] = 0
 
         # 2. GPU Power
-        # Field 'tdp' usually.
         if gpu:
-            gpu_tdp = gpu.get('tdp')
+            gpu_tdp = gpu.get('tdp') or gpu.get('power')
             if isinstance(gpu_tdp, str):
                 import re
                 nums = re.findall(r'\d+', gpu_tdp)
-                gpu_tdp = int(nums[0]) if nums else 50
+                gpu_tdp = int(nums[0]) if nums else 200
             elif not isinstance(gpu_tdp, (int, float)):
-                # Fallback: estimate based on name?
-                gpu_tdp = 200 # Safe average for discrete GPU
+                name = str(gpu.get('chipset', gpu.get('name', ''))).upper()
+                if '4090' in name or '5090' in name or '7900 XTX' in name: gpu_tdp = 450
+                elif '4080' in name or '5080' in name or '7900 XT' in name: gpu_tdp = 320
+                elif '4070' in name or '3080' in name or '7800' in name: gpu_tdp = 250
+                elif '3070' in name or '4060 TI' in name or '7700' in name: gpu_tdp = 200
+                elif '3060' in name or '4060' in name or '7600' in name: gpu_tdp = 150
+                elif '50' in name or '60' in name: gpu_tdp = 120
+                else: gpu_tdp = 200
             
             power_breakdown['gpu'] = gpu_tdp
             total_base_watts += gpu_tdp
@@ -2192,14 +2199,22 @@ def run_power_analysis(data):
         psu_wattage = 0
         
         if psu:
-            # Field often 'wattage' (int) or 'watts'
-            w = psu.get('wattage') or psu.get('watts')
+            w = psu.get('wattage') or psu.get('watts') or psu.get('power')
             if w:
                 if isinstance(w, str):
                    import re
                    nums = re.findall(r'\d+', w)
-                   w = int(nums[0]) if nums else 0
-                psu_wattage = int(w)
+                   psu_wattage = int(nums[0]) if nums else 0
+                elif isinstance(w, (int, float)):
+                   psu_wattage = int(w)
+            
+            if not psu_wattage and 'name' in psu:
+                import re
+                nums = re.findall(r'\d{3,4}', str(psu.get('name')))
+                if nums:
+                    valid_nums = [int(n) for n in nums if 300 <= int(n) <= 2000]
+                    if valid_nums:
+                        psu_wattage = valid_nums[0]
             
             if psu_wattage > 0:
                 if psu_wattage >= recommended_watts:

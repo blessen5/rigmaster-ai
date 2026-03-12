@@ -1381,7 +1381,7 @@
                     const res = await response.json();
                     if (res.status === 'success') {
                         alert('Simulation saved as a new build!');
-                        window.location.href = '/saved-builds';
+                        window.location.href = '/saved_builds';
                     } else {
                         alert('Error saving build: ' + res.message);
                     }
