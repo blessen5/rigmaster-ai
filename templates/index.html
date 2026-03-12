@@ -149,35 +149,37 @@
                 style="display: flex; align-items: center; gap: 3rem; padding: 3rem; border: 1px solid var(--primary-light); background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), rgba(15, 23, 42, 0.6));">
                 <div style="flex: 1;">
                     <div
-                        style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--rb-primary, #10b981); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
-                        RigMaster Oracle</div>
-                    <h2 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 1rem;">Support Bot</h2>
+                        style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--primary-light); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
+                        RigMaster Nexus</div>
+                    <h2 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 1rem;">ai assistant</h2>
 
                     <p style="font-size: 1.1rem; line-height: 1.7; color: var(--text-muted); margin-bottom: 2rem;">
-                        Stuck on a component choice? Need technical specs? Our <strong>Support Oracle</strong> is
-                        always ready.
-                        It utilizes a massive hardware knowledge base and real-time web search to answer questions about
-                        sockets, dimensions, and building techniques without the unpredictability of AI.
+                        Meet your ultimate PC building companion. <strong>ai assistant</strong> analyzes your budget and needs to recommend the perfect setup from our live inventory. Powered by advanced neural networks, it expertly balances 16 unique component categories ensuring flawless bottleneck-free performance.
                     </p>
                     <ul
                         style="list-style: none; padding: 0; margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
-                            <span style="color: #10b981;">✓</span> Expert System Logic
+                            <span style="color: var(--primary-light);">✓</span> Live Inventory Sync
                         </li>
                         <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
-                            <span style="color: #10b981;">✓</span> Real-Time Web Search
+                            <span style="color: var(--primary-light);">✓</span> 16-Component Ecosystem
                         </li>
                         <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
-                            <span style="color: #10b981;">✓</span> 10,000+ Hardware Specs
+                            <span style="color: var(--primary-light);">✓</span> Advanced Compatibility
                         </li>
                         <li style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
-                            <span style="color: #10b981;">✓</span> Zero AI Hallucinations
+                            <span style="color: var(--primary-light);">✓</span> Intelligent Bottleneck Fixes
                         </li>
                     </ul>
+                    {% if session.get('user_id') %}
                     <a href="#"
-                        onclick="if(typeof RigBot !== 'undefined') { RigBot.toggle(); } else { alert('Oracle loading...'); } return false;"
+                        onclick="if(typeof RigBot !== 'undefined') { RigBot.toggle(); } else { alert('AI interface loading...'); } return false;"
                         class="btn btn-primary"
-                        style="background: var(--rb-primary, #10b981); border-color: #10b981;">Consult the Oracle</a>
+                        style="background: var(--primary); border-color: var(--primary);">Chat with AI</a>
+                    {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary"
+                        style="background: var(--primary); border-color: var(--primary);">Join Now to Chat</a>
+                    {% endif %}
 
                 </div>
                 <div style="flex: 0.8; position: relative;">
@@ -189,8 +191,7 @@
                             </div>
                             <div
                                 style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 0 12px 12px 12px; flex: 1;">
-                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">How can I optimize
-                                    this build for 4K video editing?</p>
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Can you recommend a full 16-part rig under $1500 for 4K video editing?</p>
                             </div>
                         </div>
                         <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-direction: row-reverse;">
@@ -198,9 +199,7 @@
                             </div>
                             <div
                                 style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2); padding: 0.8rem; border-radius: 12px 0 12px 12px; flex: 1;">
-                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-main);">I recommend upgrading
-                                    to 64GB DDR5 RAM and switching to a faster NVMe Gen5 SSD for smooth timeline
-                                    scrubbing.</p>
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-main);">Absolutely. I've selected a Ryzen 9 coupled with 64GB of DDR5 from our database, ensuring no bottlenecks. Here is your complete build blueprint...</p>
                             </div>
                         </div>
                     </div>
