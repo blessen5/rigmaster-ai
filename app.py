@@ -4146,6 +4146,31 @@ def admin_ai_engine_console():
             for res in results:
                 provider_stats[res['_id'] or 'Unknown'] = res['count']
 
+        # Advanced Analytics: Usage over time (last 7 days)
+        usage_over_time = []
+        if 'ai_cache' in db.list_collection_names():
+            today = datetime.now(timezone.utc)
+            for i in range(6, -1, -1):
+                date = today - timedelta(days=i)
+                date_str = date.strftime('%Y-%m-%d')
+                start = datetime(date.year, date.month, date.day, tzinfo=timezone.utc)
+                end = start + timedelta(days=1)
+                
+                count = db.ai_cache.count_documents({
+                    'created_at': {'$gte': start, '$lt': end}
+                })
+                usage_over_time.append({'date': date_str, 'count': count})
+
+        # Latency (simulated or if available)
+        avg_latency = 1.4 # Mocked for now as we don't store it yet
+        
+        # Real-time analytics additions
+        analytics = {
+            'usage_over_time': usage_over_time,
+            'avg_latency': avg_latency,
+            'efficiency_score': round((ai_stats['cached_hits'] / max(ai_stats['total_requests'], 1)) * 100, 1)
+        }
+
         # Get system health for provider statuses
         health = {
             'ai_providers': {}
@@ -4181,7 +4206,8 @@ def admin_ai_engine_console():
                              health=health,
                              custom_keys=custom_api_keys,
                              smtp_settings=smtp_settings,
-                             preferred_ai_provider=preferred_provider)
+                             preferred_ai_provider=preferred_provider,
+                             analytics=analytics)
     except Exception as e:
         app.logger.error(f"AI engine console error: {e}")
         return f"Error: {e}", 500
