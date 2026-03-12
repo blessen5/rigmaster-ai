@@ -983,6 +983,7 @@
         // --- Build Selector Dropdown Logic ---
         let _allBuilds = [];
         let _selectorOpen = false;
+        let buildData = {}; // GLOBAL context for initial and simulation builds
 
         function toggleBuildSelector() {
             const dropdown = document.getElementById('build-selector-dropdown');
@@ -1095,7 +1096,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const buildId = urlParams.get('build_id');
 
-            let buildData = {
+            buildData = {
                 cpu_id: urlParams.get('cpu_id'),
                 motherboard_id: urlParams.get('motherboard_id'),
                 ram_id: urlParams.get('ram_id'),
@@ -1111,7 +1112,8 @@
                 mouse_id: urlParams.get('mouse_id'),
                 headset_id: urlParams.get('headset_id'),
                 webcam_id: urlParams.get('webcam_id'),
-                fans_id: urlParams.get('fans_id')
+                fans_id: urlParams.get('fans_id'),
+                name: '' // Placeholder for resolved name
             };
 
             const loadingMsg = document.getElementById('loading-msg');
@@ -1128,6 +1130,7 @@
                     const data = await res.json();
                     if (data.status === 'success') {
                         const b = data.build;
+                        buildData.name = b.name; // Capture name
                         // Fill in any blanks in buildData from the saved build
                         Object.keys(buildData).forEach(key => {
                             if ((buildData[key] === null || buildData[key] === "") && b[key]) {
@@ -1208,7 +1211,8 @@
             ];
 
             for (const cat of categories) {
-                const currentId = urlParams.get(cat.db_key);
+                // Use buildData instead of urlParams to ensure we have context from database if build_id was used
+                const currentId = buildData[cat.db_key] || urlParams.get(cat.db_key);
 
                 // Add to Current Build List (placeholder until we resolve names)
                 const currentItem = document.createElement('div');
@@ -1339,7 +1343,8 @@
 
         if (saveSimBtn) {
             saveSimBtn.onclick = async () => {
-                if (!currentSimulationData.cpu_id) { // Basic check if simulation data exists
+                // Looser check: as long as SOME data was analyzed, allow saving
+                if (!currentSimulationData || Object.keys(currentSimulationData).length === 0) {
                     alert('Please run a simulation first.');
                     return;
                 }
@@ -1348,10 +1353,30 @@
                 saveSimBtn.textContent = "Saving...";
 
                 try {
+                    // Pull the absolute latest values from the selects just in case they were changed after analysis
+                    const latestUpgrades = {};
+                    const slotKeys = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'];
+                    slotKeys.forEach(id => {
+                        const sVal = document.getElementById(`sim-select-${id}`).value;
+                        latestUpgrades[id + '_id'] = sVal;
+                    });
+
+                    const savePayload = { ...latestUpgrades };
+                    
+                    // Try to get a decent name
+                    let baseName = "Custom Rig";
+                    if (buildData && buildData.name) {
+                        baseName = buildData.name;
+                    } else if (urlParams.get('name')) {
+                        baseName = urlParams.get('name');
+                    }
+                    
+                    savePayload.name = "Simulated: " + baseName;
+
                     const response = await fetch('/api/save_build', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(currentSimulationData)
+                        body: JSON.stringify(savePayload)
                     });
                     const res = await response.json();
                     if (res.status === 'success') {

@@ -288,71 +288,9 @@
         <div class="row g-4">
             <!-- Left Column: Main Lists -->
             <div class="col-lg-8">
-                <!-- Recent Individual Builds -->
-                <div class="glass-card mb-4">
-                    <div class="section-title">
-                        <span><i class="bi bi-cpu-fill me-2"></i>Recent Private Builds</span>
-                        <a href="{{ url_for('saved_builds') }}" class="text-primary text-decoration-none"
-                            style="font-size: 0.85rem;">All <i class="bi bi-chevron-right"></i></a>
-                    </div>
-                    {% if recent_builds %}
-                    {% for build in recent_builds %}
-                    <div class="build-item">
-                        <div>
-                            <div style="font-weight: 700; font-size: 1.1rem; color: white;">{{ build.name or 'Basic
-                                Build' }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted);">
-                                {{ build.created_at.strftime('%b %d, %Y') if build.created_at else 'Active' }} &bull;
-                                {{ build.total_price if build.total_price else 'N/A' }}
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <a href="{{ url_for('analysis') }}?build_id={{ build._id }}" class="btn-action btn-edit"
-                                style="text-decoration: none;">
-                                <i class="bi bi-eye"></i>View
-                            </a>
-                            <button class="btn-action" style="background: rgba(255,255,255,0.05); color: white;"
-                                onclick="shareBuild('{{ build._id }}')">
-                                <i class="bi bi-share"></i>
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <p class="text-muted text-center py-4">No private builds yet.</p>
-                    {% endif %}
-                </div>
 
-                <!-- Recent Group Deployments -->
-                <div class="glass-card">
-                    <div class="section-title">
-                        <span><i class="bi bi-boxes me-2"></i>Group Deployments</span>
-                        <a href="{{ url_for('group_builder_page') }}" class="text-primary text-decoration-none"
-                            style="font-size: 0.85rem;">Manager <i class="bi bi-chevron-right"></i></a>
-                    </div>
-                    {% if recent_groups %}
-                    {% for group in recent_groups %}
-                    <div class="build-item" style="border-left: 3px solid #10b981;">
-                        <div>
-                            <div style="font-weight: 700; font-size: 1.1rem; color: white;">{{ group.base_build_name or
-                                'Deployment Plan' }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted);">
-                                <span class="text-success">{{ group.quantity }} Units</span> &bull; Plan Total: {{
-                                group.total_cost }}
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <a href="{{ url_for('api_export_group_build', plan_id=group._id|string) }}"
-                                class="btn-action" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                                <i class="bi bi-file-earmark-spreadsheet"></i>CSV
-                            </a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <p class="text-muted text-center py-4">No bulk deployments planned.</p>
-                    {% endif %}
-                </div>
+
+
             </div>
 
             <!-- Right Column: Stats & Settings -->
@@ -392,20 +330,7 @@
                         onclick="updatePreferences()">Apply Global Settings</button>
                 </div>
 
-                <!-- Summary Stats -->
-                <div class="glass-card mb-4">
-                    <h2 class="section-title"><i class="bi bi-bar-chart-fill me-2"></i>Hardware IQ</h2>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="stat-item" style="padding: 1rem;">
-                            <div class="stat-value" style="font-size: 1.8rem;">{{ build_count }}</div>
-                            <div class="stat-label" style="font-size: 0.65rem;">Builds</div>
-                        </div>
-                        <div class="stat-item" style="padding: 1rem;">
-                            <div class="stat-value" style="font-size: 1.8rem;">{{ group_count }}</div>
-                            <div class="stat-label" style="font-size: 0.65rem;">Deployments</div>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Account Security -->
                 <div class="glass-card">

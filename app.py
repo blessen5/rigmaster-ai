@@ -30,6 +30,28 @@ from ai_engine import get_ai_engine
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key_rigmaster_8822')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
+ 
+# Decorator to protect routes
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            if request.is_json or request.path.startswith('/api/'):
+                return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        if not session.get('is_admin'):
+            flash('Access denied: Admin privileges required')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Global Helpers
 def clean_comp_name(name):
@@ -179,6 +201,7 @@ def format_price(amount, currency=None):
     return f"{symbol}{converted_amount:,.2f}"
 
 @app.route('/api/set-currency', methods=['POST'])
+@login_required
 def set_currency():
     try:
         data = request.get_json(silent=True, force=True) or {}
@@ -201,27 +224,6 @@ def set_currency():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# Decorator to protect routes
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            if request.is_json or request.path.startswith('/api/'):
-                return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        if not session.get('is_admin'):
-            flash('Access denied: Admin privileges required')
-            return redirect(url_for('home'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 # MongoDB configuration
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://rigmaster_user:MMdm2NPf8J737U8D@cluster0.99f5zmr.mongodb.net/rigmaster?retryWrites=true&w=majority&appName=Cluster0')
@@ -368,6 +370,7 @@ def home():
 
 
 @app.route('/hardware')
+@login_required
 def hardware_encyclopedia():
     try:
         # Category now maps to the 'category' field string in components table
@@ -535,6 +538,7 @@ def ai_demo():
     return render_template('ai_demo.html')
 
 @app.route('/support', methods=['GET', 'POST'])
+@login_required
 def support_page():
     if request.method == 'POST':
         user_name = request.form.get('user_name')
@@ -633,18 +637,22 @@ def vault():
 
 
 @app.route('/resources')
+@login_required
 def resources():
     return redirect(url_for('support_page'))
 
 @app.route('/help')
+@login_required
 def help_center():
     return redirect(url_for('support_page', _anchor='help-center'))
 
 @app.route('/contact')
+@login_required
 def contact():
     return redirect(url_for('support_page', _anchor='contact'))
 
 @app.route('/feedback')
+@login_required
 def feedback():
     return redirect(url_for('support_page', _anchor='contact'))
 
@@ -1071,46 +1079,57 @@ def get_component_list(category_name):
         return []
 
 @app.route('/api/cpus')
+@login_required
 def api_cpus():
     return jsonify(get_component_list('cpus'))
 
 @app.route('/api/gpus')
+@login_required
 def api_gpus():
     return jsonify(get_component_list('gpus'))
 
 @app.route('/api/motherboards')
+@login_required
 def api_motherboards():
     return jsonify(get_component_list('motherboards'))
 
 @app.route('/api/ram')
+@login_required
 def api_ram():
     return jsonify(get_component_list('ram'))
 
 @app.route('/api/psu')
+@login_required
 def api_psu():
     return jsonify(get_component_list('psu'))
 
 @app.route('/api/storage')
+@login_required
 def api_storage():
     return jsonify(get_component_list('storage'))
 
 @app.route('/api/cases')
+@login_required
 def api_cases():
     return jsonify(get_component_list('cases'))
 
 @app.route('/api/coolers')
+@login_required
 def api_coolers():
     return jsonify(get_component_list('coolers'))
 
 @app.route('/api/monitors')
+@login_required
 def api_monitors():
     return jsonify(get_component_list('monitors'))
 
 @app.route('/api/os')
+@login_required
 def api_os():
     return jsonify(get_component_list('os'))
 
 @app.route('/api/peripherals')
+@login_required
 def api_peripherals():
     sub_cat = request.args.get('sub_category')
     if sub_cat:
@@ -1132,12 +1151,14 @@ def api_peripherals():
     return jsonify(get_component_list('peripherals'))
 
 @app.route('/api/fans')
+@login_required
 def api_fans():
     return jsonify(get_component_list('fans'))
 
 
 # Test route to verify MongoDB connection
 @app.route('/db-status')
+@login_required
 def db_status():
     try:
         global db
@@ -1156,8 +1177,14 @@ def save_build():
             return jsonify({'status': 'error', 'message': 'Database not connected'}), 500
             
         data = request.json
+        app.logger.info(f"Incoming save_build request. Payload keys: {list(data.keys()) if data else 'None'}")
+        
         build_id = data.get('build_id')
-        quantity = int(data.get('quantity', 1))
+        quantity_raw = data.get('quantity', 1)
+        try:
+            quantity = int(quantity_raw) if quantity_raw is not None else 1
+        except (ValueError, TypeError):
+            quantity = 1
         if quantity < 1: quantity = 1
         
         # Establish user identity for both string and ObjectId formats
@@ -1180,11 +1207,12 @@ def save_build():
             count = db.saved_builds.count_documents({'user_id': {'$in': user_ids_list}})
             build_name = f"Custom Rig #{count + 1}"
             
-        # Ensure build_name is not something weird like a bool or empty
         if not build_name or str(build_name).strip() == "":
             build_name = "Custom Rig"
         else:
-            build_name = str(build_name).strip()
+            build_name = str(build_name).strip()[:100] # Cap length
+            
+        app.logger.info(f"Saving build '{build_name}' for user {user_id}")
 
         build_doc = {
             'user_id': user_id,
@@ -1260,11 +1288,13 @@ def api_get_build(build_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/validate_build', methods=['POST'])
+@login_required
 def api_validate_build():
     data = request.json
     return jsonify(run_validation_logic(data))
 
 @app.route('/api/fix-compatibility', methods=['POST'])
+@login_required
 def api_fix_compatibility():
     """
     Identifies incompatibilities and suggests real parts from the database to fix them.
@@ -1481,6 +1511,7 @@ def api_simulate_upgrade():
 
 
 @app.route('/api/analyze_upgrade', methods=['POST'])
+@login_required
 def api_analyze_upgrade():
     """
     Analyzes the upgrade potential of a build.
@@ -1900,6 +1931,7 @@ def api_ai_engine_recommend():
 
 
 @app.route('/api/ai-engine/compatibility', methods=['POST'])
+@login_required
 def api_ai_engine_compatibility():
     """
     NEW: AI-powered compatibility analysis using multi-provider AI
@@ -1983,6 +2015,7 @@ def api_ai_engine_compatibility():
 
 
 @app.route('/api/ai-engine/performance', methods=['POST'])
+@login_required
 def api_ai_engine_performance():
     """
     NEW: AI-powered performance estimation using multi-provider AI
@@ -2034,6 +2067,7 @@ def api_ai_engine_performance():
 
 
 @app.route('/api/analyze_power', methods=['POST'])
+@login_required
 def api_analyze_power():
     data = request.json
     if not data:
@@ -3022,18 +3056,37 @@ def ai_assistant():
                 except:
                     pass
 
-        # --- DATABASE HARDWARE CONTEXT (Comprehensive Sample) ---
+        # --- DATABASE HARDWARE CONTEXT (Representative Sample) ---
         db_context_list = []
         try:
-            # Sample across top-selling categories to give AI a broad overview of inventory
-            # We take 2-3 top items per slot to prevent prompt overload while covering all 16
+            # Sample across all categories to give AI a broad but balanced view of inventory
+            # We take 4 items per slot (Top, Mid, Bottom) to represent the full price spectrum
             CORE_CATS = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler']
             EXTRA_CATS = ['monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals']
             
             for cat in CORE_CATS + EXTRA_CATS:
-                items = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
-                           .sort('price', -1).limit(2))
-                for it in items:
+                # 1. Get total count for sampling
+                total_in_cat = db.components.count_documents({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                if total_in_cat == 0: continue
+                
+                # 2. Get Top (Most expensive)
+                top = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                           .sort('price', -1).limit(1))
+                
+                # 3. Get Bottom (Cheapest)
+                bot = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                           .sort('price', 1).limit(1))
+                
+                # 4. Get Mid-range (Middle of the pack)
+                mid = []
+                if total_in_cat > 3:
+                    mid = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                               .skip(total_in_cat // 2).limit(2))
+                
+                # Combine and deduplicate by ID
+                cat_sample = {str(i['_id']): i for i in (top + mid + bot)}.values()
+                
+                for it in cat_sample:
                     p = it.get('price') or it.get('msrp') or 0
                     db_context_list.append(f"{cat.upper()}: {it.get('name')} (${p})")
         except Exception as e:
@@ -3041,17 +3094,18 @@ def ai_assistant():
 
         # Construct system prompt
         system_role = (
-            "You are ai assistant, the ultimate AI assistant for PC enthusiasts. "
-            "You provide technical guidance on all 16 components of a PC ecosystem, "
+            "You are 'ai assistant', the ultimate AI companion for PC building and hardware optimization. "
+            "You provide technical guidance on all 16 components of the PC ecosystem, "
             "including core hardware, peripherals, and software.\n\n"
-            "INVENTORY SAMPLE (Current high-end items in our database):\n"
+            "INVENTORY CONTEXT (Representative items currently in our MongoDB database):\n"
             + ("\n".join(db_context_list) if db_context_list else "Database temporarily offline.") + 
             "\n\nUSER'S CURRENT BUILD CONTEXT:\n" + 
             ("\n".join([f"- {k}: {v}" for k, v in resolved_context.items()]) if resolved_context else "No specific components selected yet.") +
-            "\n\nRULES:\n"
-            "1. Ground your advice in the hardware listed above.\n"
-            "2. If asked for recommendations, consider the user's existing choices.\n"
-            "3. Use Markdown. Be technical, helpful, and concise."
+            "\n\nCRITICAL AI ASSISTANT RULES:\n"
+            "1. DATABASE-BACKED RECOMMENDATIONS: If a user asks for component recommendations, you MUST ONLY suggest items listed in the INVENTORY CONTEXT above. Do not suggest hardware from your external training data that is not in the list.\n"
+            "2. ASSISTANT NAME: Always identify as 'ai assistant'.\n"
+            "3. FULL ECOSYSTEM KNOWLEDGE: You are an expert on all 16 slots (CPU, GPU, Motherboard, RAM, Storage, PSU, Case, Cooler, Monitor, OS, Fans, Keyboard, Mouse, Headset, Webcam, Peripherals).\n"
+            "4. RESPONSE STYLE: Use professional yet accessible language. Formatting with Markdown (bolding, lists) is encouraged. Be concise."
         )
 
         ai_engine = get_ai_engine()
@@ -4681,10 +4735,12 @@ def admin_import_components():
 # ==========================================
 
 @app.route('/advanced-analysis')
+@login_required
 def advanced_analysis():
     return render_template('advanced_analysis.html')
 
 @app.route('/api/bottleneck-analyzer', methods=['POST'])
+@login_required
 def api_bottleneck_analyzer():
     try:
         data = request.json
@@ -4745,6 +4801,7 @@ def api_bottleneck_analyzer():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/thermal-noise', methods=['POST'])
+@login_required
 def api_thermal_noise():
     try:
         data = request.json
@@ -4815,6 +4872,7 @@ def api_thermal_noise():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/overclocking-potential', methods=['POST'])
+@login_required
 def api_overclocking_potential():
     try:
         data = request.json
@@ -4861,6 +4919,7 @@ def api_overclocking_potential():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/build-optimizer', methods=['POST'])
+@login_required
 def api_build_optimizer():
     try:
         data = request.json
@@ -5059,6 +5118,7 @@ def reset_password():
 # ============================================================================
 
 @app.route('/api/component-prices', methods=['POST'])
+@login_required
 def api_component_prices():
     """
     Get current market prices for all components in a build.
@@ -5215,6 +5275,7 @@ def api_set_price_alert():
 
 
 @app.route('/api/price-history/<component_id>', methods=['GET'])
+@login_required
 def api_price_history(component_id):
     """
     Get 30-day price history for a component.
