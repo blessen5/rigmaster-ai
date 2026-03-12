@@ -282,8 +282,8 @@
                     </svg>
                 </div>
                 <div class="bot-info">
-                    <h2>RigMaster Support</h2>
-                    <span>Rule-Based Expert System // v2.0</span>
+                    <h2>ai assistant</h2>
+                    <span>RigMaster Nexus // v3.0</span>
                 </div>
             </div>
             <a href="{{ url_for('support_page') }}" class="back-link">
@@ -296,9 +296,8 @@
 
         <main class="chat-messages" id="messages">
             <div class="message assistant-msg">
-                <p>Hello! I am the **RigMaster Support Bot**. I can help you with technical questions, site features,
-                    shipping, and more.</p>
-                <p>What can I assist you with today?</p>
+                <p>Hello! I am **ai assistant**, your ultimate PC building companion. I can help you with component recommendations, technical specifications, compatibility checks, and more.</p>
+                <p>How can I assist your build today?</p>
             </div>
         </main>
 
@@ -338,10 +337,13 @@
             messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
 
             try {
-                const response = await fetch('/api/simple-chat', {
+                const response = await fetch('/ai-assistant', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
+                    body: JSON.stringify({ 
+                        message: text,
+                        context: {} // We could pull current build context here if needed
+                    })
                 });
 
                 const data = await response.json();
