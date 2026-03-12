@@ -27,9 +27,8 @@
             </button>
             <ul class="nav-links">
                 <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
-
                 {% if session.get('user_id') %}
+                <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
                 <li><a href="{{ url_for('builder') }}">Builder</a></li>
                 <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
                 <li><a href="{{ url_for('ai_recommendation') }}">AI Recommendation</a></li>
@@ -72,7 +71,11 @@
                 <p class="subtitle">Experience a new way of PC building. RigMaster AI guides you through every
                     component, ensuring peak performance and perfect compatibility for your specific needs.</p>
                 <div class="hero-btns">
+                    {% if session.get('user_id') %}
                     <a href="{{ url_for('builder') }}" class="btn btn-primary btn-large">Start Building</a>
+                    {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary btn-large">Join Now & Build</a>
+                    {% endif %}
                     <a href="#features" class="btn btn-secondary btn-large">Explore Features</a>
                 </div>
             </div>
@@ -363,7 +366,11 @@
                 <h2>Ready to Start Your Build?</h2>
                 <p style="margin-bottom: 2rem;">Join thousands of builders who created their perfect rig with RigMaster
                     AI.</p>
+                {% if session.get('user_id') %}
                 <a href="{{ url_for('builder') }}" class="btn btn-primary btn-large">Start Building Now</a>
+                {% else %}
+                <a href="{{ url_for('signup') }}" class="btn btn-primary btn-large">Sign Up to Get Started</a>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -380,9 +387,14 @@
                 <div class="footer-links">
                     <h5>Platform</h5>
                     <ul>
+                        {% if session.get('user_id') %}
                         <li><a href="{{ url_for('builder') }}">Builder</a></li>
                         <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
                         <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
+                        {% else %}
+                        <li><a href="{{ url_for('login') }}">Login</a></li>
+                        <li><a href="{{ url_for('signup') }}">Sign Up</a></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="footer-links">
