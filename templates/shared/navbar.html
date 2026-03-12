@@ -88,6 +88,12 @@
         background-color: #1a1a2e;
         color: #ffffff;
     }
+
+    .nav-links a.active {
+        color: var(--primary-light) !important;
+        font-weight: 700;
+        text-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+    }
 </style>
 <nav id="navbar" class="scrolled">
     <div class="container nav-container">
@@ -103,27 +109,27 @@
         </button>
         <ul class="nav-links">
             {% if request.path.startswith('/admin') %}
-            <li><a href="{{ url_for('home') }}">Home</a></li>
-            <li><a href="/admin">Dashboard</a></li>
-            <li><a href="/admin/users">Users</a></li>
-            <li><a href="/admin/broadcast">Broadcast</a></li>
-            <li><a href="/admin/user-analytics">User Analytics</a></li>
-            <li><a href="/admin/components">Components</a></li>
-            <li><a href="/admin/complaints">Complaints</a></li>
-            <li><a href="/admin/ai-engine-console">AI Engine Console</a></li>
-            <li><a href="/admin/system-health">System Health</a></li>
+            <li><a href="{{ url_for('home') }}" class="{{ 'active' if request.path == url_for('home') }}">Home</a></li>
+            <li><a href="/admin" class="{{ 'active' if request.path == '/admin' }}">Dashboard</a></li>
+            <li><a href="/admin/users" class="{{ 'active' if request.path == '/admin/users' }}">Users</a></li>
+            <li><a href="/admin/broadcast" class="{{ 'active' if request.path == '/admin/broadcast' }}">Broadcast</a></li>
+            <li><a href="/admin/user-analytics" class="{{ 'active' if request.path == '/admin/user-analytics' }}">User Analytics</a></li>
+            <li><a href="/admin/components" class="{{ 'active' if request.path == '/admin/components' }}">Components</a></li>
+            <li><a href="/admin/complaints" class="{{ 'active' if request.path == '/admin/complaints' }}">Complaints</a></li>
+            <li><a href="/admin/ai-engine-console" class="{{ 'active' if request.path == '/admin/ai-engine-console' }}">AI Engine Console</a></li>
+            <li><a href="/admin/system-health" class="{{ 'active' if request.path == '/admin/system-health' }}">System Health</a></li>
             {% else %}
             {% if session.get('is_admin') %}
             <li><a href="/admin" style="color: var(--primary); font-weight: 700;">Return to Admin</a></li>
             {% endif %}
-            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('home') }}" class="{{ 'active' if request.path == url_for('home') }}">Home</a></li>
             {% if session.get('user_id') %}
-            <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
-            <li><a href="{{ url_for('builder') }}">Builder</a></li>
-            <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
-            <li><a href="{{ url_for('ai_recommendation') }}">AI Recommendation</a></li>
-            <li><a href="{{ url_for('saved_builds') }}">Saved Builds</a></li>
-            <li><a href="{{ url_for('group_builder_page') }}">Group Builder</a></li>
+            <li><a href="{{ url_for('hardware_encyclopedia') }}" class="{{ 'active' if request.path == url_for('hardware_encyclopedia') }}">Hardware</a></li>
+            <li><a href="{{ url_for('builder') }}" class="{{ 'active' if request.path == url_for('builder') }}">Builder</a></li>
+            <li><a href="{{ url_for('analysis') }}" class="{{ 'active' if request.path == url_for('analysis') }}">Analysis</a></li>
+            <li><a href="{{ url_for('ai_recommendation') }}" class="{{ 'active' if request.path == url_for('ai_recommendation') }}">AI Recommendation</a></li>
+            <li><a href="{{ url_for('saved_builds') }}" class="{{ 'active' if request.path == url_for('saved_builds') }}">Saved Builds</a></li>
+            <li><a href="{{ url_for('group_builder_page') }}" class="{{ 'active' if request.path == url_for('group_builder_page') }}">Group Builder</a></li>
             {% endif %}
             {% endif %}
         </ul>
