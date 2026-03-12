@@ -15,54 +15,7 @@
 
 <body>
     <div class="bg-grid"></div>
-    <nav id="navbar">
-        <div class="container nav-container">
-            <div class="logo">
-                <span class="logo-accent">Rig</span>Master AI
-            </div>
-            <button class="mobile-toggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <ul class="nav-links">
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-                {% if session.get('user_id') %}
-                <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
-                <li><a href="{{ url_for('builder') }}">Builder</a></li>
-                <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
-                <li><a href="{{ url_for('ai_recommendation') }}">AI Recommendation</a></li>
-                <li><a href="{{ url_for('saved_builds') }}">Saved Builds</a></li>
-                <li><a href="{{ url_for('group_builder_page') }}">Group Builder</a></li>
-                {% endif %}
-            </ul>
-            <div class="nav-actions">
-                {% if session.get('username') %}
-                <a href="{{ url_for('profile') }}" class="btn btn-secondary"
-                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                    <i class="bi bi-person-circle"></i> Profile
-                </a>
-                <span style="color: var(--text-muted); font-size: 0.9rem;">Hi, <span
-                        style="color: var(--primary-light); font-weight: 600;">{{ session.username }}</span></span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary"
-                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">Logout</a>
-                {% else %}
-                <a href="{{ url_for('login') }}" class="btn btn-secondary"
-                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">Login</a>
-                <a href="{{ url_for('signup') }}" class="btn btn-secondary"
-                    style="padding: 0.5rem 1rem; font-size: 0.85rem;">Sign Up</a>
-                {% endif %}
-                <div class="theme-toggle" id="theme-toggle">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5" />
-                        <path
-                            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </nav>
+    {% include 'shared/navbar.html' %}
 
     <header class="hero">
         <div class="container hero-container">
