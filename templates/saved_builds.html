@@ -182,8 +182,6 @@
                 <div
                     style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
                     <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                        <input type="checkbox" class="compare-checkbox" data-id="{{ build.id }}"
-                            onclick="handleSelect()">
                         <div style="flex: 1; min-width: 0;">
                             <h3
                                 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.6rem; color: #ffffff; font-weight: 800; line-height: 1.2;">
@@ -236,21 +234,7 @@
                     {% endif %}
                 </div>
 
-                <div class="difficulty-section"
-                    style="margin-bottom: 2.5rem; background: rgba(0,0,0,0.2); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
-                    <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                        <span class="difficulty-badge {{ build.difficulty|lower }}">
-                            {{ build.difficulty }}
-                        </span>
-                        <span
-                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Assembly
-                            Skill</span>
-                    </div>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin: 0;">
-                        {{ build.difficulty_explanation }}
-                    </p>
-                </div>
+
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <a href="{{ url_for('builder') }}?build_id={{ build.id }}" class="btn btn-secondary"
@@ -292,31 +276,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Comparison Action Bar -->
-    <div id="comparison-bar" class="comparison-bar">
-        <span style="color: var(--text-main); font-weight: 500;"><span id="select-count">0</span> builds selected</span>
-        <button class="btn btn-primary" onclick="startComparison()">Compare Selected</button>
-        <button class="btn btn-secondary" onclick="clearSelection()" style="padding: 0.5rem 1rem;">Clear</button>
-    </div>
-
-    <!-- Comparison Modal -->
-    <div id="comparison-modal" class="modal">
-        <div class="modal-content" style="max-width: 1200px; width: 95%;">
-            <div class="modal-header">
-                <h2 class="text-gradient">Build Comparison</h2>
-                <span onclick="closeComparison()" class="close-modal">&times;</span>
-            </div>
-            <div id="comparison-view" class="comparison-table-wrapper">
-                <!-- Table will be injected here -->
-            </div>
-            <div style="margin-top: 2rem; text-align: right;">
-                <button class="btn btn-secondary" onclick="closeComparison()">Close Comparison</button>
-            </div>
-        </div>
-    </div>
-
-
 
     <!-- Resale Predictor Modal -->
     <div id="resale-modal" class="modal">
@@ -496,7 +455,6 @@
                     el.style.transform = 'scale(0.9)';
                     setTimeout(() => {
                         el.remove();
-                        handleSelect(); // Refresh selection state
                     }, 300);
                 } else {
                     alert('Error: ' + data.message);
@@ -506,127 +464,6 @@
                 alert('Failed to delete build');
             }
         }
-
-        // Comparison Logic
-        function handleSelect() {
-            const checked = document.querySelectorAll('.compare-checkbox:checked');
-            const bar = document.getElementById('comparison-bar');
-            const count = document.getElementById('select-count');
-
-            count.textContent = checked.length;
-
-            if (checked.length >= 2) {
-                bar.classList.add('active');
-            } else {
-                bar.classList.remove('active');
-            }
-
-            // Disable others if 3 selected
-            const all = document.querySelectorAll('.compare-checkbox');
-            all.forEach(cb => {
-                if (checked.length >= 3 && !cb.checked) {
-                    cb.disabled = true;
-                } else {
-                    cb.disabled = false;
-                }
-            });
-        }
-
-        function clearSelection() {
-            document.querySelectorAll('.compare-checkbox').forEach(cb => {
-                cb.checked = false;
-                cb.disabled = false;
-            });
-            handleSelect();
-        }
-
-        function closeComparison() {
-            document.getElementById('comparison-modal').style.display = 'none';
-        }
-
-        async function startComparison() {
-            const checked = document.querySelectorAll('.compare-checkbox:checked');
-            const buildIds = Array.from(checked).map(cb => cb.dataset.id);
-
-            const modal = document.getElementById('comparison-modal');
-            const container = document.getElementById('comparison-view');
-
-            modal.style.display = 'block';
-            container.innerHTML = '<p style="text-align: center; padding: 5rem; color: var(--text-muted);">Generating comparison data...</p>';
-
-            try {
-                const response = await fetch('/api/compare-builds', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ build_ids: buildIds })
-                });
-
-                const data = await response.json();
-                if (data.status === 'success') {
-                    renderComparison(data.comparison);
-                } else {
-                    container.innerHTML = `<p style="text-align: center; color: #f87171; padding: 5rem;">${data.message}</p>`;
-                }
-            } catch (e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align: center; color: #f87171; padding: 5rem;">Failed to load comparison.</p>';
-            }
-        }
-
-        function renderComparison(builds) {
-            const container = document.getElementById('comparison-view');
-            const features = [
-                { label: 'Saved Date', key: 'date' },
-                { label: 'Processor (CPU)', key: 'CPU' },
-                { label: 'Graphics Card', key: 'GPU' },
-                { label: 'Motherboard', key: 'Motherboard' },
-                { label: 'Memory (RAM)', key: 'RAM' },
-                { label: 'Storage', key: 'Storage' },
-                { label: 'Power Supply', key: 'PSU' },
-                { label: 'Cooler', key: 'Cooler' },
-                { label: 'Case', key: 'Case' },
-                { label: 'Compatibility', key: 'compatibility' },
-                { label: 'Power Status', key: 'power_status' },
-                { label: 'Power Usage', key: 'power_wattage' },
-                { label: 'Upgrade Readiness', key: 'upgrade_readiness' },
-                { label: 'Est. Total Cost', key: 'estimated_cost' }
-            ];
-
-            let html = `<table class="comparison-table"><thead><tr><th>Feature</th>`;
-            builds.forEach((b, i) => {
-                html += `<th>${b.name || 'Build ' + (i + 1)}</th>`;
-            });
-            html += `</tr></thead><tbody>`;
-
-            features.forEach(f => {
-                html += `<tr><td>${f.label}</td>`;
-
-                // Collect values for this row to check for differences
-                const values = builds.map(b => b[f.key]);
-                const isDiff = new Set(values).size > 1;
-
-                builds.forEach(b => {
-                    let val = b[f.key] || '---';
-                    let classes = '';
-
-                    // Highlight logic
-                    if (f.key === 'compatibility' && val === 'Compatible') classes = 'highlight-better';
-                    if (f.key === 'power_status' && val === 'Safe') classes = 'highlight-better';
-                    if (f.key === 'power_status' && val === 'Insufficient') classes = 'highlight-warning';
-                    if (f.key === 'upgrade_readiness' && val === 'High') classes = 'highlight-better';
-
-                    html += `<td class="${classes}">${val}${isDiff ? '<span class="diff-tag">Diff</span>' : ''}</td>`;
-                });
-                html += `</tr>`;
-            });
-
-            html += `</tbody></table>`;
-            container.innerHTML = html;
-        }
-
-
-
-
 
         function closeResaleModal() {
             document.getElementById('resale-modal').style.display = 'none';
