@@ -211,14 +211,7 @@
                 </div>
 
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;">
-                    <div id="difficulty-indicator"
-                        style="display: none; align-items: center; gap: 1.5rem; padding-right: 1.5rem; border-right: 1px solid var(--border); margin-right: 0.5rem;">
-                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                            <span id="difficulty-level-badge" class="difficulty-badge">Loading...</span>
-                            <span id="difficulty-explanation"
-                                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; max-width: 250px; text-align: right;"></span>
-                        </div>
-                    </div>
+
 
                     <div style="display: flex; gap: 0.75rem;">
                         <button id="btn-what-if" class="btn btn-primary"
@@ -1155,7 +1148,7 @@
             }
 
             if (buildId) {
-                await loadBuildDifficulty(buildId);
+                await loadBuildInfo(buildId);
             }
 
             // --- Simulator Button Event ---
@@ -1708,20 +1701,12 @@
 
 
 
-        async function loadBuildDifficulty(buildId) {
-            const indicator = document.getElementById('difficulty-indicator');
-            const badge = document.getElementById('difficulty-level-badge');
-            const explanation = document.getElementById('difficulty-explanation');
-
+        async function loadBuildInfo(buildId) {
             try {
                 const response = await fetch(`/api/build-difficulty/${buildId}`);
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    indicator.style.display = 'flex';
-                    badge.textContent = data.difficulty;
-                    badge.className = `difficulty-badge ${data.difficulty.toLowerCase()}`;
-                    explanation.textContent = data.explanation;
                     if (data.name) {
                         const nameDisplay = document.getElementById('build-name-display');
                         const nameSpan = document.getElementById('view-build-name');
@@ -1732,7 +1717,7 @@
                     }
                 }
             } catch (error) {
-                console.error('Failed to load build difficulty:', error);
+                console.error('Failed to load build info:', error);
             }
         }
 
