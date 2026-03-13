@@ -1084,6 +1084,40 @@
             }
         }
 
+        async function rerunAnalysis() {
+            const loadingMsg = document.getElementById('loading-msg');
+            const hasData = Object.values(buildData).some(v => v !== null && v !== "");
+
+            if (!hasData) {
+                return false;
+            }
+
+            if (loadingMsg) {
+                loadingMsg.style.display = 'block';
+                loadingMsg.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div><p style="margin-top: 1rem; color: var(--text-muted);">Refreshing analysis for the selected currency...</p>';
+            }
+
+            document.getElementById('analysis-results').style.display = 'block';
+            await validateBuild(buildData);
+
+            if (loadingMsg) {
+                loadingMsg.style.display = 'none';
+            }
+
+            return true;
+        }
+
+        window.refreshAnalysisForCurrencyChange = async function () {
+            return await rerunAnalysis();
+        };
+
+        window.addEventListener('rigmaster:currency-changed', async function () {
+            const handled = await rerunAnalysis();
+            if (!handled) {
+                window.location.reload();
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', async () => {
             updateBuildSelectorLabel();
             const urlParams = new URLSearchParams(window.location.search);
