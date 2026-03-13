@@ -352,7 +352,7 @@
                 ('deepseek', '🧠 DeepSeek', 'sk-...'),
                 ('hf', '🤗 Hugging Face', 'hf_...'),
                 ('openrouter', '🌐 OpenRouter', 'sk-or-...'),
-                ('cohere', '🌀 Cohere', '...'),
+
                 ('serpapi', '🔍 SerpAPI', 'Enter token...')
                 ] %}
                 {% for id, label, placeholder in providers %}
@@ -490,7 +490,7 @@
                     deepseek_key: document.getElementById('key-deepseek').value.trim(),
                     hf_key: document.getElementById('key-hf').value.trim(),
                     openrouter_key: document.getElementById('key-openrouter').value.trim(),
-                    cohere_key: document.getElementById('key-cohere').value.trim(),
+
                     serpapi_key: document.getElementById('key-serpapi').value.trim()
                 };
 
@@ -558,7 +558,7 @@
             }
 
             function toggleKeyVisibility() {
-                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-deepseek', 'key-hf', 'key-openrouter', 'key-cohere', 'key-serpapi', 'smtp-password'];
+                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-deepseek', 'key-hf', 'key-openrouter', 'key-serpapi', 'smtp-password'];
                 let foundAny = false;
                 let newState = '';
 
@@ -638,12 +638,7 @@
                             'https://cdn.simpleicons.org/openrouter'
                         ]
                     },
-                    'cohere': {
-                        name: 'Cohere',
-                        sources: [
-                            'https://cdn.simpleicons.org/cohere'
-                        ]
-                    }
+
                 };
                 const statusCard = Array.from(document.querySelectorAll('.request-list h2'))
                     .find((heading) => heading.textContent.includes('AI Provider Status'))

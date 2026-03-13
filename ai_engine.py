@@ -30,7 +30,7 @@ class AIEngine:
         self.deepseek_key = os.getenv('DEEPSEEK_API_KEY')
         self.hf_key = os.getenv('HF_API_KEY')
         self.openrouter_key = os.getenv('OPENROUTER_API_KEY')
-        self.cohere_key = os.getenv('COHERE_API_KEY')
+
         self.is_hf_installed = InferenceClient is not None
         
         # Provider rotation index
@@ -51,8 +51,7 @@ class AIEngine:
             self.providers.append('deepseek')
         if self.openrouter_key:
             self.providers.append('openrouter')
-        if self.cohere_key:
-            self.providers.append('cohere')
+
 
 
         
@@ -67,7 +66,7 @@ class AIEngine:
         if keys.get('deepseek_key'): self.deepseek_key = keys.get('deepseek_key')
         if keys.get('hf_key'): self.hf_key = keys.get('hf_key')
         if keys.get('openrouter_key'): self.openrouter_key = keys.get('openrouter_key')
-        if keys.get('cohere_key'): self.cohere_key = keys.get('cohere_key')
+
         
         # Rebuild providers list
         self.providers = []
@@ -77,7 +76,7 @@ class AIEngine:
         if self.mistral_key: self.providers.append('mistral')
         if self.deepseek_key: self.providers.append('deepseek')
         if self.openrouter_key: self.providers.append('openrouter')
-        if self.cohere_key: self.providers.append('cohere')
+
         
         # Reset provider index if it's out of bounds
         if self.providers and self.current_provider_index >= len(self.providers):

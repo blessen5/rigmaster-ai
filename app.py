@@ -303,7 +303,6 @@ def ensure_db():
             'deepseek_key': custom_keys.get('deepseek_key') or get_site_setting('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API_KEY'),
             'hf_key': custom_keys.get('hf_key') or get_site_setting('HF_API_KEY') or os.getenv('HF_API_KEY'),
             'openrouter_key': custom_keys.get('openrouter_key') or get_site_setting('OPENROUTER_API_KEY') or os.getenv('OPENROUTER_API_KEY'),
-            'cohere_key': custom_keys.get('cohere_key') or get_site_setting('COHERE_API_KEY') or os.getenv('COHERE_API_KEY')
         }
         ai_engine.update_api_keys(db_keys)
     except Exception as e:
