@@ -120,8 +120,15 @@
         }
 
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         #build-selector-trigger:hover {
@@ -143,42 +150,6 @@
     <!-- Ultra Compact Analysis Dashboard -->
     <div class="container section" style="margin-top: 80px; max-width: 1200px; padding: 0 1rem;">
         <div class="step-card" style="width: 100%; border: none; background: transparent; padding: 0;">
-
-            <!-- Build Selector Dropdown Bar -->
-            <div id="build-selector-bar" style="margin-bottom: 1.5rem;">
-                <div id="build-selector-trigger"
-                    style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.15);"
-                    onclick="toggleBuildSelector()">
-                    <div style="display: flex; align-items: center; gap: 0.8rem;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                        <span id="build-selector-label" style="color: var(--text-main); font-weight: 600; font-size: 0.95rem;">Select a Saved Build to Analyze</span>
-                    </div>
-                    <svg id="build-selector-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="transition: transform 0.3s ease;">
-                        <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                </div>
-
-                <div id="build-selector-dropdown"
-                    style="display: none; margin-top: 0.5rem; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.35); animation: slideDown 0.25s ease-out;">
-                    
-                    <!-- Search filter -->
-                    <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);">
-                        <input id="build-search-input" type="text" placeholder="Search builds..."
-                            style="width: 100%; padding: 0.6rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: white; font-size: 0.9rem; outline: none;"
-                            oninput="filterBuilds(this.value)">
-                    </div>
-
-                    <div id="build-selector-list" style="max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;">
-                        <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
-                            Loading your builds...
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Premium Responsive Header Row -->
             <div
@@ -230,6 +201,47 @@
                         <a href="{{ url_for('builder') }}" class="btn btn-primary"
                             style="padding: 0.8rem 1.4rem; font-size: 0.95rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); box-shadow: none;">New
                             Build</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Build Selector Dropdown Bar -->
+            <div id="build-selector-bar" style="margin-bottom: 1.5rem;">
+                <div id="build-selector-trigger"
+                    style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.15);"
+                    onclick="toggleBuildSelector()">
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"
+                            stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span id="build-selector-label"
+                            style="color: var(--text-main); font-weight: 600; font-size: 0.95rem;">Select a Saved Build
+                            to Analyze</span>
+                    </div>
+                    <svg id="build-selector-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--text-muted)" stroke-width="2" style="transition: transform 0.3s ease;">
+                        <path d="M6 9l6 6 6-6" />
+                    </svg>
+                </div>
+
+                <div id="build-selector-dropdown"
+                    style="display: none; margin-top: 0.5rem; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.35); animation: slideDown 0.25s ease-out;">
+
+                    <!-- Search filter -->
+                    <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);">
+                        <input id="build-search-input" type="text" placeholder="Search builds..."
+                            style="width: 100%; padding: 0.6rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: white; font-size: 0.9rem; outline: none;"
+                            oninput="filterBuilds(this.value)">
+                    </div>
+
+                    <div id="build-selector-list"
+                        style="max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;">
+                        <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                            Loading your builds...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -329,7 +341,7 @@
                             style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
                             <span>Fans</span> <span class="val" style="font-weight: 600;">0 W</span>
                         </div>
-                         <div id="bd-other"
+                        <div id="bd-other"
                             style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
                             <span>Other</span> <span class="val" style="font-weight: 600;">0 W</span>
                         </div>
@@ -1060,7 +1072,7 @@
         function selectBuildForAnalysis(build) {
             const params = new URLSearchParams();
             params.set('build_id', build.id);
-            const keys = ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id','case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id','mouse_id','headset_id','webcam_id','peripherals_id'];
+            const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id'];
             keys.forEach(k => {
                 if (build[k]) params.set(k, build[k]);
             });
@@ -1077,10 +1089,10 @@
                     _allBuilds = builds;
                     const active = builds.find(b => b.id === buildId);
                     if (active) {
-                        document.getElementById('build-selector-label').innerHTML = 
+                        document.getElementById('build-selector-label').innerHTML =
                             '<span style="color: var(--primary-light);">' + active.name + '</span> <span style="color: var(--text-muted); font-weight: 400; font-size: 0.85rem;">— click to switch build</span>';
                     }
-                }).catch(() => {});
+                }).catch(() => { });
             }
         }
 
@@ -1328,7 +1340,7 @@
                 const originalComponents = {};
                 const urlParams = new URLSearchParams(window.location.search);
                 const ALL_SLOTS = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id'];
-                
+
                 ALL_SLOTS.forEach(key => {
                     originalComponents[key] = urlParams.get(key);
                 });
@@ -1389,7 +1401,7 @@
                     });
 
                     const savePayload = { ...latestUpgrades };
-                    
+
                     // Try to get a decent name
                     let baseName = "Custom Rig";
                     if (buildData && buildData.name) {
@@ -1397,7 +1409,7 @@
                     } else if (urlParams.get('name')) {
                         baseName = urlParams.get('name');
                     }
-                    
+
                     savePayload.name = "Simulated: " + baseName;
 
                     const response = await fetch('/api/save_build', {
