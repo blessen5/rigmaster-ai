@@ -490,15 +490,11 @@
                                 </div>
                                 <div class="plan-stat-item">
                                     <span class="plan-stat-label">Project Val.</span>
-                                    <span class="plan-stat-value highlight">{{ session.get('currency_symbol', '$') }}{{
-                                        "{:,.0f}".format(plan.total_cost) if
-                                        plan.total_cost is number else plan.total_cost }}</span>
+                                    <span class="plan-stat-value highlight">{{ plan.total_cost | format_price }}</span>
                                 </div>
                                 <div class="plan-stat-item mt-2">
                                     <span class="plan-stat-label">Unit Cost</span>
-                                    <span class="plan-stat-value">{{ session.get('currency_symbol', '$') }}{{
-                                        "{:,.2f}".format(plan.unit_cost) if plan.unit_cost
-                                        is number else plan.unit_cost }}</span>
+                                    <span class="plan-stat-value">{{ plan.unit_cost | format_price }}</span>
                                 </div>
                             </div>
 
@@ -509,7 +505,7 @@
                                 </div>
                                 <a href="{{ url_for('api_export_group_build', plan_id=plan._id|string) }}"
                                     class="plan-action">
-                                    Export CSV <i class="bi bi-file-earmark-spreadsheet"></i>
+                                    Export PDF <i class="bi bi-file-earmark-pdf"></i>
                                 </a>
                             </div>
                         </div>
@@ -723,10 +719,11 @@
         }
 
         function formatCurrency(num) {
+            const converted = num * (parseFloat('{{ exchange_rate or 1.0 }}') || 1.0);
             return new Intl.NumberFormat('{% if session.get("currency") == "EUR" %}de-DE{% elif session.get("currency") == "GBP" %}en-GB{% else %}en-US{% endif %}', {
                 style: 'currency',
                 currency: '{{ session.get("currency", "USD") }}'
-            }).format(num);
+            }).format(converted);
         }
     </script>
 </body>
