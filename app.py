@@ -762,7 +762,11 @@ def admin_broadcast():
         return redirect(url_for('admin_dashboard'))
     user_count = db.users.count_documents({})
     current_announcement = get_site_setting('global_announcement', '')
-    return render_template('admin/broadcast.html', user_count=user_count, global_announcement=current_announcement)
+    maintenance_mode = get_site_setting('maintenance_mode', False)
+    return render_template('admin/broadcast.html', 
+                         user_count=user_count, 
+                         global_announcement=current_announcement,
+                         maintenance_mode=maintenance_mode)
 
 @app.route('/api/admin/broadcast', methods=['POST'])
 @admin_required
