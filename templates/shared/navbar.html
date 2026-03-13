@@ -177,7 +177,25 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ currency: currency })
-                    }).then(() => {
+                    }).then(async (response) => {
+                        let payload = {};
+                        try {
+                            payload = await response.json();
+                        } catch (e) {
+                            payload = {};
+                        }
+
+                        const detail = {
+                            currency: payload.currency || currency,
+                            symbol: payload.symbol || ''
+                        };
+
+                        window.dispatchEvent(new CustomEvent('rigmaster:currency-changed', { detail }));
+
+                        if (!window.location.pathname.includes('/analysis')) {
+                            window.location.reload();
+                        }
+                    }).catch(() => {
                         window.location.reload();
                     });
                 };
