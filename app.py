@@ -2830,8 +2830,10 @@ def api_ai_recommend():
         }
 
         # Build the component pool for the AI (from unified components collection)
-        engine_pool = {}   # slot_key -> list of "ID:...|Name|Price:$..." strings
+        engine_pool = {}   # slot_key -> list of "ID:...|Name|Price:..." strings
         allowed_items = {} # slot_key -> list of raw component dicts
+        symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
+
         # Mapping from slot key to estimate category for pricing fallback
         _est_cat_map = {
             'CPU': 'cpus', 'GPU': 'gpus', 'Motherboard': 'motherboards',
@@ -2886,12 +2888,10 @@ def api_ai_recommend():
             valid = within_budget
 
             # Pick a highly curated sample to avoid "Payload Too Large" errors (Error 413)
-            # We take fewer items per category to keep the total prompt size small
             n = len(valid)
             if n <= 12:
                 selected = valid
             else:
-                # 4 from top, 4 from middle, 4 from bottom
                 top = valid[:4]
                 mid = valid[n//2 - 2: n//2 + 2]
                 bot = valid[max(0, n-4):]
@@ -2904,21 +2904,22 @@ def api_ai_recommend():
                         selected.append(it)
 
             pool_strs = [
-                f"ID:{it['_id']}|{it['name']}|${it['_usd_price']:.0f}"
+                f"ID:{it['_id']}|{it['name']}|{symbol}{int(it['_usd_price'] * rate):,}"
                 for it in selected
             ]
             engine_pool[slot_key.lower()] = pool_strs
-            allowed_items[slot_key] = selected   # raw_items kept for heuristic fallback
+            allowed_items[slot_key] = selected
 
 
         # --- Call AI engine ---
         ai_engine = get_ai_engine()
         recommendation = ai_engine.get_pc_recommendation(
-            budget=f"${int(budget)}",
+            budget=f"{symbol}{int(raw_budget):,}",
             use_case=usage,
-            preferences={"requirements": requirements},
+            preferences={"requirements": requirements, "currency": user_currency, "currency_symbol": symbol},
             component_pool=engine_pool
         )
+
 
         # --- Budget allocation ratios (used for heuristic selection when AI fails) ---
         alloc_pcts = {s[0]: s[2] for s in COMPONENT_SLOTS}
@@ -3017,14 +3018,13 @@ def api_ai_recommend():
             }
             total_usd += price_usd
 
-        ai_reasoning = (recommendation or {}).get('reasoning', '').strip()
         if ai_reasoning:
             explanation = ai_reasoning
         else:
             explanation = (
                 f"### RigMaster Smart Build — {usage}\n\n"
                 f"AI inference nodes are currently unavailable. This complete build was assembled "
-                f"**directly from your database** by allocating your **${int(budget):,} budget** proportionally "
+                f"**directly from your database** by allocating your **{symbol}{int(raw_budget):,} budget** proportionally "
                 f"across all 16 component categories and selecting the best-matched real component for each slot.\n\n"
                 f"Every component listed is a real item from your MongoDB components collection."
             )
@@ -3096,6 +3096,10 @@ def ai_assistant():
                     pass
 
         # --- DATABASE HARDWARE CONTEXT (Representative Sample) ---
+        user_currency = session.get('currency', 'USD')
+        rate = EXCHANGE_RATES.get(user_currency, 1.0)
+        symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
+        
         db_context_list = []
         try:
             # Sample across all categories to give AI a broad but balanced view of inventory
@@ -3127,7 +3131,15 @@ def ai_assistant():
                 
                 for it in cat_sample:
                     p = it.get('price') or it.get('msrp') or 0
-                    db_context_list.append(f"{cat.upper()}: {it.get('name')} (${p})")
+                    # Handle price parsing if it's a string
+                    if isinstance(p, str):
+                        try:
+                            p = float(p.replace('$', '').replace(',', ''))
+                        except:
+                            p = 0
+                    
+                    db_context_list.append(f"{cat.upper()}: {it.get('name')} ({symbol}{int(p * rate):,})")
+
         except Exception as e:
             app.logger.warning(f"Failed to fetch assistant DB context: {e}")
 

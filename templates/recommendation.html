@@ -518,7 +518,17 @@
                 <div class="config-body">
                     <!-- 1. Budget Section -->
                     <div class="input-group-wrapper" style="margin-bottom: 2.5rem;">
-                        <label class="section-label">Budget Limit ({{ session.get('currency', 'USD') }})</label>
+                        {%- set cur = session.get('currency', 'USD') -%}
+                        {%- set default_budget = 1500 -%}
+                        {%- if cur == 'INR' %}{% set default_budget = 120000 %}
+                        {%- elif cur == 'GBP' %}{% set default_budget = 1200 %}
+                        {%- elif cur == 'EUR' %}{% set default_budget = 1400 %}
+                        {%- elif cur == 'JPY' %}{% set default_budget = 220000 %}
+                        {%- elif cur == 'KRW' %}{% set default_budget = 2000000 %}
+                        {%- elif cur == 'VND' %}{% set default_budget = 35000000 %}
+                        {%- endif -%}
+                        <label class="section-label">Budget Limit ({{ cur }})</label>
+
                         <div class="budget-input-wrapper" style="width: 100%;">
                             <span class="currency-symbol" id="input-currency-symbol">
                                 {%- set cur = session.get('currency', 'USD') -%}
@@ -554,9 +564,10 @@
                                 {%- else %}$
                                 {%- endif %}
                             </span>
-                            <input type="number" id="budget-input" class="premium-input budget-input" value="1500"
+                            <input type="number" id="budget-input" class="premium-input budget-input" value="{{ default_budget }}"
                                 min="1" step="10" placeholder="Enter any amount"
-                                oninput="currentBudget = parseFloat(this.value) || 1500">
+                                oninput="currentBudget = parseFloat(this.value) || Number('{{ default_budget }}')">
+
                         </div>
                     </div>
 
@@ -656,7 +667,8 @@
 
     <script>
         let selectedPurpose = 'Gaming';
-        let currentBudget = 1500;
+        let currentBudget = Number('{{ default_budget }}');
+
 
 
 
