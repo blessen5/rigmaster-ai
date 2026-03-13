@@ -1039,12 +1039,11 @@ def saved_builds():
                 essentials = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id']
                 if key in essentials:
                     build_details['components'][display_key] = "None Selected"
-                else:
+                elif raw_key != 'PERIPHERALS':
                     build_details['components'][display_key] = "None"
 
         build_details['project_total'] = format_price(total_unit_cost)
         
-        # Add difficulty info
         diff_info = calculate_build_difficulty(build)
         build_details['difficulty'] = diff_info['level']
         build_details['difficulty_explanation'] = diff_info['explanation']
