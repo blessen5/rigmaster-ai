@@ -30,6 +30,11 @@ from ai_engine import get_ai_engine
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key_rigmaster_8822')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
+
+# Register format_price as a template filter
+@app.template_filter('format_price')
+def format_price_filter(amount):
+    return format_price(amount)
  
 # Decorator to protect routes
 def login_required(f):
@@ -187,12 +192,23 @@ CURRENCY_SYMBOLS = {
     'MYR': 'RM', 'VND': '₫', 'NGN': '₦'
 }
 
-def format_price(amount, currency=None):
+def format_price(amount, currency=None, for_pdf=False):
     if currency is None:
         currency = session.get('currency', 'USD')
     
     rate = EXCHANGE_RATES.get(currency, 1.0)
-    converted_amount = amount * rate
+    converted_amount = (amount or 0) * rate
+    
+    if for_pdf:
+        # Use currency code or ASCII equivalent for PDF compatibility
+        if currency == 'INR':
+            return f"Rs. {int(converted_amount):,}"
+        if currency == 'USD':
+            return f"${converted_amount:,.2f}"
+            
+        # Fallback for other currencies to avoid Unicode symbol errors in FPDF
+        return f"{currency} {converted_amount:,.2f}"
+
     symbol = CURRENCY_SYMBOLS.get(currency, '$')
     
     # Format with appropriate decimals
@@ -995,7 +1011,11 @@ def saved_builds():
                     comp = db.components.find_one({'_id': ObjectId(comp_id)})
                     if comp:
                         cname = comp.get('name', 'Unknown')
-                        build_details['components'][key.replace('_id', '').upper()] = cname
+                        display_key = key.replace('_id', '').upper()
+                        # User requested to remove peripherals from visual summary
+                        peripheral_keys = ['PERIPHERALS', 'KEYBOARD', 'MOUSE', 'HEADSET', 'WEBCAM']
+                        if display_key not in peripheral_keys:
+                            build_details['components'][display_key] = cname
                         total_unit_cost += get_comp_price_usd(comp, id_key=key)
                     else:
                         build_details['components'][key.replace('_id', '').upper()] = "Unknown Component (ID: " + str(comp_id) + ")"
@@ -1004,11 +1024,12 @@ def saved_builds():
             else:
                 # Only show essential components if none selected, hide others to avoid clutter
                 essentials = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id']
+                peripheral_keys = ['PERIPHERALS', 'KEYBOARD', 'MOUSE', 'HEADSET', 'WEBCAM']
+                display_key = key.replace('_id', '').upper()
                 if key in essentials:
-                    build_details['components'][key.replace('_id', '').upper()] = "None Selected"
-                else:
-                    # Optionally show others as None too for consistency
-                    build_details['components'][key.replace('_id', '').upper()] = "None"
+                    build_details['components'][display_key] = "None Selected"
+                elif display_key not in peripheral_keys:
+                    build_details['components'][display_key] = "None"
 
         build_details['project_total'] = format_price(total_unit_cost)
         
@@ -3917,7 +3938,10 @@ def export_build(build_id):
         pdf.set_font("helvetica", 'B', 16)
         pdf.cell(0, 10, "2. Selected Components", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("helvetica", '', 12)
+        peripheral_keys = ['PERIPHERALS', 'KEYBOARD', 'MOUSE', 'HEADSET', 'WEBCAM']
         for cat, name in components.items():
+            if cat in peripheral_keys:
+                continue
             pdf.set_font("helvetica", 'B', 12)
             pdf.cell(50, 8, f"{cat}:", border=0, new_x=XPos.RIGHT, new_y=YPos.TOP)
             pdf.set_font("helvetica", '', 12)
@@ -5420,9 +5444,13 @@ def group_builder():
         # Fetch existing group builds to display on the same page
         group_builds = list(db.group_builds.find({'user_id': {'$in': id_variants}}).sort('created_at', -1))
         
+        current_currency = session.get('currency', 'USD')
+        exchange_rate = EXCHANGE_RATES.get(current_currency, 1.0)
+        
         return render_template('group_builder.html', 
                                saved_builds=saved_builds, 
-                               group_builds=group_builds)
+                               group_builds=group_builds,
+                               exchange_rate=exchange_rate)
     except Exception as e:
         app.logger.error(f"Error loading group builder: {e}")
         return render_template('error.html', message="Could not load group builder"), 500
@@ -5571,7 +5599,7 @@ def api_delete_group_build(plan_id):
 @app.route('/api/export-group-build/<plan_id>', endpoint='api_export_group_build')
 @login_required
 def api_export_group_build(plan_id):
-    """Export the group build manifest as a CSV file"""
+    """Export the group build manifest as a PDF file"""
     try:
         user_id = session.get('user_id')
         plan = db.group_builds.find_one({
@@ -5582,47 +5610,181 @@ def api_export_group_build(plan_id):
         if not plan:
             return "Project plan not found", 404
             
-        # Create CSV in memory
-        output = io.StringIO()
-        writer = csv.writer(output)
+        # Generate PDF
+        pdf = FPDF()
+        pdf.add_page()
         
-        # Header Info
-        writer.writerow(['RIGMASTER AI - DEPLOYMENT MANIFEST'])
-        writer.writerow(['Project Ref', f"GRP-{plan_id[-6:]}"])
-        writer.writerow(['Base Configuration', plan.get('base_build_name', 'Standard Rig')])
-        writer.writerow(['Quantity', plan.get('quantity', 0)])
-        writer.writerow(['Unit Cost', format_price(plan.get('unit_cost', 0))])
-        writer.writerow(['Total Project Budget', format_price(plan.get('total_cost', 0))])
-        writer.writerow(['Date Generated', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
-        writer.writerow([])
+        # Header
+        pdf.set_font("helvetica", 'B', 24)
+        pdf.set_text_color(63, 81, 181) # RigMaster Primary
+        pdf.cell(0, 20, "RigMaster AI - Deployment Manifest", border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        pdf.ln(5)
         
-        # Component List
-        writer.writerow(['COMPONENT', 'CATEGORY', 'UNIT PRICE', 'TOTAL REQUIRED', 'LINE TOTAL'])
+        # Project Info
+        pdf.set_font("helvetica", 'B', 16)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 10, "Project Overview", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("helvetica", '', 12)
         
+        pdf.cell(50, 8, "Project Ref:", border=0)
+        pdf.cell(0, 8, f"GRP-{plan_id[-6:]}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.cell(50, 8, "Configuration:", border=0)
+        pdf.cell(0, 8, plan.get('base_build_name', 'Standard Rig'), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.cell(50, 8, "Quantity:", border=0)
+        pdf.cell(0, 8, str(plan.get('quantity', 0)), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.cell(50, 8, "Unit Cost:", border=0)
+        pdf.cell(0, 8, format_price(plan.get('unit_cost', 0), for_pdf=True), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(50, 8, "Total Budget:", border=0)
+        pdf.cell(0, 8, format_price(plan.get('total_cost', 0), for_pdf=True), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("helvetica", '', 12)
+        
+        pdf.cell(50, 8, "Date Generated:", border=0)
+        pdf.cell(0, 8, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(50, 8, "Currency Context:", border=0)
+        pdf.cell(0, 8, session.get('currency', 'USD'), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(10)
+        
+        # Components Table
+        pdf.set_font("helvetica", 'B', 16)
+        pdf.cell(0, 10, "Bill of Materials", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(5)
+        
+        # Table Header
+        pdf.set_font("helvetica", 'B', 10)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(80, 10, "COMPONENT", border=1, fill=True)
+        pdf.cell(30, 10, "CATEGORY", border=1, fill=True, align='C')
+        pdf.cell(40, 10, "UNIT PRICE", border=1, fill=True, align='C')
+        pdf.cell(40, 10, "TOTAL PRICE", border=1, fill=True, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.set_font("helvetica", '', 9)
         components = plan.get('components', {})
         qty = plan.get('quantity', 0)
         
         for cat, details in components.items():
             price = details.get('price', 0)
-            writer.writerow([
-                details.get('name', 'Unknown'),
-                cat.upper(),
-                format_price(price),
-                qty,
-                format_price(price * qty)
-            ])
+            name = details.get('name', 'Unknown')
             
-        writer.writerow([])
-        writer.writerow(['', '', '', 'GRAND TOTAL', format_price(plan.get('total_cost', 0))])
+            # Truncate name if too long for simple cell
+            display_name = (name[:42] + '..') if len(name) > 42 else name
+            
+            pdf.cell(80, 8, display_name, border=1)
+            pdf.cell(30, 8, cat.upper(), border=1, align='C')
+            pdf.cell(40, 8, format_price(price, for_pdf=True), border=1, align='C')
+            pdf.cell(40, 8, format_price(price * qty, for_pdf=True), border=1, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            
+        pdf.ln(5)
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(150, 10, "GRAND TOTAL", border=0, align='R')
+        pdf.cell(40, 10, format_price(plan.get('total_cost', 0), for_pdf=True), border=1, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+        # Section 4: Logistical Breakdown
+        pdf.ln(10)
+        pdf.set_font("helvetica", 'B', 16)
+        pdf.cell(0, 10, "Deployment Logistics", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
         
-        output.seek(0)
-        csv_data = output.getvalue()
+        # Calculate logistics
+        total_tdp = 0
+        for cat, details in components.items():
+            tdp_val = details.get('tdp', 0)
+            try:
+                total_tdp += int(tdp_val)
+            except:
+                pass
+            
+        total_power_kw = (total_tdp * qty) / 1000.0
+        # Estimated weight: ~14kg average for a built mid-tower PC with packaging
+        unit_weight = 14.0
+        total_weight_kg = unit_weight * qty
+        
+        # Deployment time: ~1.25 hours per PC (assembly + automated OS deployment)
+        total_hours = qty * 1.25
+        
+        pdf.set_font("helvetica", '', 11)
+        pdf.cell(60, 7, "Total Fleet Power Draw:", border=0)
+        pdf.cell(0, 7, f"{total_power_kw:.2f} kW (Estimated peak draw for {qty} units)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.cell(60, 7, "Estimated Freight Weight:", border=0)
+        pdf.cell(0, 7, f"{total_weight_kg:,.0f} kg (Includes chassis and protective packaging)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.cell(60, 7, "Deployment Effort:", border=0)
+        pdf.cell(0, 7, f"{total_hours:,.1f} Man-Hours (Build + Network OS Deployment)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        # Section 5: Performance Scaling & Infrastructure
+        pdf.ln(10)
+        pdf.set_font("helvetica", 'B', 16)
+        pdf.cell(0, 10, "Performance Scaling & Infrastructure", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
+        
+        # Heuristic Performance Tier
+        gpu_name = components.get('gpu', {}).get('name', '').upper()
+        cpu_name = components.get('cpu', {}).get('name', '').upper()
+        
+        tier = "Standard Enterprise"
+        if any(x in gpu_name for x in ['4090', '4080', '7900 XTX', '5090']): tier = "Ultra-Deep AI/Render Node"
+        elif any(x in gpu_name for x in ['4070', '3080', '7800']): tier = "High-Performance Compute"
+        elif any(x in gpu_name for x in ['4060', '3060', '7700']): tier = "Advanced Creative Workstation"
+        
+        # Infrastructure Impact
+        heat_output_btu = (total_tdp * qty) * 3.41  # Conversion from Watts to BTU/hr
+        rack_units_est = qty * 4 # Standard tower takes ~4U space
+        
+        pdf.set_font("helvetica", 'B', 11)
+        pdf.cell(60, 7, "Fleet Classification:", border=0)
+        pdf.set_font("helvetica", '', 11)
+        pdf.cell(0, 7, tier, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.set_font("helvetica", 'B', 11)
+        pdf.cell(60, 7, "Thermal Output:", border=0)
+        pdf.set_font("helvetica", '', 11)
+        pdf.cell(0, 7, f"{heat_output_btu:,.0f} BTU/hr (HVAC load for synchronized operation)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.set_font("helvetica", 'B', 11)
+        pdf.cell(60, 7, "Space Requirement:", border=0)
+        pdf.set_font("helvetica", '', 11)
+        pdf.cell(0, 7, f"~{rack_units_est}U Volumetric Equivalent (Approx {qty} Tower Formats)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        
+        pdf.ln(5)
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(0, 8, "Infrastructure Recommendations:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("helvetica", '', 10)
+        
+        recommendations = [
+            f"Power Distribution: Recommend dedicated 20A circuits per every {max(1, 2500//(total_tdp or 100))} units.",
+            "Network: Managed L3 Switches with 2.5GbE backbone advised for rapid fleet re-imaging.",
+            "Climate Control: Precision air cooling with cold/hot aisle containment for densities >10kW."
+        ]
+        for rec in recommendations:
+            pdf.multi_cell(0, 5, f" - {rec}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+        pdf.ln(15)
+        
+        # Certification & Disclaimer
+        pdf.set_line_width(0.5)
+        pdf.set_draw_color(63, 81, 181)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
+        
+        pdf.set_font("helvetica", 'B', 10)
+        pdf.cell(0, 7, "RigMaster Nexus AI Certification", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        pdf.set_font("helvetica", 'I', 8)
+        pdf.set_text_color(100, 100, 100)
+        disclaimer = "This deployment manifest is an AI-generated estimate based on RigMaster hardware benchmarks. RigMaster Pro verifies component compatibility for the selected configuration. Power requirements are based on peak thermal design power (TDP); actual operational draw may vary significantly under differing workloads."
+        pdf.multi_cell(0, 5, disclaimer, align='C')
+
+        pdf_output = pdf.output()
         
         return send_file(
-            io.BytesIO(csv_data.encode('utf-8')),
-            mimetype='text/csv',
+            io.BytesIO(pdf_output),
+            mimetype='application/pdf',
             as_attachment=True,
-            download_name=f"deployment_manifest_{plan_id[:8]}.csv"
+            download_name=f"deployment_manifest_{plan_id[:8]}.pdf"
         )
         
     except Exception as e:
