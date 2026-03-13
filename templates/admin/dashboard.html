@@ -97,44 +97,6 @@
             color: #fbbf24;
         }
 
-        /* Maintenance Card */
-        .maint-card {
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(102, 126, 234, 0.03) 100%);
-            border: 1px solid var(--border);
-            border-top: 4px solid var(--accent);
-            padding: 2rem;
-            border-radius: var(--radius-lg);
-            margin-top: 2.5rem;
-        }
-
-        .maint-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .maint-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.15rem;
-            font-weight: 700;
-            margin: 0;
-        }
-
-        .maint-desc {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-
-        .maint-btn {
-            min-width: 200px;
-        }
 
         @media (max-width: 600px) {
             .stat-value {
@@ -222,25 +184,6 @@
             </div>
         </div>
 
-        <!-- System Control -->
-        <div class="maint-card">
-            <div class="maint-header">
-                <h2 class="maint-title">
-                    🛡️ System Control
-                    <span class="badge {{ 'badge-warning' if maintenance_mode else 'badge-success' }}">
-                        {{ 'MAINTENANCE ACTIVE' if maintenance_mode else 'SYSTEM ONLINE' }}
-                    </span>
-                </h2>
-            </div>
-            <p class="maint-desc">
-                Toggle maintenance mode to restrict site access to administrators only. All regular users will see a
-                maintenance page until you disable it.
-            </p>
-            <button id="toggle-maint" class="btn maint-btn {{ 'btn-secondary' if maintenance_mode else 'btn-primary' }}"
-                data-active="{{ 'true' if maintenance_mode else 'false' }}" onclick="toggleMaintenance(this)">
-                {{ 'Disable Maintenance Mode' if maintenance_mode else 'Enable Maintenance Mode' }}
-            </button>
-        </div>
 
     </main>
 
@@ -263,12 +206,6 @@
             }
         }
 
-        async function toggleMaintenance(btn) {
-            const currentVal = btn.getAttribute('data-active') === 'true';
-            const action = currentVal ? 'disable' : 'enable';
-            if (!confirm(`Are you sure you want to ${action} maintenance mode?`)) return;
-            await postSettings({ maintenance_mode: !currentVal });
-        }
     </script>
 </body>
 
