@@ -573,6 +573,7 @@
             panel.classList.toggle('active', this.isOpen);
             if (this.isOpen) {
                 document.getElementById('nexus-input').focus();
+                this.loadHistory();
             }
         },
 
@@ -595,7 +596,31 @@
             if (e.key === 'Enter') this.sendMessage();
         },
 
-        appendMessage(role, content) {
+        saveHistory(role, content) {
+            let history = JSON.parse(localStorage.getItem('nexus_chat_history') || '[]');
+            history.push({ role, content, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            // Keep last 50 messages to prevent storage bloat
+            if (history.length > 50) history.shift();
+            localStorage.setItem('nexus_chat_history', JSON.stringify(history));
+        },
+
+        loadHistory() {
+            const container = document.getElementById('nexus-messages');
+            // If already has messages, don't reload from storage
+            if (container.children.length > 0) return;
+
+            const history = JSON.parse(localStorage.getItem('nexus_chat_history') || '[]');
+            history.forEach(msg => {
+                this.appendMessage(msg.role, msg.content, msg.time, false);
+            });
+            
+            if (history.length > 0) {
+                const chatBody = document.getElementById('nexus-chat-body');
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+        },
+
+        appendMessage(role, content, time = null, save = true) {
             const container = document.getElementById('nexus-messages');
             const msgDiv = document.createElement('div');
             msgDiv.className = `nexus-message nexus-${role}-msg`;
@@ -608,12 +633,15 @@
 
             const meta = document.createElement('span');
             meta.className = 'nexus-msg-meta';
-            meta.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            meta.textContent = time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             msgDiv.appendChild(meta);
 
             container.appendChild(msgDiv);
             const chatBody = document.getElementById('nexus-chat-body');
             chatBody.scrollTop = chatBody.scrollHeight;
+
+            if (save) this.saveHistory(role, content);
+
             return msgDiv;
         },
 
