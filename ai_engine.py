@@ -5,7 +5,7 @@ Supports multiple free AI providers with automatic rotation and fallback
 import os
 import json
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 import logging
 try:
@@ -30,8 +30,14 @@ class AIEngine:
         self.deepseek_key = os.getenv('DEEPSEEK_API_KEY')
         self.hf_key = os.getenv('HF_API_KEY')
         self.openrouter_key = os.getenv('OPENROUTER_API_KEY')
+        self.hf_force_disable = str(os.getenv('HF_FORCE_DISABLE', 'false')).lower() in ('1', 'true', 'yes')
 
         self.is_hf_installed = InferenceClient is not None
+        self._hf_models_cache = []
+        self._hf_models_cache_ts = None
+        self._hf_fail_count = 0
+        self._hf_disabled_until = None
+        self._hf_last_error = None
         
         # Provider rotation index
         self.current_provider_index = 0
@@ -39,7 +45,7 @@ class AIEngine:
         # Define available providers (in priority order)
         self.providers = []
         # Define available providers (in priority order)
-        if self.hf_key:
+        if self._hf_is_eligible():
             self.providers.append('hf')
         if self.groq_key:
             self.providers.append('groq')
@@ -70,7 +76,8 @@ class AIEngine:
         
         # Rebuild providers list
         self.providers = []
-        if self.hf_key: self.providers.append('hf')
+        if self._hf_is_eligible():
+            self.providers.append('hf')
         if self.groq_key: self.providers.append('groq')
         if self.gemini_key: self.providers.append('gemini')
         if self.mistral_key: self.providers.append('mistral')
@@ -83,6 +90,33 @@ class AIEngine:
             self.current_provider_index = 0
             
         logger.info(f"AI Engine providers updated: {self.providers}")
+
+    def _hf_is_eligible(self) -> bool:
+        """HF is usable only when key+library exist and breaker is not open."""
+        if self.hf_force_disable:
+            return False
+        if not self.hf_key or not self.is_hf_installed:
+            return False
+        if self._hf_disabled_until and datetime.now(timezone.utc) < self._hf_disabled_until:
+            return False
+        return True
+
+    def _record_hf_failure(self, error_text: str, hard: bool = False):
+        """Track HF failures and open circuit on repeated hard failures."""
+        self._hf_last_error = error_text
+        self._hf_fail_count += 1
+        threshold = 3 if hard else 8
+        if self._hf_fail_count >= threshold:
+            self._hf_disabled_until = datetime.now(timezone.utc) + timedelta(hours=24)
+            logger.warning(
+                f"Hugging Face disabled for 24h after {self._hf_fail_count} failures. "
+                f"Last error: {error_text}"
+            )
+
+    def _record_hf_success(self):
+        self._hf_fail_count = 0
+        self._hf_last_error = None
+        self._hf_disabled_until = None
     
     def get_pc_recommendation(
         self, 
@@ -594,34 +628,139 @@ Return ONLY valid JSON with this structure:
         if not InferenceClient:
             logger.warning("huggingface_hub library not installed. Skipping HF provider.")
             return None
-            
-        # Using a popular open-source model available on the free tier
-        # Mistral-7B-v0.3 is more widely supported on modern inference providers
-        model = "mistralai/Mistral-7B-Instruct-v0.3"
-        
-        try:
-            client = InferenceClient(token=self.hf_key)
-            logger.info(f"Calling Hugging Face with model: {model}")
-            
-            # Use chat_completion or normal completion based on model compatibility
-            # Gemma 2 works best with the chat template
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-            
-            completion = client.chat_completion(
-                messages, 
-                model=model, 
-                max_tokens=2048,
-                temperature=0.3
-            )
-            
-            return completion.choices[0].message.content
-            
-        except Exception as e:
-            logger.warning(f"Hugging Face API error (Model: {model}): {e}")
+
+        if not self.hf_key:
+            logger.warning("HF_API_KEY missing. Skipping HF provider.")
             return None
+
+        if self.hf_force_disable:
+            logger.info("HF_FORCE_DISABLE is enabled. Skipping HF provider.")
+            return None
+
+        if self._hf_disabled_until and datetime.now(timezone.utc) < self._hf_disabled_until:
+            logger.info(f"Hugging Face temporarily disabled until {self._hf_disabled_until.isoformat()}.")
+            return None
+
+        prompt = f"<|system|>\n{system_prompt}\n<|user|>\n{user_prompt}\n<|assistant|>\n"
+
+        hf_models = self._get_hf_compatible_models()
+
+        # Prefer hf-inference first; fall back to default auto-provider routing.
+        client_candidates = []
+        try:
+            client_candidates.append(InferenceClient(provider="hf-inference", api_key=self.hf_key))
+        except TypeError:
+            try:
+                client_candidates.append(InferenceClient(provider="hf-inference", token=self.hf_key))
+            except Exception:
+                pass
+        try:
+            client_candidates.append(InferenceClient(api_key=self.hf_key))
+        except TypeError:
+            client_candidates.append(InferenceClient(token=self.hf_key))
+
+        for idx, client in enumerate(client_candidates):
+            client_label = "hf-inference" if idx == 0 else "auto-provider"
+            for model in hf_models:
+                try:
+                    logger.info(f"Calling Hugging Face text-generation via {client_label} with model: {model}")
+                    output = client.text_generation(
+                        prompt=prompt,
+                        model=model,
+                        max_new_tokens=768,
+                        temperature=0.3,
+                        return_full_text=False
+                    )
+                    if output:
+                        self._record_hf_success()
+                        return str(output)
+                except Exception as e:
+                    err = str(e)
+                    hard_failure = any(token in err for token in [
+                        "404 Not Found",
+                        "model_not_supported",
+                        "doesn't support task",
+                        "not supported by any provider",
+                        "Client error '400 Bad Request'"
+                    ])
+                    self._record_hf_failure(err, hard=hard_failure)
+                    logger.warning(f"Hugging Face text-generation error ({client_label}, Model: {model}): {e}")
+                    if self._hf_disabled_until and datetime.now(timezone.utc) < self._hf_disabled_until:
+                        break
+            if self._hf_disabled_until and datetime.now(timezone.utc) < self._hf_disabled_until:
+                break
+
+        # Force a fresh discovery next request after total failure.
+        self._hf_models_cache = []
+        self._hf_models_cache_ts = None
+        return None
+
+    def _get_hf_compatible_models(self) -> List[str]:
+        """Discover currently inference-ready HF text-generation models, with fallback."""
+        # Cache for 30 minutes to reduce API overhead and noise.
+        try:
+            now = datetime.now(timezone.utc)
+            if self._hf_models_cache and self._hf_models_cache_ts:
+                age_s = (now - self._hf_models_cache_ts).total_seconds()
+                if age_s < 1800:
+                    return self._hf_models_cache
+        except Exception:
+            pass
+
+        headers = {"Authorization": f"Bearer {self.hf_key}"}
+        discovery_urls = [
+            "https://huggingface.co/api/models?pipeline_tag=text-generation&inference_provider=hf-inference&limit=20",
+            "https://huggingface.co/api/models?pipeline_tag=text-generation&inference=warm&limit=20",
+        ]
+
+        discovered = []
+        for url in discovery_urls:
+            try:
+                res = requests.get(url, headers=headers, timeout=10)
+                if res.status_code != 200:
+                    continue
+                data = res.json()
+                for item in data:
+                    mid = item.get("id")
+                    if mid:
+                        discovered.append(mid)
+                if discovered:
+                    break
+            except Exception:
+                continue
+
+        # Filter out non-generative/router/meta models frequently returned by discovery.
+        blocked_terms = (
+            "router", "embedding", "rerank", "re-rank", "asr", "whisper",
+            "tts", "speech", "vision", "image", "clip"
+        )
+        filtered_discovered = []
+        for mid in discovered:
+            low = mid.lower()
+            if any(term in low for term in blocked_terms):
+                continue
+            if "/" not in mid:
+                continue
+            filtered_discovered.append(mid)
+
+        # Stable curated list is always appended so we can recover from bad discovery results.
+        curated = [
+            "microsoft/Phi-3-mini-4k-instruct",
+            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            "google/flan-t5-base",
+            "tiiuae/falcon-7b-instruct",
+        ]
+
+        combined = []
+        for mid in (filtered_discovered + curated):
+            if mid not in combined:
+                combined.append(mid)
+
+        final_models = combined[:10]
+        logger.info(f"HF model candidates: {final_models}")
+        self._hf_models_cache = final_models
+        self._hf_models_cache_ts = datetime.now(timezone.utc)
+        return final_models
     
     def _build_system_prompt(self) -> str:
         """Build system prompt for PC recommendation."""
