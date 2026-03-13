@@ -14,15 +14,15 @@
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-main);
             border: 1px solid var(--border);
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
             text-align: left;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
         }
 
@@ -41,12 +41,17 @@
         .comp-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            padding: 1.5rem;
-            border-radius: 16px;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+            transition: border-color 0.2s;
+        }
+
+        .comp-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
         }
 
         .comp-info h4 {
@@ -104,11 +109,11 @@
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
 
-    <header class="support-hero" style="padding: 10rem 0 5rem; text-align: center;">
+    <header class="support-hero" style="padding: 6rem 0 3rem; text-align: center;">
         <div class="container">
             <h1 class="text-gradient"
-                style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                style="font-size: 3rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="4" y="4" width="16" height="16" rx="2" stroke="url(#hard_grad)" stroke-width="2" />
                     <path d="M9 9H15V15H9V9Z" fill="url(#hard_grad)" />
                     <path d="M12 2V4" stroke="url(#hard_grad)" stroke-width="2" stroke-linecap="round" />
@@ -122,9 +127,9 @@
                         </linearGradient>
                     </defs>
                 </svg>
-                Hardware Components
+                Hardware Console
             </h1>
-            <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">
+            <p style="color: var(--text-muted); font-size: 1.1rem; margin-top: 0.75rem;">
                 Manage the component database and compatibility data.
             </p>
         </div>
@@ -133,44 +138,20 @@
     <main class="container" style="padding-bottom: 5rem;">
         <!-- Navigation -->
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
-                <h1 class="text-gradient"
-                    style="font-size: 2.5rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 15px;">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                        <rect x="4" y="4" width="16" height="16" rx="2" stroke="url(#hard_grad_small)"
-                            stroke-width="2" />
-                        <path d="M12 2V4" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
-                        <path d="M12 20V22" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
-                        <path d="M20 12L22 12" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
-                        <path d="M2 12L4 12" stroke="url(#hard_grad_small)" stroke-width="2" stroke-linecap="round" />
-                        <defs>
-                            <linearGradient id="hard_grad_small" x1="4" y1="2" x2="22" y2="22"
-                                gradientUnits="userSpaceOnUse">
-                                <stop stop-color="var(--primary-light)" />
-                                <stop offset="1" stop-color="var(--primary)" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    Hardware Components
-                </h1>
-                <p style="color: var(--text-muted);">Manage the component database and compatibility data.</p>
+                <h2 style="margin:0; font-size: 1.5rem; font-weight: 700;">Database Overview</h2>
             </div>
-            <div style="display: flex; gap: 1rem;">
+            <div style="display: flex; gap: 0.75rem;">
                 <button onclick="document.getElementById('import-modal').style.display='block'"
-                    class="btn btn-secondary" style="padding: 1rem;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right:8px; vertical-align:middle;">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                    </svg>
-                    Bulk Import (CSV)
+                    class="btn btn-secondary" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
+                    <i class="bi bi-upload"></i> Bulk Import
                 </button>
-                <button onclick="openAddModal()" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1rem;">+
-                    Add New Component</button>
+                <button onclick="openAddModal()" class="btn btn-primary" style="padding: 0.6rem 1.5rem; font-size: 0.85rem;">+ Add Component</button>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 280px 1fr; gap: 3rem;">
+        <div style="display: grid; grid-template-columns: 240px 1fr; gap: 2rem;">
             <!-- Category Selector -->
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <button class="cat-btn active" onclick="loadCategory('cpus', this)">Processors (CPU)</button>
@@ -211,6 +192,14 @@
 
             <!-- List Area -->
             <div>
+                <div style="margin-bottom: 1.5rem; position: relative;">
+                    <i class="bi bi-search"
+                        style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem;"></i>
+                    <input type="text" id="comp-search" placeholder="Search components by name..."
+                        style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); padding: 0.8rem 1rem 0.8rem 2.8rem; border-radius: 10px; color: white; font-size: 0.9rem;"
+                        oninput="debounceSearch()">
+                </div>
+
                 <div id="loading-spinner" style="display: none; text-align: center; padding: 4rem;">
                     <div class="typing-indicator"><span></span><span></span><span></span></div>
                 </div>
@@ -293,6 +282,14 @@
             let isEditing = false;
             let editId = null;
 
+            let searchTimer;
+            function debounceSearch() {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => {
+                    loadCategory(currentCategory);
+                }, 400);
+            }
+
             async function loadCategory(cat, btn) {
                 currentCategory = cat;
                 if (btn) {
@@ -308,8 +305,10 @@
                 spinner.style.display = 'block';
 
                 try {
-                    let url = `/api/admin/components/${cat}`;
-                    if (statusFilter) url += `?status=${statusFilter}`;
+                    let url = `/api/admin/components/${cat}?`;
+                    const search = document.getElementById('comp-search').value;
+                    if (statusFilter) url += `status=${statusFilter}&`;
+                    if (search) url += `search=${encodeURIComponent(search)}&`;
 
                     const res = await fetch(url);
                     const data = await res.json();

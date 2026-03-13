@@ -27,44 +27,53 @@
             font-family: 'Outfit', sans-serif;
         }
 
-        .message.assistant-message p {
-            margin-bottom: 0.6rem;
+        .builder-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
         }
 
-        .message.assistant-message ul,
-        .message.assistant-message ol {
-            margin-bottom: 0.6rem;
-            padding-left: 1.2rem;
+        @media (max-width: 1100px) {
+            .builder-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
-        .message.assistant-message table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 0.8rem 0;
-            font-size: 0.85rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
+        @media (max-width: 768px) {
+            .builder-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .message.assistant-message th {
-            background: rgba(124, 58, 237, 0.2);
-            color: white;
-            padding: 0.5rem;
-            text-align: left;
+        .category-label {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 1.5rem 0 0.8rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--primary-light);
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .message.assistant-message td {
-            padding: 0.5rem;
-            border-top: 1px solid var(--border);
+        .form-select {
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        .message.assistant-message code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-family: monospace;
-            color: var(--accent-cyan);
+        .form-select:hover {
+            border-color: var(--primary-light);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+            border-color: var(--primary);
         }
     </style>
 </head>
@@ -72,185 +81,192 @@
 <body>
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
-    <div class="container section" style="margin-top: 120px; display: flex; justify-content: center;">
-        <div class="step-card" style="max-width: 1000px; width: 100%; text-align: left;">
-            <h1 class="text-gradient" style="font-size: 3.5rem; margin-bottom: 2rem; text-align: center;">PC Builder
-            </h1>
-            <p style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 3rem; text-align: center;">Select your
-                components from our database.</p>
+    <div class="container section" style="margin-top: 80px; display: flex; justify-content: center;">
+        <div class="step-card" style="max-width: 1200px; width: 100%; text-align: left; padding: 2.5rem;">
+            <div style="text-align: center; margin-bottom: 2.5rem;">
+                <h1 class="text-gradient" style="font-size: 3.5rem; margin-bottom: 0.75rem;">Intelligent PC Builder</h1>
+                <p style="font-size: 1.15rem; color: var(--text-muted); max-width: 600px; margin: 0 auto;">
+                    Select your hardware from our verified database. Our AI will automatically validate compatibility.
+                </p>
+            </div>
 
-            <form id="builder-form"
-                style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
-
-                <div class="form-group" style="grid-column: 1 / -1; margin-bottom: 2rem;">
-                    <label
-                        style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase;">Build
-                        Name</label>
-                    <input type="text" id="build-name" name="config_name" placeholder="E.g. Office PC v1..."
-                        style="width: 100%; padding: 1.25rem; background: rgba(124, 58, 237, 0.03); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem;">
+            <form id="builder-form">
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label class="form-label" style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Build Assignment Name</label>
+                    <input type="text" id="build-name" name="config_name" placeholder="E.g. Gaming Rig 2024..."
+                        style="width: 100%; padding: 1.25rem 1.75rem; background: rgba(0,0,0,0.2); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem; transition: border-color 0.2s;"
+                        onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
                 </div>
 
+                <div class="builder-grid">
+                    <!-- Core Performance -->
+                    <div class="category-label">
+                        <i class="bi bi-cpu" style="font-size: 1.4rem;"></i> Core Performance
+                    </div>
 
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Processor (CPU)</label>
+                        <select id="cpu-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading CPUs...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Processor
-                        (CPU)</label>
-                    <select id="cpu-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading CPUs...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Graphics Card (GPU)</label>
+                        <select id="gpu-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading GPUs...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Graphics Card
-                        (GPU)</label>
-                    <select id="gpu-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading GPUs...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Motherboard</label>
+                        <select id="mobo-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading Motherboards...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Motherboard</label>
-                    <select id="mobo-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Motherboards...</option>
-                    </select>
-                </div>
+                    <!-- Memory & Storage -->
+                    <div class="category-label">
+                        <i class="bi bi-memory" style="font-size: 1.4rem;"></i> Memory & Storage
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Memory (RAM)</label>
-                    <select id="ram-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading RAM...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Memory (RAM)</label>
+                        <select id="ram-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading RAM...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Storage</label>
-                    <select id="storage-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Storage...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Primary Storage</label>
+                        <select id="storage-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading Storage...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Power Supply
-                        (PSU)</label>
-                    <select id="psu-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading PSUs...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">CPU Cooler</label>
+                        <select id="cooler-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading Coolers...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Case</label>
-                    <select id="case-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Cases...</option>
-                    </select>
-                </div>
+                    <!-- Power & Case -->
+                    <div class="category-label">
+                        <i class="bi bi-plug" style="font-size: 1.4rem;"></i> Power & Case
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">CPU Cooler</label>
-                    <select id="cooler-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Coolers...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Power Supply (PSU)</label>
+                        <select id="psu-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading PSUs...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Monitor</label>
-                    <select id="monitor-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Monitors...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Chassis (Case)</label>
+                        <select id="case-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading Cases...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Operating
-                        System</label>
-                    <select id="os-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading OS...</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Cooling Fans</label>
+                        <select id="fans-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading Fans...</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Peripherals</label>
-                    <button type="button" onclick="togglePeripherals()" id="periph-btn"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.95rem; transition: all 0.3s;">
-                        <span>Select Peripherals (Keyboard, Mouse, etc.)</span>
-                        <span id="periph-icon" style="font-size: 1.2rem; transition: transform 0.3s;">+</span>
-                    </button>
+                    <!-- Peripherals & OS -->
+                    <div class="category-label">
+                        <i class="bi bi-display" style="font-size: 1.4rem;"></i> Extra Essentials
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Monitor</label>
+                        <select id="monitor-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading Monitors...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Operating System</label>
+                        <select id="os-select" class="form-select"
+                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            <option value="">Loading OS...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Peripherals</label>
+                        <button type="button" onclick="togglePeripherals()" id="periph-btn"
+                            style="width: 100%; padding: 1.15rem 1.25rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.95rem; transition: all 0.3s;">
+                            <span>Manage Add-ons</span>
+                            <span id="periph-icon" style="font-size: 1.2rem; transition: transform 0.3s;">+</span>
+                        </button>
+                    </div>
+
                     <div id="peripherals-panel"
-                        style="display: none; padding: 1rem; background: rgba(124, 58, 237, 0.03); border: 1px solid var(--border); border-radius: 12px;">
-                        <div style="display: grid; gap: 1rem;">
+                        style="display: none; grid-column: 1 / -1; padding: 1.5rem; background: rgba(124, 58, 237, 0.05); border: 1px solid var(--border); border-radius: 12px; margin-top: -1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
                             <div>
                                 <label
-                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">⌨️
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">⌨️
                                     Keyboard</label>
                                 <select id="keyboard-select" class="form-select"
-                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
                                     <option value="">Select Keyboard...</option>
                                 </select>
                             </div>
                             <div>
                                 <label
-                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">🖱️
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🖱️
                                     Mouse</label>
                                 <select id="mouse-select" class="form-select"
-                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
                                     <option value="">Select Mouse...</option>
                                 </select>
                             </div>
                             <div>
                                 <label
-                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">🎧
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🎧
                                     Headset</label>
                                 <select id="headset-select" class="form-select"
-                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
                                     <option value="">Select Headset...</option>
                                 </select>
                             </div>
                             <div>
                                 <label
-                                    style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--text-muted);">📷
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">📷
                                     Webcam</label>
                                 <select id="webcam-select" class="form-select"
-                                    style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
                                     <option value="">Select Webcam...</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-                    <!-- Hidden select to maintain backward compatibility -->
-                    <select id="peripherals-select" style="display: none;">
-                        <option value=""></option>
-                    </select>
                 </div>
 
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Case Fans</label>
-                    <select id="fans-select" class="form-select"
-                        style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: var(--radius-sm);">
-                        <option value="">Loading Fans...</option>
-                    </select>
-                </div>
-
+                <!-- Life Cycle Warnings -->
                 <div id="lifecycle-warning"
-                    style="display:none; padding:1rem; background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; border-radius: 12px; margin-top: 1rem; grid-column: 1 / -1;">
-                    <div style="display:flex; align-items:center; gap:10px; color:#fbbf24; font-weight:600;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" />
-                        </svg>
-                        Performance Warning
+                    style="display:none; padding:1.25rem; background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; border-radius: 12px; margin-top: 2rem;">
+                    <div style="display:flex; align-items:center; gap:10px; color:#fbbf24; font-weight:700;">
+                        <i class="bi bi-exclamation-triangle"></i> Hardware Compatibility Note
                     </div>
-                    <p id="warning-text" style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem;"></p>
+                    <p id="warning-text" style="font-size:0.9rem; color:var(--text-muted); margin-top:0.75rem; line-height: 1.5;"></p>
                 </div>
-
             </form>
 
             <div

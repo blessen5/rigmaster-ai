@@ -11,17 +11,28 @@
         rel="stylesheet">
     <style>
         .broadcast-container {
-            max-width: 800px;
+            max-width: 1100px;
             margin: 0 auto;
+        }
+
+        .broadcast-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            padding: 3rem;
+            padding: 2rem;
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-lg);
+            height: 100%;
         }
 
         .form-group {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .form-label {
@@ -29,34 +40,60 @@
             margin-bottom: 0.5rem;
             font-weight: 600;
             color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .form-control {
             width: 100%;
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.2);
+            padding: 0.85rem;
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
         }
 
         .form-control:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         }
 
         .stats-banner {
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid var(--primary-light);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
             padding: 1.5rem;
             border-radius: var(--radius-md);
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
             gap: 1rem;
+        }
+
+        .maint-card {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(10, 10, 10, 0.2) 100%);
+            border: 1px solid var(--border);
+            border-top: 4px solid var(--accent);
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+        }
+
+        .preview-box {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            min-height: 100px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            white-space: pre-wrap;
         }
 
         .spinner {
@@ -164,170 +201,139 @@
 
 
         <div class="broadcast-container">
-            <div class="stats-banner">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
-                    <path
-                        d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21"
-                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    <path
-                        d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z"
-                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    <path
-                        d="M23 21V19C22.9993 18.1137 22.7044 17.2524 22.1614 16.5523C21.6184 15.8522 20.8581 15.3516 20 15.13"
-                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    <path
-                        d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75608 18.1676 9.45768C17.623 10.1593 16.8604 10.6597 16 10.88"
-                        stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <div>
-                    <h3 style="margin: 0; color: var(--text-main);">Current Audience Size</h3>
-                    <p style="margin: 0; color: var(--text-muted);">You are about to send an email to <strong>{{
-                            user_count }}</strong> registered users.</p>
-                </div>
-            </div>
+            <div class="broadcast-grid">
+                <!-- Left Column: Controls & Stats -->
+                <div class="sidebar-cards">
+                    <div class="stats-banner">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+                            <path
+                                d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21"
+                                stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path
+                                d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z"
+                                stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1rem; color: var(--text-main);">Audience Reach</h3>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);"><strong>{{ user_count }}</strong> recipients found.</p>
+                        </div>
+                    </div>
 
-            <!-- System Control -->
-            <div class="maint-card">
-                <div class="maint-header">
-                    <h2 class="maint-title">
-                        🛡️ System Control
-                        <span class="badge {{ 'badge-warning' if maintenance_mode else 'badge-success' }}">
-                            {{ 'MAINTENANCE ACTIVE' if maintenance_mode else 'SYSTEM ONLINE' }}
-                        </span>
-                    </h2>
-                </div>
-                <p class="maint-desc">
-                    Toggle maintenance mode to restrict site access to administrators only. All regular users will see a
-                    maintenance page until you disable it.
-                </p>
-                <button id="toggle-maint" class="btn maint-btn {{ 'btn-secondary' if maintenance_mode else 'btn-primary' }}"
-                    style="padding: 0.75rem 1.5rem; font-weight: 600;"
-                    data-active="{{ 'true' if maintenance_mode else 'false' }}" onclick="toggleMaintenance(this)">
-                    {{ 'Disable Maintenance Mode' if maintenance_mode else 'Enable Maintenance Mode' }}
-                </button>
-            </div>
+                    <!-- System Control -->
+                    <div class="maint-card">
+                        <div class="maint-header">
+                            <h2 class="maint-title" style="font-size: 1rem;">
+                                🛡️ System Control
+                                <span class="badge {{ 'badge-warning' if maintenance_mode else 'badge-success' }}" style="font-size: 0.65rem;">
+                                    {{ 'ON' if maintenance_mode else 'LIVE' }}
+                                </span>
+                            </h2>
+                        </div>
+                        <p class="maint-desc" style="font-size: 0.8rem;">
+                            Restrict site access to admins. Regular users see maintenance page.
+                        </p>
+                        <button id="toggle-maint" class="btn maint-btn {{ 'btn-secondary' if maintenance_mode else 'btn-primary' }}"
+                            style="padding: 0.5rem 1rem; font-size: 0.85rem; width: 100%;"
+                            data-active="{{ 'true' if maintenance_mode else 'false' }}" onclick="toggleMaintenance(this)">
+                            {{ 'Restore Site Access' if maintenance_mode else 'Go into Maintenance' }}
+                        </button>
+                    </div>
 
-            <!-- Global Announcement Section -->
-            <div
-                style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.3); padding: 2rem; border-radius: var(--radius-md); margin-bottom: 2.5rem;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z"
-                            stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        <path
-                            d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21"
-                            stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-main);">Global Announcement</h3>
-                </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-                    Display a banner message at the top of every page for all users. Leave empty to hide the banner.
-                </p>
+                    <!-- Global Announcement Card -->
+                    <div class="card" style="padding: 1.5rem; height: auto;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z"
+                                    stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <h3 style="margin: 0; font-size: 1rem; color: var(--text-main);">Banner Message</h3>
+                        </div>
 
-                {% if global_announcement %}
-                <div id="current-announcement-preview"
-                    style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.1rem;">📢</span>
-                    <div>
-                        <span
-                            style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Currently
-                            Active</span>
-                        <p id="preview-text" style="margin: 0; color: #fbbf24; font-weight: 500;">{{ global_announcement
-                            }}</p>
+                        <div id="current-announcement-preview"
+                            style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p id="preview-text" style="margin: 0; font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+                                {% if global_announcement %}{{ global_announcement }}{% else %}No active banner.{% endif %}
+                            </p>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <input type="text" id="announcement-text" value="{{ global_announcement }}"
+                                placeholder="Maintenance tonight..." class="form-control"
+                                oninput="updatePreview(this.value)">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-primary" onclick="updateAnnouncement()" style="flex: 1; font-size: 0.85rem; padding: 0.5rem;">Update</button>
+                                <button class="btn btn-secondary" onclick="clearAnnouncement()" style="padding: 0.5rem; color: #f87171;" title="Clear">✕</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {% else %}
-                <div id="current-announcement-preview"
-                    style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.1rem;">🔕</span>
-                    <p id="preview-text" style="margin: 0; color: var(--text-muted); font-style: italic;">No
-                        announcement is currently active.</p>
-                </div>
-                {% endif %}
 
-                <div style="display: flex; gap: 0.75rem;">
-                    <input type="text" id="announcement-text" value="{{ global_announcement }}"
-                        placeholder="e.g. Server maintenance tonight at 10 PM" class="form-control" style="flex: 1;"
-                        oninput="updatePreview(this.value)">
-                    <button class="btn btn-primary" onclick="updateAnnouncement()"
-                        style="white-space: nowrap; padding: 0.75rem 1.5rem;">
-                        Update
-                    </button>
-                    <button class="btn btn-secondary" onclick="clearAnnouncement()"
-                        style="white-space: nowrap; padding: 0.75rem 1rem; color: #f87171; border-color: rgba(248, 113, 113, 0.3);"
-                        title="Clear announcement">
-                        ✕
-                    </button>
+                <!-- Right Column: Email Broadcast -->
+                <div class="card" style="padding: 2.5rem;">
+                    <div style="margin-bottom: 2rem;">
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">Compose Broadcast</h2>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--text-muted);">Send a secure email to all registered participants.</p>
+                    </div>
+
+                    <form id="broadcastForm" onsubmit="sendBroadcast(event)">
+                        <div class="form-group">
+                            <label class="form-label">Email Subject</label>
+                            <input type="text" id="b-subject" class="form-control" required
+                                placeholder="e.g. Platform Update - March 2024">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Message Content</label>
+                            <textarea id="b-body" class="form-control" rows="12" required
+                                placeholder="Write your announcement here..." oninput="updateEmailPreview(this.value)"></textarea>
+                        </div>
+
+                        <div style="border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); flex: 1;">
+                                    <i class="bi bi-shield-check"></i> Standard footer and greeting will be appended automatically.
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="submitBtn"
+                                    style="padding: 1rem 2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; border-radius: var(--radius-md);">
+                                    <span class="spinner" id="btnSpinner"></span>
+                                    <span id="btnText">🚀 DEPLOY BROADCAST</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div id="email-preview-container" style="display: none; margin-top: 2rem;">
+                        <label class="form-label" style="color: var(--primary);">Live Preview</label>
+                        <div class="preview-box" id="email-preview-box"></div>
+                    </div>
                 </div>
             </div>
-
-            <!-- Divider -->
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem;">
-                <div style="flex: 1; height: 1px; background: var(--border);"></div>
-                <span
-                    style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Email
-                    Broadcast</span>
-                <div style="flex: 1; height: 1px; background: var(--border);"></div>
-            </div>
-
-            <form id="broadcastForm" onsubmit="sendBroadcast(event)">
-                <div class="form-group">
-                    <label class="form-label">Subject</label>
-                    <input type="text" id="b-subject" class="form-control" required
-                        placeholder="e.g. Major RigMaster Update: RTX 5090 Added!">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Message Body (Text/HTML)</label>
-                    <textarea id="b-body" class="form-control" rows="10" required
-                        placeholder="Write your newsletter or announcement here..."></textarea>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <p style="color: var(--text-muted); font-size: 0.85rem;"><i class="bi bi-info-circle"></i> Emails
-                        are sent asynchronously to avoid timeouts.</p>
-                    <button type="submit" class="btn btn-primary btn-large" id="submitBtn"
-                        style="display: flex; align-items: center;">
-                        <span class="spinner" id="btnSpinner"></span>
-                        <span id="btnText"><i class="bi bi-send"></i> Send Broadcast</span>
-                    </button>
-                </div>
-            </form>
         </div>
     </main>
 
     <script>
         // --- Global Announcement Functions ---
         function updatePreview(text) {
-            const preview = document.getElementById('current-announcement-preview');
             const previewText = document.getElementById('preview-text');
             if (text.trim()) {
-                preview.style.background = 'rgba(251, 191, 36, 0.1)';
-                preview.style.border = '1px solid rgba(251, 191, 36, 0.3)';
-                preview.querySelector('span').textContent = '📢';
                 previewText.style.color = '#fbbf24';
                 previewText.style.fontStyle = 'normal';
-                previewText.style.fontWeight = '500';
                 previewText.textContent = text;
-                // Add/update the label
-                let label = preview.querySelector('.preview-label');
-                if (!label) {
-                    const wrapper = document.createElement('div');
-                    label = document.createElement('span');
-                    label.className = 'preview-label';
-                    label.style.cssText = 'font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;';
-                    label.textContent = 'Preview';
-                    wrapper.appendChild(label);
-                    wrapper.appendChild(previewText);
-                    preview.querySelector('div') ? null : preview.appendChild(wrapper);
-                }
             } else {
-                preview.style.background = 'rgba(255,255,255,0.03)';
-                preview.style.border = '1px dashed var(--border)';
-                preview.querySelector('span').textContent = '🔕';
                 previewText.style.color = 'var(--text-muted)';
                 previewText.style.fontStyle = 'italic';
-                previewText.textContent = 'No announcement is currently active.';
+                previewText.textContent = 'No active banner.';
+            }
+        }
+
+        function updateEmailPreview(text) {
+            const container = document.getElementById('email-preview-container');
+            const previewBox = document.getElementById('email-preview-box');
+            if (text.trim()) {
+                container.style.display = 'block';
+                previewBox.textContent = `Hi [Username],\n\n${text}\n\n- RigMaster AI Team`;
+            } else {
+                container.style.display = 'none';
             }
         }
 

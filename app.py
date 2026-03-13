@@ -4622,6 +4622,10 @@ def admin_get_components(category):
     if status_filter:
         query['status'] = status_filter
 
+    search_query = request.args.get('search')
+    if search_query:
+        query['name'] = {'$regex': search_query, '$options': 'i'}
+
     # Generic query to components table
     items = list(db.components.find(query).sort('name', 1))
     app.logger.info(f"Hardware Query: {query} -> Found {len(items)} items")
