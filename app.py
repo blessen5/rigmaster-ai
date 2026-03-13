@@ -973,16 +973,25 @@ def saved_builds():
     
     # Resolve IDs to names for display
     resolved_builds = []
-    # Map id_key -> category in DB
-    col_map = {
-        'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard',
-        'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-        'case_id': 'case', 'cooler_id': 'cooler',
-        'monitor_id': 'monitor', 'os_id': 'os',
-        'peripherals_id': 'peripherals', 'fans_id': 'fans',
-        'keyboard_id': 'peripherals', 'mouse_id': 'peripherals',
-        'headset_id': 'peripherals', 'webcam_id': 'peripherals'
-    }
+    # Ordered slot rendering ensures all categories are always shown in a stable order
+    slot_order = [
+        ('cpu_id', 'CPU'),
+        ('gpu_id', 'GPU'),
+        ('motherboard_id', 'MOTHERBOARD'),
+        ('ram_id', 'RAM'),
+        ('storage_id', 'STORAGE'),
+        ('psu_id', 'PSU'),
+        ('case_id', 'CASE'),
+        ('cooler_id', 'COOLER'),
+        ('monitor_id', 'MONITOR'),
+        ('os_id', 'OS'),
+        ('fans_id', 'FANS'),
+        ('peripherals_id', 'PERIPHERALS'),
+        ('keyboard_id', 'KEYBOARD'),
+        ('mouse_id', 'MOUSE'),
+        ('headset_id', 'HEADSET'),
+        ('webcam_id', 'WEBCAM'),
+    ]
     
     for build in user_builds:
         # Get name with fallback and ensure it's a string
@@ -1002,33 +1011,35 @@ def saved_builds():
             'components': {}
         }
         
+        EMOJI_MAP = {
+            'CPU': '🧠', 'GPU': '🎮', 'MOTHERBOARD': '📟', 'RAM': '💾', 'STORAGE': '🗄️',
+            'PSU': '⚡', 'CASE': '📦', 'COOLER': '❄️', 'MONITOR': '🖥️', 'OS': '🪟',
+            'FANS': '🌪️', 'PERIPHERALS': '🔌', 'KEYBOARD': '⌨️', 'MOUSE': '🖱️',
+            'HEADSET': '🎧', 'WEBCAM': '📷'
+        }
+        
         total_unit_cost = 0
 
-        for key, cat in col_map.items():
+        for key, raw_key in slot_order:
             comp_id = build.get(key)
+            display_key = f"{EMOJI_MAP.get(raw_key, '')} {raw_key}".strip()
             if comp_id:
                 try:
                     comp = db.components.find_one({'_id': ObjectId(comp_id)})
                     if comp:
                         cname = comp.get('name', 'Unknown')
-                        display_key = key.replace('_id', '').upper()
-                        # User requested to remove peripherals from visual summary
-                        peripheral_keys = ['PERIPHERALS', 'KEYBOARD', 'MOUSE', 'HEADSET', 'WEBCAM']
-                        if display_key not in peripheral_keys:
-                            build_details['components'][display_key] = cname
+                        build_details['components'][display_key] = cname
                         total_unit_cost += get_comp_price_usd(comp, id_key=key)
                     else:
-                        build_details['components'][key.replace('_id', '').upper()] = "Unknown Component (ID: " + str(comp_id) + ")"
+                        build_details['components'][display_key] = "Unknown Component (ID: " + str(comp_id) + ")"
                 except Exception:
-                    build_details['components'][key.replace('_id', '').upper()] = "Invalid Component Reference"
+                    build_details['components'][display_key] = "Invalid Component Reference"
             else:
                 # Only show essential components if none selected, hide others to avoid clutter
                 essentials = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id']
-                peripheral_keys = ['PERIPHERALS', 'KEYBOARD', 'MOUSE', 'HEADSET', 'WEBCAM']
-                display_key = key.replace('_id', '').upper()
                 if key in essentials:
                     build_details['components'][display_key] = "None Selected"
-                elif display_key not in peripheral_keys:
+                else:
                     build_details['components'][display_key] = "None"
 
         build_details['project_total'] = format_price(total_unit_cost)
@@ -3721,7 +3732,10 @@ def api_predict_resale(build_id):
         col_map = {
             'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard',
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
-            'case_id': 'case', 'cooler_id': 'cooler'
+            'case_id': 'case', 'cooler_id': 'cooler',
+            'keyboard_id': 'keyboard', 'mouse_id': 'mouse',
+            'headset_id': 'headset', 'webcam_id': 'webcam',
+            'fans_id': 'fans', 'monitor_id': 'monitor', 'os_id': 'os'
         }
         
         component_data = []
@@ -3950,10 +3964,7 @@ def export_build(build_id):
         pdf.set_font("helvetica", 'B', 16)
         pdf.cell(0, 10, "2. Selected Components", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("helvetica", '', 12)
-        peripheral_keys = ['PERIPHERALS', 'KEYBOARD', 'MOUSE', 'HEADSET', 'WEBCAM']
         for cat, name in components.items():
-            if cat in peripheral_keys:
-                continue
             pdf.set_font("helvetica", 'B', 12)
             pdf.cell(50, 8, f"{cat}:", border=0, new_x=XPos.RIGHT, new_y=YPos.TOP)
             pdf.set_font("helvetica", '', 12)
@@ -5979,18 +5990,6 @@ def profile():
     except Exception as e:
         app.logger.error(f"Profile error: {e}")
         return render_template('error.html', message="Could not load profile"), 500
-
-# ============================================================================
-
-
-
-# ============================================================================
-# CHATBOT ROUTES
-# ============================================================================
-
-
-
-# Chatbot consolidated above
 
 
 if __name__ == '__main__':
