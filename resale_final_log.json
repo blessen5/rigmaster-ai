@@ -1,54 +1,96 @@
 {
-  "total_system_value": "\u20b935,690",
-  "market_advice": "The system is relatively outdated, but the components are still active and can be sold for a decent price. It's recommended to sell the components separately to maximize the resale value. The AMD 5350 CPU and ASRock B450M-HDV R4.0 motherboard are the most valuable components, while the ADATA ISSS333-002TD storage and ADATA XPG Core Reactor II PSU are less valuable due to their age and limited capacity.",
+  "total_system_value": "\u00a55,976.00",
+  "market_advice": "The system has a mix of older and newer components. The AMD Athlon II X2 240e CPU is quite outdated and may not be suitable for modern applications. Consider upgrading the CPU and possibly the motherboard to improve overall system performance. The EVGA FTW3 ULTRA HYBRID GAMING iCX3 GPU is a strong component, but its value may be hindered by the older CPU. Other components such as the RAM, storage, and PSU are decent but may not be the best match for the GPU's capabilities.",
   "components": [
     {
       "category": "CPU",
-      "name": "AMD 5350",
+      "name": "AMD Athlon II X2 240e",
       "status": "Active",
-      "estimated_resale": "\u20b99,960"
+      "estimated_resale": "\u00a5144.00"
     },
     {
       "category": "GPU",
-      "name": "AMD 100-300000082",
+      "name": "EVGA FTW3 ULTRA HYBRID GAMING iCX3",
       "status": "Active",
-      "estimated_resale": "\u20b96,640"
+      "estimated_resale": "\u00a52,520.00"
     },
     {
       "category": "MOTHERBOARD",
-      "name": "ASRock B450M-HDV R4.0",
+      "name": "ASRock B550 Pro4",
       "status": "Active",
-      "estimated_resale": "\u20b98,300"
+      "estimated_resale": "\u00a5576.00"
     },
     {
       "category": "RAM",
-      "name": "Corsair CMSO8GX3M1C1600C11 8 GB",
+      "name": "Apotop U3A8Gx1-16C9GB 8 GB",
       "status": "Active",
-      "estimated_resale": "\u20b91,660"
+      "estimated_resale": "\u00a5108.00"
     },
     {
       "category": "STORAGE",
-      "name": "ADATA ISSS333-002TD",
+      "name": "ADATA ISSS333-256GD",
       "status": "Active",
-      "estimated_resale": "\u20b91,245"
+      "estimated_resale": "\u00a5180.00"
     },
     {
       "category": "PSU",
-      "name": "ADATA XPG Core Reactor II",
+      "name": "Cooler Master B500",
       "status": "Active",
-      "estimated_resale": "\u20b92,490"
+      "estimated_resale": "\u00a5288.00"
     },
     {
       "category": "CASE",
-      "name": "Antec C8 Curve Wood",
+      "name": "Aerocool Hexform",
       "status": "Active",
-      "estimated_resale": "\u20b93,320"
+      "estimated_resale": "\u00a5216.00"
     },
     {
       "category": "COOLER",
-      "name": "ABKONCORE CT408",
+      "name": "Asus ROG STRIX LC II",
       "status": "Active",
-      "estimated_resale": "\u20b92,075"
+      "estimated_resale": "\u00a5432.00"
+    },
+    {
+      "category": "KEYBOARD",
+      "name": "Adesso AKB-131UB",
+      "status": "Active",
+      "estimated_resale": "\u00a572.00"
+    },
+    {
+      "category": "MOUSE",
+      "name": "Adesso IMOUSE S1",
+      "status": "Active",
+      "estimated_resale": "\u00a536.00"
+    },
+    {
+      "category": "HEADSET",
+      "name": "ADATA XPG Precog Studio",
+      "status": "Active",
+      "estimated_resale": "\u00a5144.00"
+    },
+    {
+      "category": "WEBCAM",
+      "name": "Razer Kiyo X",
+      "status": "Active",
+      "estimated_resale": "\u00a5360.00"
+    },
+    {
+      "category": "FANS",
+      "name": "Aerocool Aluminum-Quadro",
+      "status": "Active",
+      "estimated_resale": "\u00a5144.00"
+    },
+    {
+      "category": "MONITOR",
+      "name": "AOC e2050Swd",
+      "status": "Active",
+      "estimated_resale": "\u00a5504.00"
+    },
+    {
+      "category": "OS",
+      "name": "Microsoft Windows 11 Home OEM - DVD 64-bit",
+      "status": "Active",
+      "estimated_resale": "\u00a5720.00"
     }
   ],
   "provider": "RigMaster AI"
