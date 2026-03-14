@@ -136,39 +136,11 @@
         <div class="nav-actions">
             {% if not request.path.startswith('/admin') %}
             <select id="currency-selector" class="btn btn-secondary">
-                <option value="USD" {% if session.get('currency')=='USD' %}selected{% endif %}>USD ($)</option>
-                <option value="EUR" {% if session.get('currency')=='EUR' %}selected{% endif %}>EUR (€)</option>
-                <option value="GBP" {% if session.get('currency')=='GBP' %}selected{% endif %}>GBP (£)</option>
-                <option value="INR" {% if session.get('currency')=='INR' %}selected{% endif %}>INR (₹)</option>
-                <option value="AUD" {% if session.get('currency')=='AUD' %}selected{% endif %}>AUD (A$)</option>
-                <option value="CAD" {% if session.get('currency')=='CAD' %}selected{% endif %}>CAD (C$)</option>
-                <option value="JPY" {% if session.get('currency')=='JPY' %}selected{% endif %}>JPY (¥)</option>
-                <option value="CHF" {% if session.get('currency')=='CHF' %}selected{% endif %}>CHF (CHF)</option>
-                <option value="CNY" {% if session.get('currency')=='CNY' %}selected{% endif %}>CNY (¥)</option>
-                <option value="HKD" {% if session.get('currency')=='HKD' %}selected{% endif %}>HKD (HK$)</option>
-                <option value="NZD" {% if session.get('currency')=='NZD' %}selected{% endif %}>NZD (NZ$)</option>
-                <option value="SEK" {% if session.get('currency')=='SEK' %}selected{% endif %}>SEK (kr)</option>
-                <option value="KRW" {% if session.get('currency')=='KRW' %}selected{% endif %}>KRW (₩)</option>
-                <option value="SGD" {% if session.get('currency')=='SGD' %}selected{% endif %}>SGD (S$)</option>
-                <option value="NOK" {% if session.get('currency')=='NOK' %}selected{% endif %}>NOK (kr)</option>
-                <option value="MXN" {% if session.get('currency')=='MXN' %}selected{% endif %}>MXN ($)</option>
-                <option value="RUB" {% if session.get('currency')=='RUB' %}selected{% endif %}>RUB (₽)</option>
-                <option value="ZAR" {% if session.get('currency')=='ZAR' %}selected{% endif %}>ZAR (R)</option>
-                <option value="TRY" {% if session.get('currency')=='TRY' %}selected{% endif %}>TRY (₺)</option>
-                <option value="BRL" {% if session.get('currency')=='BRL' %}selected{% endif %}>BRL (R$)</option>
-                <option value="TWD" {% if session.get('currency')=='TWD' %}selected{% endif %}>TWD (NT$)</option>
-                <option value="DKK" {% if session.get('currency')=='DKK' %}selected{% endif %}>DKK (kr)</option>
-                <option value="PLN" {% if session.get('currency')=='PLN' %}selected{% endif %}>PLN (zł)</option>
-                <option value="THB" {% if session.get('currency')=='THB' %}selected{% endif %}>THB (฿)</option>
-                <option value="IDR" {% if session.get('currency')=='IDR' %}selected{% endif %}>IDR (Rp)</option>
-                <option value="HUF" {% if session.get('currency')=='HUF' %}selected{% endif %}>HUF (Ft)</option>
-                <option value="CZK" {% if session.get('currency')=='CZK' %}selected{% endif %}>CZK (Kč)</option>
-                <option value="ILS" {% if session.get('currency')=='ILS' %}selected{% endif %}>ILS (₪)</option>
-                <option value="PHP" {% if session.get('currency')=='PHP' %}selected{% endif %}>PHP (₱)</option>
-                <option value="AED" {% if session.get('currency')=='AED' %}selected{% endif %}>AED (د.إ)</option>
-                <option value="MYR" {% if session.get('currency')=='MYR' %}selected{% endif %}>MYR (RM)</option>
-                <option value="VND" {% if session.get('currency')=='VND' %}selected{% endif %}>VND (₫)</option>
-                <option value="NGN" {% if session.get('currency')=='NGN' %}selected{% endif %}>NGN (₦)</option>
+                {% for code, symbol in all_currencies.items() %}
+                <option value="{{ code }}" {% if session.get('currency') == code %}selected{% endif %}>
+                    {{ code }} ({{ symbol }})
+                </option>
+                {% endfor %}
             </select>
             <script>
                 document.getElementById('currency-selector').onchange = function () {
