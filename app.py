@@ -2605,7 +2605,6 @@ def order_components():
         custom_keys = get_site_setting('api_keys', {})
         db_serp_key = custom_keys.get('serpapi_key')
         serpapi_key = db_serp_key if db_serp_key else os.getenv('SERPAPI_KEY')
-        
         for category, comp_id in comp_ids.items():
             if not comp_id:
                 continue
@@ -2702,7 +2701,6 @@ def order_components():
                 if not serpapi_key:
                     # Generic mock for demo - use a real Google Shopping search link
                     search_path = urllib.parse.quote(query)
-                    
                     # Extract price from component data similar to api_component_prices
                     comp_price = comp.get('price', comp.get('msrp'))
                     
@@ -4406,7 +4404,8 @@ def admin_system_health():
         # 3. FETCH THE LATEST DATA BACK FROM THE TABLE FOR THE UI
         # This ensures the UI is strictly showing what is recorded in the database
         health_history = []
-        display_health = health # Fallback
+        display_health = health.copy() # Fallback
+        display_health['overall_status'] = health_snapshot.get('overall_status', 'Healthy')
         try:
             health_history = list(db.system_health_logs.find().sort('timestamp', -1).limit(10))
             if health_history:
@@ -4424,7 +4423,8 @@ def admin_system_health():
                     'database': db_status_str,
                     'collections': latest_log.get('collections', []),
                     'ai_providers': latest_log.get('ai_providers', {}),
-                    'services': latest_log.get('services', {})
+                    'services': latest_log.get('services', {}),
+                    'overall_status': latest_log.get('overall_status', 'Healthy')
                 }
                 # Also ensure we use the logged db_stats and server_info if available
                 db_stats = latest_log.get('db_stats', db_stats)
@@ -4434,7 +4434,7 @@ def admin_system_health():
                 for log in health_history:
                     log['_id'] = str(log['_id'])
                     if 'timestamp' in log and log['timestamp']:
-                        log['date_str'] = log['timestamp'].strftime('%Y-%m-%d %H:%M')
+                        log['date_str'] = log['timestamp'].strftime('%Y-%m-%d %H:%M') + ' (UTC)'
         except Exception as fetch_err:
             app.logger.warning(f"Fetch from history failed: {fetch_err}")
 
