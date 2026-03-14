@@ -103,38 +103,75 @@
         }
 
         /* Budget Control Styling */
-        .budget-control-container {
+        .budget-control-card {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 2.5rem;
+            border-radius: 32px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .budget-input-row {
             display: flex;
             align-items: center;
-            gap: 2rem;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 1rem;
+            gap: 1.5rem;
+        }
+
+        .budget-numeric-group {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid var(--border);
             border-radius: 20px;
-            border: 1px solid var(--border);
+            padding: 0 1.5rem;
+            height: 70px;
+            flex: 1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .budget-input-wrapper {
-            position: relative;
-            width: 180px;
+        .budget-numeric-group:focus-within {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+            transform: translateY(-2px);
         }
 
-        .currency-symbol {
-            position: absolute;
-            left: 1.25rem;
-            top: 50%;
-            transform: translateY(-50%);
+        .currency-label {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
             color: var(--primary-light);
-            font-weight: 700;
-            font-size: 1.1rem;
+            margin-right: 1rem;
+            user-select: none;
+            flex-shrink: 0;
         }
 
-        .budget-input {
-            padding-left: 2.5rem;
+        .budget-main-input {
+            background: transparent;
+            border: none;
+            color: white;
             font-family: 'Outfit', sans-serif;
             font-weight: 700;
-            font-size: 1.25rem;
-            color: var(--primary-light);
+            font-size: 1.75rem;
+            width: 100%;
+            outline: none;
+            padding: 0;
         }
+
+        .budget-main-input::-webkit-outer-spin-button,
+        .budget-main-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            appearance: none;
+            margin: 0;
+        }
+        .budget-main-input {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+
 
         /* Select Styling */
         .custom-select-wrapper {
@@ -520,54 +557,27 @@
                     <div class="input-group-wrapper" style="margin-bottom: 2.5rem;">
                         {%- set cur = session.get('currency', 'USD') -%}
                         {%- set default_budget = 1500 -%}
-                        {%- if cur == 'INR' %}{% set default_budget = 120000 %}
-                        {%- elif cur == 'GBP' %}{% set default_budget = 1200 %}
-                        {%- elif cur == 'EUR' %}{% set default_budget = 1400 %}
-                        {%- elif cur == 'JPY' %}{% set default_budget = 220000 %}
-                        {%- elif cur == 'KRW' %}{% set default_budget = 2000000 %}
-                        {%- elif cur == 'VND' %}{% set default_budget = 35000000 %}
+                        {%- set max_slider = 10000 -%}
+                        {%- if cur == 'INR' %}{% set default_budget = 120000 %}{% set max_slider = 500000 %}
+                        {%- elif cur == 'GBP' %}{% set default_budget = 1200 %}{% set max_slider = 8000 %}
+                        {%- elif cur == 'EUR' %}{% set default_budget = 1400 %}{% set max_slider = 10000 %}
+                        {%- elif cur == 'JPY' %}{% set default_budget = 220000 %}{% set max_slider = 1500000 %}
+                        {%- elif cur == 'KRW' %}{% set default_budget = 2000000 %}{% set max_slider = 15000000 %}
+                        {%- elif cur == 'VND' %}{% set default_budget = 35000000 %}{% set max_slider = 250000000 %}
                         {%- endif -%}
                         <label class="section-label">Budget Limit ({{ cur }})</label>
 
-                        <div class="budget-input-wrapper" style="width: 100%;">
-                            <span class="currency-symbol" id="input-currency-symbol">
-                                {%- set cur = session.get('currency', 'USD') -%}
-                                {%- if cur == 'INR' %}&#8377;
-                                {%- elif cur == 'GBP' %}&#163;
-                                {%- elif cur == 'EUR' %}&#8364;
-                                {%- elif cur == 'CAD' %}C$
-                                {%- elif cur == 'AUD' %}A$
-                                {%- elif cur == 'NZD' %}NZ$
-                                {%- elif cur == 'HKD' %}HK$
-                                {%- elif cur == 'SGD' %}S$
-                                {%- elif cur == 'TWD' %}NT$
-                                {%- elif cur == 'JPY' or cur == 'CNY' %}&#165;
-                                {%- elif cur == 'KRW' %}&#8361;
-                                {%- elif cur == 'TRY' %}&#8378;
-                                {%- elif cur == 'BRL' %}R$
-                                {%- elif cur == 'RUB' %}&#8381;
-                                {%- elif cur == 'ZAR' %}R
-                                {%- elif cur == 'SEK' or cur == 'NOK' or cur == 'DKK' %}kr
-                                {%- elif cur == 'PLN' %}z&#322;
-                                {%- elif cur == 'THB' %}&#3647;
-                                {%- elif cur == 'IDR' %}Rp
-                                {%- elif cur == 'HUF' %}Ft
-                                {%- elif cur == 'CZK' %}K&#269;
-                                {%- elif cur == 'ILS' %}&#8362;
-                                {%- elif cur == 'PHP' %}&#8369;
-                                {%- elif cur == 'AED' %}&#1583;.&#1573;
-                                {%- elif cur == 'MYR' %}RM
-                                {%- elif cur == 'VND' %}&#8363;
-                                {%- elif cur == 'NGN' %}&#8358;
-                                {%- elif cur == 'CHF' %}CHF
-                                {%- elif cur == 'MXN' %}MX$
-                                {%- else %}$
-                                {%- endif %}
-                            </span>
-                            <input type="number" id="budget-input" class="premium-input budget-input" value="{{ default_budget }}"
-                                min="1" step="10" placeholder="Enter any amount"
-                                oninput="currentBudget = parseFloat(this.value) || Number('{{ default_budget }}')">
-
+                        <div class="budget-control-card">
+                            <div class="budget-input-row">
+                                <div class="budget-numeric-group">
+                                    <span class="currency-label" id="input-currency-symbol">
+                                        {{ all_currencies.get(cur, '$') }}
+                                    </span>
+                                    <input type="number" id="budget-input" class="budget-main-input" value="{{ default_budget }}"
+                                        min="1" step="10" placeholder="0"
+                                        oninput="currentBudget = parseFloat(this.value) || 0">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -668,9 +678,6 @@
     <script>
         let selectedPurpose = 'Gaming';
         let currentBudget = Number('{{ default_budget }}');
-
-
-
 
         function handlePurposeChange(val) {
             selectedPurpose = val;
@@ -774,10 +781,7 @@
             const currency = data.currency || 'USD';
 
             // Currencies that display as whole numbers (no decimal places)
-            const ZERO_DECIMAL = new Set([
-                'JPY', 'KRW', 'IDR', 'VND', 'HUF', 'CLP', 'ISK',
-                'INR', 'TWD', 'NGN', 'PKR', 'BDT', 'MMK'
-            ]);
+            const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'IDR', 'VND', 'HUF', 'INR', 'PKR', 'BDT', 'UGX', 'TZS', 'AMD', 'BIF', 'CLP', 'DJF', 'GNF', 'IQD', 'KMF', 'LAK', 'LBP', 'MGA', 'MMK', 'MNT', 'PYG', 'RWF', 'SOS', 'SYP', 'VUV', 'YER']);
 
             // Format a USD amount into the user's active currency
             const formatVal = (usdAmount) => {
