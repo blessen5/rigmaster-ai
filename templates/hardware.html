@@ -220,10 +220,16 @@
                 <div class="hardware-card">
                     <div class="hardware-name">{{ item.name }}</div>
                     <div class="specs">
-                        {% for key, value in item.items() if key not in ['_id', 'name', 'status', 'created_at'] %}
+                        {% for key, value in item.items() if key not in ['_id', 'name', 'status', 'created_at', 'retailer', '_formatted_fields'] %}
                         <div class="spec-item">
                             <span class="spec-label">{{ key.replace('_', ' ') }}</span>
-                            <span class="spec-value">{{ value }}</span>
+                            <span class="spec-value">
+                                {% if key in ['price', 'msrp', 'cost'] %}
+                                {{ item._formatted_fields.get(key, value) }}
+                                {% else %}
+                                {{ value }}
+                                {% endif %}
+                            </span>
                         </div>
                         {% endfor %}
                     </div>

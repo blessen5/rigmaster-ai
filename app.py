@@ -464,6 +464,17 @@ def hardware_encyclopedia():
         items = list(db.components.find(query).sort('name', 1))
         for item in items:
             item['_id'] = str(item['_id'])
+            formatted_fields = {}
+            for price_key in ('price', 'msrp', 'cost'):
+                raw_price = item.get(price_key)
+                if raw_price in (None, ''):
+                    continue
+                try:
+                    normalized_price = float(str(raw_price).replace('$', '').replace(',', '').strip())
+                    formatted_fields[price_key] = format_price(normalized_price)
+                except (TypeError, ValueError):
+                    formatted_fields[price_key] = raw_price
+            item['_formatted_fields'] = formatted_fields
             
         return render_template('hardware.html', 
                                items=items, 
