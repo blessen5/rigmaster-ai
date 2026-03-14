@@ -135,7 +135,7 @@
         </ul>
         <div class="nav-actions">
             {% if not request.path.startswith('/admin') %}
-            <select id="currency-selector" class="btn btn-secondary">
+            <select id="currency-selector" class="form-select">
                 {% for code, symbol in all_currencies.items() %}
                 <option value="{{ code }}" {% if session.get('currency') == code %}selected{% endif %}>
                     {{ code }} ({{ symbol }})

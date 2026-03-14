@@ -4393,6 +4393,7 @@ def admin_ai_engine_console():
                 'mistral': 'Available' if ai_engine.mistral_key else 'Not configured',
                 'gemini': 'Available' if ai_engine.gemini_key else 'Not configured',
                 'deepseek': 'Available' if ai_engine.deepseek_key else 'Not configured',
+                'openrouter': 'Available' if ai_engine.openrouter_key else 'Not configured',
                 'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured')
             }
         except:
