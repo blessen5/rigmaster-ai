@@ -219,7 +219,7 @@ CURRENCY_SYMBOLS = {
     "EUR": "€",
     "FJD": "$",
     "FKP": "£",
-    "FOK": "$",
+    "FOK": "kr",
     "GBP": "£",
     "GEL": "₾",
     "GGP": "£",
@@ -335,6 +335,6 @@ CURRENCY_SYMBOLS = {
     "YER": "﷼",
     "ZAR": "R",
     "ZMW": "ZK",
-    "ZWG": "ZiG",
+    "ZWG": "Z$",
     "ZWL": "ZWL$"
 }
