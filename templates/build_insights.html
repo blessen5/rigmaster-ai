@@ -187,7 +187,7 @@
             <p style="color: var(--text-muted); font-size: 1.2rem; margin-bottom: 2rem;">Deep dive into your system's
                 assembly, safety, and potential.</p>
 
-            <select id="build-selector" onchange="loadInsights(this.value)">
+            <select id="build-selector" class="form-select" style="max-width: 400px; margin: 0 auto 3rem auto;" onchange="loadInsights(this.value)">
                 <option value="">Select a Saved Build...</option>
                 {% for build in user_builds %}
                 <option value="{{ build.id }}">{{ build.name }}</option>

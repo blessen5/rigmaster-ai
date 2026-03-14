@@ -201,6 +201,7 @@
             <div style="display: flex; align-items: flex-start; gap: 2rem; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 250px;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.75rem;">
+
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path
                                 d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
@@ -218,8 +219,8 @@
                         distribute requests across all available providers for maximum reliability.
                     </p>
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <select id="preferred-ai" onchange="updatePreferredAI()"
-                            style="flex: 1; min-width: 200px; padding: 0.85rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: white; cursor: pointer; font-size: 1rem;">
+                        <select id="preferred-ai" class="form-select" onchange="updatePreferredAI()"
+                            style="flex: 1; min-width: 200px;">
                             <option value="auto" {% if preferred_ai_provider=='auto' %}selected{% endif %}>🔄
                                 Auto-Rotate (Recommended)</option>
                             <option value="groq" {% if preferred_ai_provider=='groq' %}selected{% endif %}>⚡ Groq
@@ -230,6 +231,8 @@
                                 Gemini</option>
                             <option value="deepseek" {% if preferred_ai_provider=='deepseek' %}selected{% endif %}>🧠
                                 DeepSeek</option>
+                            <option value="openrouter" {% if preferred_ai_provider=='openrouter' %}selected{% endif %}>🌐
+                                OpenRouter</option>
                             <option value="hf" {% if preferred_ai_provider=='hf' %}selected{% endif %}>🤗 Hugging Face
                             </option>
                         </select>

@@ -246,7 +246,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
                 <span style="color: var(--text-muted); font-size: 0.9rem;">MANAGING RIG:</span>
-                <select class="build-selector" onchange="window.location.href='/vault?build_id=' + this.value">
+                <select class="form-select build-selector" onchange="window.location.href='/vault?build_id=' + this.value">
                     {% for b in all_builds %}
                     <option value="{{ b._id }}" {% if b._id==build._id|string %}selected{% endif %}>{{ b.name or 'Custom
                         Rig' }}</option>
