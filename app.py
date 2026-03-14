@@ -24,6 +24,7 @@ load_dotenv()
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from ai_engine import get_ai_engine
+from currencies_config import EXCHANGE_RATES, CURRENCY_SYMBOLS
 
 
 
@@ -35,6 +36,14 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
 @app.template_filter('format_price')
 def format_price_filter(amount):
     return format_price(amount)
+
+# Global context processor for currencies
+@app.context_processor
+def inject_currencies():
+    return {
+        'all_currencies': CURRENCY_SYMBOLS,
+        'exchange_rates': EXCHANGE_RATES
+    }
  
 # Decorator to protect routes
 def login_required(f):
@@ -175,22 +184,7 @@ def get_component_by_id(comp_id):
         return None
 
 # Currency Support
-EXCHANGE_RATES = {
-    'USD': 1.0, 'EUR': 0.92, 'GBP': 0.79, 'INR': 83.0, 'AUD': 1.52, 'CAD': 1.35,
-    'JPY': 150.0, 'CHF': 0.88, 'CNY': 7.2, 'HKD': 7.8, 'NZD': 1.65, 'SEK': 10.5,
-    'KRW': 1330.0, 'SGD': 1.34, 'NOK': 10.6, 'MXN': 17.0, 'RUB': 90.0, 'ZAR': 19.0,
-    'TRY': 31.0, 'BRL': 5.0, 'TWD': 31.5, 'DKK': 6.8, 'PLN': 4.0, 'THB': 36.0,
-    'IDR': 15600.0, 'HUF': 360.0, 'CZK': 23.5, 'ILS': 3.6, 'PHP': 56.0, 'AED': 3.67,
-    'MYR': 4.7, 'VND': 24500.0, 'NGN': 1500.0
-}
-CURRENCY_SYMBOLS = {
-    'USD': '$', 'EUR': '€', 'GBP': '£', 'INR': '₹', 'AUD': 'A$', 'CAD': 'C$',
-    'JPY': '¥', 'CHF': 'CHF', 'CNY': '¥', 'HKD': 'HK$', 'NZD': 'NZ$', 'SEK': 'kr',
-    'KRW': '₩', 'SGD': 'S$', 'NOK': 'kr', 'MXN': '$', 'RUB': '₽', 'ZAR': 'R',
-    'TRY': '₺', 'BRL': 'R$', 'TWD': 'NT$', 'DKK': 'kr', 'PLN': 'zł', 'THB': '฿',
-    'IDR': 'Rp', 'HUF': 'Ft', 'CZK': 'Kč', 'ILS': '₪', 'PHP': '₱', 'AED': 'د.إ',
-    'MYR': 'RM', 'VND': '₫', 'NGN': '₦'
-}
+# Currencies imported from currencies_config.py
 
 def format_price(amount, currency=None, for_pdf=False):
     if currency is None:
@@ -212,7 +206,8 @@ def format_price(amount, currency=None, for_pdf=False):
     symbol = CURRENCY_SYMBOLS.get(currency, '$')
     
     # Format with appropriate decimals
-    if currency == 'INR':
+    zero_decimal_currencies = ['JPY', 'KRW', 'IDR', 'VND', 'HUF', 'INR', 'PKR', 'BDT', 'UGX', 'TZS', 'AMD', 'BIF', 'CLP', 'DJF', 'GNF', 'IQD', 'KMF', 'LAK', 'LBP', 'MGA', 'MMK', 'MNT', 'PYG', 'RWF', 'SOS', 'SYP', 'VUV', 'YER']
+    if currency in zero_decimal_currencies:
         return f"{symbol}{int(converted_amount):,}"
     return f"{symbol}{converted_amount:,.2f}"
 
