@@ -651,6 +651,7 @@
             const input = document.getElementById('nexus-input');
             const text = input.value.trim();
             if (!text) return;
+            let success = false;
 
             input.value = '';
             this.appendMessage('user', text);
@@ -695,6 +696,9 @@
 
         gatherContext() {
             let ctx = {};
+            if (window.location.pathname.includes('builder')) {
+                ctx.page = 'builder';
+            }
             const urlParams = new URLSearchParams(window.location.search);
             const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'build_id'];
             keys.forEach(k => {

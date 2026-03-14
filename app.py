@@ -18,6 +18,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import random
 import string
+from collections import defaultdict, deque
+from threading import Lock
+import time
 
 
 load_dotenv()
@@ -31,6 +34,25 @@ from currencies_config import EXCHANGE_RATES, CURRENCY_SYMBOLS
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key_rigmaster_8822')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
+
+DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'deepseek')
+AI_RATE_LIMIT_DEFAULTS = {
+    'assistant': (20, 300),
+    'recommend': (8, 600),
+    'analysis': (12, 300),
+}
+AI_RATE_LIMIT_PATHS = {
+    '/ai-assistant': 'assistant',
+    '/api/ai-recommend': 'recommend',
+    '/api/ai-engine/recommend': 'recommend',
+    '/api/ai-engine/compatibility': 'analysis',
+    '/api/ai-engine/performance': 'analysis',
+    '/ai/analyze': 'analysis',
+    '/api/benchmark-simulator': 'analysis',
+    '/api/analyze_upgrade': 'analysis',
+}
+_ai_rate_limit_state = defaultdict(deque)
+_ai_rate_limit_lock = Lock()
 
 # Register format_price as a template filter
 @app.template_filter('format_price')
@@ -302,7 +324,7 @@ def ensure_db():
     try:
         from ai_engine import get_ai_engine
         ai_engine = get_ai_engine()
-        ai_engine.preferred_provider = get_site_setting('preferred_ai_provider', 'auto')
+        ai_engine.preferred_provider = get_preferred_ai_provider()
         
         # Priority: 1. Admin UI 'api_keys' dict, 2. Individual DB settings, 3. Env variables
         custom_keys = get_site_setting('api_keys', {})
@@ -329,6 +351,58 @@ def get_site_setting(key, default=None):
     except:
         return default
 
+def get_preferred_ai_provider():
+    return get_site_setting('preferred_ai_provider', DEFAULT_AI_PROVIDER)
+
+def _get_ai_rate_limit_config(bucket):
+    default_requests, default_window = AI_RATE_LIMIT_DEFAULTS.get(bucket, (10, 300))
+    req_key = f'AI_{bucket.upper()}_RATE_LIMIT_REQUESTS'
+    win_key = f'AI_{bucket.upper()}_RATE_LIMIT_WINDOW_SECONDS'
+    try:
+        request_limit = int(get_site_setting(req_key, os.getenv(req_key, str(default_requests))) or default_requests)
+    except (TypeError, ValueError):
+        request_limit = default_requests
+    try:
+        window_seconds = int(get_site_setting(win_key, os.getenv(win_key, str(default_window))) or default_window)
+    except (TypeError, ValueError):
+        window_seconds = default_window
+    return max(1, request_limit), max(60, window_seconds)
+
+def _get_ai_rate_limit_identity(bucket):
+    user_id = session.get('user_id') or session.get('username')
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    client_ip = forwarded.split(',')[0].strip() if forwarded else (request.remote_addr or 'unknown')
+    return f"{bucket}:{user_id or client_ip}"
+
+@app.before_request
+def apply_ai_rate_limit():
+    bucket = AI_RATE_LIMIT_PATHS.get(request.path)
+    if not bucket or request.method != 'POST':
+        return None
+    if session.get('is_admin'):
+        return None
+
+    request_limit, window_seconds = _get_ai_rate_limit_config(bucket)
+    key = _get_ai_rate_limit_identity(bucket)
+    now = time.time()
+
+    with _ai_rate_limit_lock:
+        hits = _ai_rate_limit_state[key]
+        while hits and now - hits[0] >= window_seconds:
+            hits.popleft()
+
+        if len(hits) >= request_limit:
+            retry_after = max(1, int(window_seconds - (now - hits[0])))
+            return jsonify({
+                'status': 'error',
+                'message': f'AI request limit reached. Try again in {retry_after} seconds.',
+                'retry_after': retry_after
+            }), 429
+
+        hits.append(now)
+
+    return None
+
 @app.before_request
 def check_maintenance():
     # Allow static files, admin routes, and critical pages
@@ -348,7 +422,7 @@ def inject_global_settings():
     return {
         'global_announcement': get_site_setting('global_announcement', ''),
         'maintenance_mode': get_site_setting('maintenance_mode', False),
-        'preferred_ai_provider': get_site_setting('preferred_ai_provider', 'auto')
+        'preferred_ai_provider': get_preferred_ai_provider()
     }
 
 @app.errorhandler(Exception)
@@ -2933,6 +3007,9 @@ def api_ai_recommend():
             preferences={"requirements": requirements, "currency": user_currency, "currency_symbol": symbol},
             component_pool=engine_pool
         )
+        ai_reasoning = None
+        if recommendation:
+            ai_reasoning = recommendation.get('reasoning') or recommendation.get('explanation')
 
 
         # --- Budget allocation ratios (used for heuristic selection when AI fails) ---
@@ -3092,6 +3169,7 @@ def ai_assistant():
         data = request.json
         user_message = data.get('message')
         context_ids = data.get('context', {})
+        page_context = str(context_ids.get('page', '')).lower()
         
         if not user_message:
             return jsonify({'status': 'error', 'message': 'Message is required'}), 400
@@ -3100,6 +3178,8 @@ def ai_assistant():
         # Supports all 16 slots plus any other build context
         resolved_context = {}
         for key, comp_id in context_ids.items():
+            if key == 'page':
+                continue
             if comp_id and len(str(comp_id)) == 24:
                 try:
                     comp = db.components.find_one({'_id': ObjectId(comp_id)})
@@ -3116,43 +3196,115 @@ def ai_assistant():
         
         db_context_list = []
         try:
-            # Sample across all categories to give AI a broad but balanced view of inventory
-            # We take 4 items per slot (Top, Mid, Bottom) to represent the full price spectrum
-            CORE_CATS = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler']
-            EXTRA_CATS = ['monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals']
-            
-            for cat in CORE_CATS + EXTRA_CATS:
-                # 1. Get total count for sampling
-                total_in_cat = db.components.count_documents({'category': cat, 'status': {'$ne': 'Discontinued'}})
-                if total_in_cat == 0: continue
+            def parse_component_price(component):
+                p = component.get('price') or component.get('msrp') or component.get('cost') or 0
+                if isinstance(p, str):
+                    try:
+                        p = float(p.replace('$', '').replace(',', ''))
+                    except:
+                        p = 0
+                return p if isinstance(p, (int, float)) else 0
+
+            if page_context == 'builder':
+                builder_inventory = list(db.components.find(
+                    {'status': {'$ne': 'Discontinued'}},
+                    {'name': 1, 'category': 1, 'sub_category': 1, 'brand': 1, 'model': 1, 'price': 1, 'msrp': 1, 'cost': 1, 'status': 1}
+                ).sort([('category', 1), ('sub_category', 1), ('name', 1)]))
+
+                token_parts = [user_message]
+                token_parts.extend(resolved_context.values())
+                normalized_parts = " ".join([str(part).lower() for part in token_parts if part])
+                raw_tokens = re.findall(r"[a-z0-9\-\+\.#]+", normalized_parts)
+                stop_words = {
+                    'the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'about', 'what', 'which',
+                    'would', 'should', 'could', 'please', 'need', 'want', 'best', 'good', 'build', 'builder',
+                    'page', 'show', 'find', 'component', 'components', 'option', 'options', 'recommend',
+                    'recommendation', 'price', 'cost', 'under', 'over', 'than', 'into'
+                }
+                search_tokens = {token for token in raw_tokens if len(token) > 1 and token not in stop_words}
+
+                category_counts = {}
+                matching_inventory = []
+                category_samples = {}
+
+                for component in builder_inventory:
+                    category_key = str(component.get('sub_category') or component.get('category') or 'unknown').lower()
+                    category_counts[category_key] = category_counts.get(category_key, 0) + 1
+
+                    haystack = " ".join([
+                        str(component.get('name', '')),
+                        str(component.get('brand', '')),
+                        str(component.get('model', '')),
+                        str(component.get('category', '')),
+                        str(component.get('sub_category', ''))
+                    ]).lower()
+
+                    if search_tokens and any(token in haystack for token in search_tokens):
+                        matching_inventory.append(component)
+
+                    if category_key not in category_samples:
+                        category_samples[category_key] = []
+                    if len(category_samples[category_key]) < 3:
+                        category_samples[category_key].append(component)
+
+                db_context_list.append(
+                    f"BUILDER INVENTORY MODE: Full components table searched with {len(builder_inventory)} active records."
+                )
+                if category_counts:
+                    summary = ", ".join(
+                        f"{cat.upper()}: {count}" for cat, count in sorted(category_counts.items())
+                    )
+                    db_context_list.append(f"AVAILABLE INVENTORY COUNTS: {summary}")
+
+                if matching_inventory:
+                    db_context_list.append(
+                        f"RELEVANT MATCHES FOR THIS BUILDER REQUEST ({min(len(matching_inventory), 80)} shown of {len(matching_inventory)}):"
+                    )
+                    for component in matching_inventory[:80]:
+                        category_label = str(component.get('sub_category') or component.get('category') or 'unknown').upper()
+                        descriptor = " | ".join([part for part in [component.get('brand'), component.get('model')] if part])
+                        price_value = parse_component_price(component)
+                        price_label = format_price(price_value, user_currency) if price_value else "Price Unavailable"
+                        if descriptor:
+                            db_context_list.append(f"{category_label}: {component.get('name')} [{descriptor}] ({price_label})")
+                        else:
+                            db_context_list.append(f"{category_label}: {component.get('name')} ({price_label})")
+                else:
+                    db_context_list.append("NO DIRECT NAME MATCHES FOUND IN THE FULL COMPONENTS TABLE FOR THIS REQUEST.")
+                    db_context_list.append("CATEGORY PREVIEW FROM THE BUILDER INVENTORY:")
+                    for category_key, samples in sorted(category_samples.items()):
+                        sample_lines = []
+                        for component in samples:
+                            price_value = parse_component_price(component)
+                            price_label = format_price(price_value, user_currency) if price_value else "Price Unavailable"
+                            sample_lines.append(f"{component.get('name')} ({price_label})")
+                        db_context_list.append(f"{category_key.upper()}: " + "; ".join(sample_lines))
+            else:
+                # Sample across all categories to give AI a broad but balanced view of inventory
+                # We take 4 items per slot (Top, Mid, Bottom) to represent the full price spectrum
+                CORE_CATS = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler']
+                EXTRA_CATS = ['monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals']
                 
-                # 2. Get Top (Most expensive)
-                top = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
-                           .sort('price', -1).limit(1))
-                
-                # 3. Get Bottom (Cheapest)
-                bot = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
-                           .sort('price', 1).limit(1))
-                
-                # 4. Get Mid-range (Middle of the pack)
-                mid = []
-                if total_in_cat > 3:
-                    mid = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
-                               .skip(total_in_cat // 2).limit(2))
-                
-                # Combine and deduplicate by ID
-                cat_sample = {str(i['_id']): i for i in (top + mid + bot)}.values()
-                
-                for it in cat_sample:
-                    p = it.get('price') or it.get('msrp') or 0
-                    # Handle price parsing if it's a string
-                    if isinstance(p, str):
-                        try:
-                            p = float(p.replace('$', '').replace(',', ''))
-                        except:
-                            p = 0
+                for cat in CORE_CATS + EXTRA_CATS:
+                    total_in_cat = db.components.count_documents({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                    if total_in_cat == 0:
+                        continue
                     
-                    db_context_list.append(f"{cat.upper()}: {it.get('name')} ({symbol}{int(p * rate):,})")
+                    top = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                               .sort('price', -1).limit(1))
+                    bot = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                               .sort('price', 1).limit(1))
+                    
+                    mid = []
+                    if total_in_cat > 3:
+                        mid = list(db.components.find({'category': cat, 'status': {'$ne': 'Discontinued'}})
+                                   .skip(total_in_cat // 2).limit(2))
+                    
+                    cat_sample = {str(i['_id']): i for i in (top + mid + bot)}.values()
+                    
+                    for it in cat_sample:
+                        p = parse_component_price(it)
+                        db_context_list.append(f"{cat.upper()}: {it.get('name')} ({symbol}{int(p * rate):,})")
 
         except Exception as e:
             app.logger.warning(f"Failed to fetch assistant DB context: {e}")
@@ -3162,7 +3314,11 @@ def ai_assistant():
             "You are 'ai assistant', the ultimate AI companion for PC building and hardware optimization. "
             "You provide technical guidance on all 16 components of the PC ecosystem, "
             "including core hardware, peripherals, and software.\n\n"
-            "INVENTORY CONTEXT (Representative items currently in our MongoDB database):\n"
+            + ("BUILDER PAGE MODE: You have access to the full components table for this page.\n\n" if page_context == 'builder' else "")
+            + "INVENTORY CONTEXT ("
+            + ("Full components table currently loaded from our MongoDB database" if page_context == 'builder'
+               else "Representative items currently in our MongoDB database")
+            + "):\n"
             + ("\n".join(db_context_list) if db_context_list else "Database temporarily offline.") + 
             "\n\nUSER'S CURRENT BUILD CONTEXT:\n" + 
             ("\n".join([f"- {k}: {v}" for k, v in resolved_context.items()]) if resolved_context else "No specific components selected yet.") +
@@ -3170,7 +3326,8 @@ def ai_assistant():
             "1. DATABASE-BACKED RECOMMENDATIONS: If a user asks for component recommendations, you MUST ONLY suggest items listed in the INVENTORY CONTEXT above. Do not suggest hardware from your external training data that is not in the list.\n"
             "2. ASSISTANT NAME: Always identify as 'ai assistant'.\n"
             "3. FULL ECOSYSTEM KNOWLEDGE: You are an expert on all 16 slots (CPU, GPU, Motherboard, RAM, Storage, PSU, Case, Cooler, Monitor, OS, Fans, Keyboard, Mouse, Headset, Webcam, Peripherals).\n"
-            "4. RESPONSE STYLE: Use professional yet accessible language. Formatting with Markdown (bolding, lists) is encouraged. Be concise."
+            "4. RESPONSE STYLE: Use professional yet accessible language. Formatting with Markdown (bolding, lists) is encouraged. Be concise.\n"
+            + ("5. BUILDER-SPECIFIC SCOPE: On the builder page, answer from the full components table and treat it as the source of truth for availability, options, and alternatives.\n" if page_context == 'builder' else "")
         )
 
         ai_engine = get_ai_engine()
@@ -4128,7 +4285,7 @@ def admin_dashboard():
     settings = {
         'maintenance_mode': get_site_setting('maintenance_mode', False),
         'global_announcement': get_site_setting('global_announcement', ''),
-        'preferred_ai_provider': get_site_setting('preferred_ai_provider', 'auto')
+        'preferred_ai_provider': get_preferred_ai_provider()
     }
     
     return render_template('admin/dashboard.html', 
@@ -4242,7 +4399,7 @@ def admin_ai_engine_console():
             pass
 
         custom_api_keys = get_site_setting('api_keys', {})
-        preferred_provider = get_site_setting('preferred_ai_provider', 'auto')
+        preferred_provider = get_preferred_ai_provider()
         
         # Additional settings for the console
         smtp_settings = {

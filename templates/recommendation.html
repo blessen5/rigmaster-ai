@@ -649,7 +649,7 @@
                 <div class="summary-card">
                     <div class="summary-info">
                         <h3>Build Summary</h3>
-                        <p id="summary-meta">Optimized for Gaming @ $1500</p>
+                        <p id="summary-meta">Optimized for Gaming @ {{ all_currencies.get(cur, '$') }}{{ default_budget }}</p>
                     </div>
                     <div class="final-total" id="final-total-display">$0</div>
                 </div>

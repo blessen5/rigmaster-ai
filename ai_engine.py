@@ -30,7 +30,9 @@ class AIEngine:
         self.deepseek_key = os.getenv('DEEPSEEK_API_KEY')
         self.hf_key = os.getenv('HF_API_KEY')
         self.openrouter_key = os.getenv('OPENROUTER_API_KEY')
+        self.openrouter_model = os.getenv('OPENROUTER_MODEL', 'openrouter/auto')
         self.hf_force_disable = str(os.getenv('HF_FORCE_DISABLE', 'false')).lower() in ('1', 'true', 'yes')
+        self.preferred_provider = os.getenv('PREFERRED_AI_PROVIDER', 'deepseek')
 
         self.is_hf_installed = InferenceClient is not None
         self._hf_models_cache = []
@@ -42,26 +44,8 @@ class AIEngine:
         # Provider rotation index
         self.current_provider_index = 0
         
-        # Define available providers (in priority order)
         self.providers = []
-        # Define available providers (in priority order)
-        if self._hf_is_eligible():
-            self.providers.append('hf')
-        if self.groq_key:
-            self.providers.append('groq')
-        if self.gemini_key:
-            self.providers.append('gemini')
-        if self.mistral_key:
-            self.providers.append('mistral')
-        if self.deepseek_key:
-            self.providers.append('deepseek')
-        if self.openrouter_key:
-            self.providers.append('openrouter')
-
-
-
-        
-
+        self._refresh_providers()
         logger.info(f"AI Engine initialized with providers: {self.providers}")
 
     def update_api_keys(self, keys: Dict[str, str]):
@@ -72,24 +56,30 @@ class AIEngine:
         if keys.get('deepseek_key'): self.deepseek_key = keys.get('deepseek_key')
         if keys.get('hf_key'): self.hf_key = keys.get('hf_key')
         if keys.get('openrouter_key'): self.openrouter_key = keys.get('openrouter_key')
+        self._refresh_providers()
 
-        
-        # Rebuild providers list
-        self.providers = []
-        if self._hf_is_eligible():
-            self.providers.append('hf')
-        if self.groq_key: self.providers.append('groq')
-        if self.gemini_key: self.providers.append('gemini')
-        if self.mistral_key: self.providers.append('mistral')
-        if self.deepseek_key: self.providers.append('deepseek')
-        if self.openrouter_key: self.providers.append('openrouter')
-
-        
         # Reset provider index if it's out of bounds
         if self.providers and self.current_provider_index >= len(self.providers):
             self.current_provider_index = 0
             
         logger.info(f"AI Engine providers updated: {self.providers}")
+
+    def _refresh_providers(self):
+        """Rebuild providers in cost-aware fallback order for deployment."""
+        provider_candidates = []
+        if self.deepseek_key:
+            provider_candidates.append('deepseek')
+        if self.groq_key:
+            provider_candidates.append('groq')
+        if self.gemini_key:
+            provider_candidates.append('gemini')
+        if self.mistral_key:
+            provider_candidates.append('mistral')
+        if self.openrouter_key:
+            provider_candidates.append('openrouter')
+        if self._hf_is_eligible():
+            provider_candidates.append('hf')
+        self.providers = provider_candidates
 
     def _hf_is_eligible(self) -> bool:
         """HF is usable only when key+library exist and breaker is not open."""
@@ -462,14 +452,6 @@ Return ONLY valid JSON with this structure:
             # Move preferred to front
             providers.remove(pref)
             providers.insert(0, pref)
-        elif pref == 'auto' and len(providers) > 0:
-            # Rotate for 'auto' mode
-            idx = self.current_provider_index
-            rotated = providers[idx:] + providers[:idx]
-            # Update index for next time
-            self.current_provider_index = (self.current_provider_index + 1) % len(providers)
-            return rotated
-            
         return providers
 
     def _get_next_provider(self) -> str:
@@ -496,6 +478,8 @@ Return ONLY valid JSON with this structure:
             return self._call_mistral(system_prompt, user_prompt, json_mode)
         elif provider == 'gemini':
             return self._call_gemini(system_prompt, user_prompt, json_mode)
+        elif provider == 'openrouter':
+            return self._call_openrouter(system_prompt, user_prompt, json_mode)
         elif provider == 'hf':
             return self._call_hf(system_prompt, user_prompt, json_mode)
         return None
@@ -619,6 +603,35 @@ Return ONLY valid JSON with this structure:
             return response.text
         except Exception as e:
             logger.error(f"Gemini API error: {e}")
+            raise
+
+    def _call_openrouter(self, system_prompt: str, user_prompt: str, json_mode: bool) -> Optional[str]:
+        """Call OpenRouter using the OpenAI-compatible chat completions API."""
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.openrouter_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.openrouter_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 2048
+        }
+
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            return response.json()['choices'][0]['message']['content']
+        except Exception as e:
+            logger.error(f"OpenRouter API error: {e}")
             raise
     
 
