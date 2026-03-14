@@ -59,6 +59,39 @@
             text-align: center;
             font-size: 0.9rem;
         }
+
+        .status-banner {
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .status-banner-healthy {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .status-banner-degraded {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+
+        .status-badge-healthy {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-badge-degraded {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
     </style>
 </head>
 
@@ -93,19 +126,35 @@
 
 
         <!-- Overall Status -->
-        <div
-            style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(102, 126, 234, 0.1)); border: 1px solid var(--border); padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; text-align: center;">
+        <div class="status-banner {% if health.overall_status == 'Healthy' %}status-banner-healthy{% else %}status-banner-degraded{% endif %}">
             <div style="font-size: 3rem; margin-bottom: 1rem;">
+                {% if health.overall_status == 'Healthy' %}
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-                    <path
-                        d="M22 11.08V12C21.9988 14.1564 21.3005 16.2547 20.0093 17.9818C18.7182 19.709 16.9033 20.9725 14.8354 21.5839C12.7674 22.1953 10.5573 22.1219 8.53447 21.3746C6.51168 20.6273 4.78465 19.2461 3.61096 17.4371C2.43727 15.628 1.87979 13.4881 2.02168 11.3363C2.16356 9.18455 2.99721 7.13631 4.39828 5.49706C5.79935 3.85782 7.69279 2.71537 9.79619 2.24013C11.8996 1.7649 14.1003 1.98234 16.07 2.85999"
-                        stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M22 4L12 14.01L9 11.01" stroke="#22c55e" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
+                    <path d="M22 11.08V12C21.9988 14.1564 21.3005 16.2547 20.0093 17.9818C18.7182 19.709 16.9033 20.9725 14.8354 21.5839C12.7674 22.1953 10.5573 22.1219 8.53447 21.3746C6.51168 20.6273 4.78465 19.2461 3.61096 17.4371C2.43727 15.628 1.87979 13.4881 2.02168 11.3363C2.16356 9.18455 2.99721 7.13631 4.39828 5.49706C5.79935 3.85782 7.69279 2.71537 9.79619 2.24013C11.8996 1.7649 14.1003 1.98234 16.07 2.85999" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 4L12 14.01L9 11.01" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
+                {% else %}
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
+                    <line x1="12" y1="8" x2="12" y2="12" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                {% endif %}
             </div>
-            <h2 style="margin-bottom: 0.5rem;">All Systems Operational</h2>
-            <p style="color: var(--text-muted);">RigMaster AI is running smoothly</p>
+            <h2 style="margin-bottom: 0.5rem;">
+                {% if health.overall_status == 'Healthy' %}
+                All Systems Operational
+                {% else %}
+                System Degraded
+                {% endif %}
+            </h2>
+            <p style="color: var(--text-muted);">
+                {% if health.overall_status == 'Healthy' %}
+                RigMaster AI is running smoothly
+                {% else %}
+                One or more services are experiencing issues
+                {% endif %}
+            </p>
         </div>
 
         <!-- Health Cards -->
@@ -290,8 +339,56 @@
         </div>
 
 
-
-
+        <!-- Health History -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border); padding: 2rem; border-radius: var(--radius-lg); margin-top: 2rem;">
+            <h2 style="margin-bottom: 1.5rem;">🕒 Status History</h2>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                            <th style="padding: 1rem;">Timestamp</th>
+                            <th style="padding: 1rem;">Status</th>
+                            <th style="padding: 1rem;">Database</th>
+                            <th style="padding: 1rem;">Services</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if health_history %}
+                            {% for log in health_history %}
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 1rem; font-size: 0.9rem;">{{ log.date_str }}</td>
+                                <td style="padding: 1rem;">
+                                    <span class="status-badge {% if log.overall_status == 'Healthy' %}status-badge-healthy{% else %}status-badge-degraded{% endif %}">
+                                        {{ log.overall_status }}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem; font-size: 0.9rem;">
+                                    {% if log.database is mapping %}
+                                        {{ log.database.status }} ({{ log.database.storage_size_mb }} MB)
+                                    {% else %}
+                                        {{ log.database }}
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+                                    {% if log.services %}
+                                        {% for svc, status in log.services.items() %}
+                                            <span style="margin-right: 0.5rem;">{{ svc|capitalize }}: {{ status }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" style="padding: 2rem; text-align: center; color: var(--text-muted);">No history logs found.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
         </div>
 </body>
 
