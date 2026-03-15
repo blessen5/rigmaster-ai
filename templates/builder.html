@@ -280,6 +280,60 @@
                                     <option value="">Select Webcam...</option>
                                 </select>
                             </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🌡️
+                                    Thermal Paste</label>
+                                <select id="thermal_paste-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                                    <option value="">Select Thermal Paste...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">📶
+                                    Network Adapter</label>
+                                <select id="wifi-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                                    <option value="">Select Adapter...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🔊
+                                    Speakers</label>
+                                <select id="speakers-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                                    <option value="">Select Speakers...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🎙️
+                                    Microphone</label>
+                                <select id="microphone-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                                    <option value="">Select Microphone...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🔋
+                                    UPS / Surge</label>
+                                <select id="ups-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                                    <option value="">Select UPS...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">🔧
+                                    Assembly Tools</label>
+                                <select id="tool-select" class="form-select"
+                                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                                    <option value="">Select Toolkit...</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -415,7 +469,8 @@
 
         function checkLifecycleStatus() {
             const selects = ['cpu-select', 'gpu-select', 'mobo-select', 'ram-select', 'storage-select', 'psu-select',
-                'case-select', 'cooler-select', 'monitor-select', 'os-select', 'fans-select'];
+                'case-select', 'cooler-select', 'monitor-select', 'os-select', 'fans-select',
+                'thermal_paste-select', 'wifi-select', 'speakers-select', 'microphone-select', 'ups-select', 'tool-select'];
             let deprecatedParts = [];
 
             selects.forEach(id => {
@@ -480,7 +535,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // Add change listeners for status tracking
             ['cpu-select', 'gpu-select', 'mobo-select', 'ram-select', 'storage-select', 'psu-select', 'case-select',
-                'cooler-select', 'monitor-select', 'os-select', 'fans-select'].forEach(id => {
+                'cooler-select', 'monitor-select', 'os-select', 'fans-select',
+                'thermal_paste-select', 'wifi-select', 'speakers-select', 'microphone-select', 'ups-select', 'tool-select'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.addEventListener('change', checkLifecycleStatus);
                 });
@@ -501,7 +557,13 @@
                 fetchPeripheralSubcategory('keyboard', 'keyboard-select'),
                 fetchPeripheralSubcategory('mouse', 'mouse-select'),
                 fetchPeripheralSubcategory('headset', 'headset-select'),
-                fetchPeripheralSubcategory('webcam', 'webcam-select')
+                fetchPeripheralSubcategory('webcam', 'webcam-select'),
+                fetchComponents('thermal_paste', 'thermal_paste-select'),
+                fetchComponents('wifi_adapters', 'wifi-select'),
+                fetchComponents('speakers', 'speakers-select'),
+                fetchComponents('microphones', 'microphone-select'),
+                fetchComponents('ups', 'ups-select'),
+                fetchComponents('tools', 'tool-select'),
             ]);
 
             // Check if we need to load a specific build
@@ -527,7 +589,13 @@
                         if (b.mouse_id) document.getElementById('mouse-select').value = b.mouse_id;
                         if (b.headset_id) document.getElementById('headset-select').value = b.headset_id;
                         if (b.webcam_id) document.getElementById('webcam-select').value = b.webcam_id;
-                        if (b.keyboard_id || b.mouse_id || b.headset_id || b.webcam_id) {
+                                                if (b.thermal_paste_id) document.getElementById('thermal_paste-select').value = b.thermal_paste_id;
+                        if (b.wifi_id) document.getElementById('wifi-select').value = b.wifi_id;
+                        if (b.speakers_id) document.getElementById('speakers-select').value = b.speakers_id;
+                        if (b.microphone_id) document.getElementById('microphone-select').value = b.microphone_id;
+                        if (b.ups_id) document.getElementById('ups-select').value = b.ups_id;
+                        if (b.tool_id) document.getElementById('tool-select').value = b.tool_id;
+                        if (b.keyboard_id || b.mouse_id || b.headset_id || b.webcam_id || b.thermal_paste_id || b.wifi_id || b.speakers_id || b.microphone_id || b.ups_id || b.tool_id) {
                             document.getElementById('peripherals-panel').style.display = 'block';
                             document.getElementById('periph-icon').textContent = '×';
                             document.getElementById('periph-btn').style.borderColor = 'var(--primary-light)';
@@ -586,7 +654,13 @@
                 keyboard: 'keyboard-select',
                 mouse: 'mouse-select',
                 headset: 'headset-select',
-                webcam: 'webcam-select',
+                                webcam: 'webcam-select',
+                thermal_paste: 'thermal_paste-select',
+                wifi: 'wifi-select',
+                speakers: 'speakers-select',
+                microphone: 'microphone-select',
+                ups: 'ups-select',
+                tool: 'tool-select',
                 fans: 'fans-select'
             };
 
@@ -621,8 +695,14 @@
                 keyboard_id: document.getElementById('keyboard-select').value,
                 mouse_id: document.getElementById('mouse-select').value,
                 headset_id: document.getElementById('headset-select').value,
-                webcam_id: document.getElementById('webcam-select').value,
-                fans_id: document.getElementById('fans-select').value
+                                webcam_id: document.getElementById('webcam-select').value,
+                fans_id: document.getElementById('fans-select').value,
+                thermal_paste_id: document.getElementById('thermal_paste-select').value,
+                wifi_id: document.getElementById('wifi-select').value,
+                speakers_id: document.getElementById('speakers-select').value,
+                microphone_id: document.getElementById('microphone-select').value,
+                ups_id: document.getElementById('ups-select').value,
+                tool_id: document.getElementById('tool-select').value
             };
 
             if (isUpdate && lastSavedBuildId) {

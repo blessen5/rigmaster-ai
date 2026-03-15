@@ -788,7 +788,7 @@ CRITICAL RULES:
 4. SELECTION: Use ONLY components from the 'Available Components' list. Ensure compatibility.
 5. FORMAT: Strict JSON only. No markdown, no code blocks.
 
-JSON STRUCTURE (all 16 fields required):
+JSON STRUCTURE (all 22 fields required):
 {
     "cpu": "ID:69...|Component Name",
     "gpu": "ID:69...|Component Name",
@@ -806,12 +806,18 @@ JSON STRUCTURE (all 16 fields required):
     "headset": "ID:69...|Component Name",
     "webcam": "ID:69...|Component Name",
     "peripherals": "ID:69...|Component Name",
+    "thermal_paste": "ID:69...|Component Name",
+    "wifi": "ID:69...|Component Name",
+    "speakers": "ID:69...|Component Name",
+    "microphone": "ID:69...|Component Name",
+    "ups": "ID:69...|Component Name",
+    "tools": "ID:69...|Component Name",
     "estimated_total": 1500,
     "reasoning": "Markdown explanation of choices and budget allocation.",
     "performance_notes": "Expected FPS/Benchmarks"
 }
 
-Select ALL slots. Allocate budget proportionally across all 16 components."""
+Select ALL slots. Allocate budget proportionally across all 22 components."""
 
     
     def _build_recommendation_prompt(
@@ -856,7 +862,8 @@ Use Case: {use_case}"""
             component_keys = [
                 'cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu',
                 'case', 'cooler', 'monitor', 'os', 'fans',
-                'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'
+                'keyboard', 'mouse', 'headset', 'webcam', 'peripherals',
+                'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'
             ]
             found = [k for k in component_keys if k in data]
             if not found:
