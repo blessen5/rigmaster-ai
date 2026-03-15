@@ -700,14 +700,18 @@
                 ctx.page = 'builder';
             }
             const urlParams = new URLSearchParams(window.location.search);
-            const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'build_id'];
+            const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'build_id', 'fans_id', 'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id'];
             keys.forEach(k => {
                 if (urlParams.get(k)) ctx[k] = urlParams.get(k);
             });
 
             const selectors = {
                 'cpu_id': 'cpu-select', 'gpu_id': 'gpu-select', 'motherboard_id': 'mobo-select',
-                'ram_id': 'ram-select', 'storage_id': 'storage-select', 'psu_id': 'psu-select'
+                'ram_id': 'ram-select', 'storage_id': 'storage-select', 'psu_id': 'psu-select',
+                'fans_id': 'fans-select', 'thermal_paste_id': 'thermal_paste-select', 
+                'wifi_id': 'wifi-select', 'speakers_id': 'speakers-select', 
+                'microphone_id': 'microphone-select', 'ups_id': 'ups-select', 
+                'tool_id': 'tools-select'
             };
             Object.entries(selectors).forEach(([k, id]) => {
                 const el = document.getElementById(id);

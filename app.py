@@ -166,6 +166,18 @@ def get_estimated_price(comp_name, cat):
         return 100
     if cat == 'fans':
         return 30
+    if cat == 'thermal_paste':
+        return 15
+    if cat == 'wifi_adapters':
+        return 40
+    if cat == 'speakers':
+        return 100
+    if cat == 'microphones':
+        return 120
+    if cat == 'ups':
+        return 200
+    if cat == 'tools':
+        return 50
     return 100
 
 # Shared price-reading fallback map (used by saved_builds & analysis routes)
@@ -176,7 +188,10 @@ _PRICE_CAT_MAP = {
     'monitor_id': 'monitors', 'os_id': 'os',
     'peripherals_id': 'peripherals', 'fans_id': 'fans',
     'keyboard_id': 'keyboards', 'mouse_id': 'mice',
-    'headset_id': 'headsets', 'webcam_id': 'webcams'
+    'headset_id': 'headsets', 'webcam_id': 'webcams',
+    'thermal_paste_id': 'thermal_paste', 'wifi_id': 'wifi_adapters',
+    'speakers_id': 'speakers', 'microphone_id': 'microphones',
+    'ups_id': 'ups', 'tool_id': 'tools'
 }
 
 def get_comp_price_usd(comp, id_key=None, est_cat=None):
@@ -502,7 +517,13 @@ def hardware_encyclopedia():
             'mice': 'Mice',
             'headsets': 'Headsets',
             'webcams': 'Webcams',
-            'peripherals': 'All Peripherals'
+            'peripherals': 'All Peripherals',
+            'thermal_paste': 'Thermal Paste',
+            'wifi_adapters': 'Network Adapters',
+            'speakers': 'Speakers',
+            'microphones': 'Microphones',
+            'ups': 'UPS / Power Protection',
+            'tools': 'Assembly Tools'
         }
         
         category_map = {
@@ -511,7 +532,10 @@ def hardware_encyclopedia():
             'cases': 'case', 'coolers': 'cooler', 'monitors': 'monitor',
             'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
             'keyboards': 'peripherals', 'mice': 'peripherals',
-            'headsets': 'peripherals', 'webcams': 'peripherals'
+            'headsets': 'peripherals', 'webcams': 'peripherals',
+            'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
+            'speakers': 'speakers', 'microphones': 'microphones',
+            'ups': 'ups', 'tools': 'tools'
         }
         if req_cat not in valid_categories:
             req_cat = 'cpus'
@@ -587,7 +611,9 @@ def api_my_builds():
              'storage_id': 1, 'psu_id': 1, 'case_id': 1, 'cooler_id': 1,
              'monitor_id': 1, 'os_id': 1, 'fans_id': 1,
              'keyboard_id': 1, 'mouse_id': 1, 'headset_id': 1,
-             'webcam_id': 1, 'peripherals_id': 1}
+             'webcam_id': 1, 'peripherals_id': 1,
+             'thermal_paste_id': 1, 'wifi_id': 1, 'speakers_id': 1,
+             'microphone_id': 1, 'ups_id': 1, 'tool_id': 1}
         ).sort('created_at', -1))
         result = []
         for b in builds:
@@ -611,6 +637,12 @@ def api_my_builds():
                 'headset_id': b.get('headset_id') or '',
                 'webcam_id': b.get('webcam_id') or '',
                 'peripherals_id': b.get('peripherals_id') or '',
+                'thermal_paste_id': b.get('thermal_paste_id') or '',
+                'wifi_id': b.get('wifi_id') or '',
+                'speakers_id': b.get('speakers_id') or '',
+                'microphone_id': b.get('microphone_id') or '',
+                'ups_id': b.get('ups_id') or '',
+                'tool_id': b.get('tool_id') or '',
             })
         return jsonify(result)
     except Exception as e:
@@ -1071,6 +1103,12 @@ def saved_builds():
         ('mouse_id', 'MOUSE'),
         ('headset_id', 'HEADSET'),
         ('webcam_id', 'WEBCAM'),
+        ('thermal_paste_id', 'THERMAL PASTE'),
+        ('wifi_id', 'WIFI ADAPTER'),
+        ('speakers_id', 'SPEAKERS'),
+        ('microphone_id', 'MICROPHONE'),
+        ('ups_id', 'UPS/SURGE'),
+        ('tool_id', 'ASSEMBLY TOOLS')
     ]
     
     for build in user_builds:
@@ -1095,7 +1133,9 @@ def saved_builds():
             'CPU': '🧠', 'GPU': '🎮', 'MOTHERBOARD': '📟', 'RAM': '💾', 'STORAGE': '🗄️',
             'PSU': '⚡', 'CASE': '📦', 'COOLER': '❄️', 'MONITOR': '🖥️', 'OS': '🪟',
             'FANS': '🌪️', 'PERIPHERALS': '🔌', 'KEYBOARD': '⌨️', 'MOUSE': '🖱️',
-            'HEADSET': '🎧', 'WEBCAM': '📷'
+            'HEADSET': '🎧', 'WEBCAM': '📷',
+            'THERMAL PASTE': '🌡️', 'WIFI ADAPTER': '📶', 'SPEAKERS': '🔊', 
+            'MICROPHONE': '🎙️', 'UPS/SURGE': '🔋', 'ASSEMBLY TOOLS': '🔧'
         }
         
         total_unit_cost = 0
@@ -1268,6 +1308,36 @@ def api_peripherals():
 @login_required
 def api_fans():
     return jsonify(get_component_list('fans'))
+@app.route('/api/thermal_paste')
+@login_required
+def api_thermal_paste():
+    return jsonify(get_component_list('thermal_paste'))
+
+@app.route('/api/wifi_adapters')
+@login_required
+def api_wifi():
+    return jsonify(get_component_list('wifi_adapters'))
+
+@app.route('/api/speakers')
+@login_required
+def api_speakers():
+    return jsonify(get_component_list('speakers'))
+
+@app.route('/api/microphones')
+@login_required
+def api_microphones():
+    return jsonify(get_component_list('microphones'))
+
+@app.route('/api/ups')
+@login_required
+def api_ups():
+    return jsonify(get_component_list('ups'))
+
+@app.route('/api/tools')
+@login_required
+def api_tools():
+    return jsonify(get_component_list('tools'))
+
 
 
 # Test route to verify MongoDB connection
@@ -1347,6 +1417,12 @@ def save_build():
             'headset_id': data.get('headset_id'),
             'webcam_id': data.get('webcam_id'),
             'fans_id': data.get('fans_id'),
+            'thermal_paste_id': data.get('thermal_paste_id'),
+            'wifi_id': data.get('wifi_id'),
+            'speakers_id': data.get('speakers_id'),
+            'microphone_id': data.get('microphone_id'),
+            'ups_id': data.get('ups_id'),
+            'tool_id': data.get('tool_id'),
             'quantity': quantity
         }
         
@@ -1555,7 +1631,13 @@ def api_simulate_upgrade():
                         'MOUSE': get_name(build.get('mouse_id')),
                         'HEADSET': get_name(build.get('headset_id')),
                         'WEBCAM': get_name(build.get('webcam_id')),
-                        'FANS': get_name(build.get('fans_id'))
+                        'FANS': get_name(build.get('fans_id')),
+                        'THERMAL_PASTE': get_name(build.get('thermal_paste_id')),
+                        'WIFI': get_name(build.get('wifi_id')),
+                        'SPEAKERS': get_name(build.get('speakers_id')),
+                        'MICROPHONE': get_name(build.get('microphone_id')),
+                        'UPS': get_name(build.get('ups_id')),
+                        'TOOLS': get_name(build.get('tool_id'))
                     }
             except:
                 pass
@@ -1579,7 +1661,13 @@ def api_simulate_upgrade():
                 'MOUSE': get_name(orig.get('mouse_id')),
                 'HEADSET': get_name(orig.get('headset_id')),
                 'WEBCAM': get_name(orig.get('webcam_id')),
-                'FANS': get_name(orig.get('fans_id'))
+                'FANS': get_name(orig.get('fans_id')),
+                'THERMAL_PASTE': get_name(orig.get('thermal_paste_id')),
+                'WIFI': get_name(orig.get('wifi_id')),
+                'SPEAKERS': get_name(orig.get('speakers_id')),
+                'MICROPHONE': get_name(orig.get('microphone_id')),
+                'UPS': get_name(orig.get('ups_id')),
+                'TOOLS': get_name(orig.get('tool_id'))
             }
 
         # 2. Resolve upgraded configuration
@@ -1599,7 +1687,13 @@ def api_simulate_upgrade():
             'MOUSE': get_name(upgrades.get('mouse_id')),
             'HEADSET': get_name(upgrades.get('headset_id')),
             'WEBCAM': get_name(upgrades.get('webcam_id')),
-            'FANS': get_name(upgrades.get('fans_id'))
+            'FANS': get_name(upgrades.get('fans_id')),
+            'THERMAL_PASTE': get_name(upgrades.get('thermal_paste_id')),
+            'WIFI': get_name(upgrades.get('wifi_id')),
+            'SPEAKERS': get_name(upgrades.get('speakers_id')),
+            'MICROPHONE': get_name(upgrades.get('microphone_id')),
+            'UPS': get_name(upgrades.get('ups_id')),
+            'TOOLS': get_name(upgrades.get('tool_id'))
         }
 
         # 3. Get AI Analysis from upgraded Engine
@@ -1986,6 +2080,12 @@ def api_ai_engine_recommend():
             component_pool['headsets'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'headset'}, {'name': 1}).limit(10)]
             component_pool['webcams'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'webcam'}, {'name': 1}).limit(10)]
             component_pool['peripherals'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'other'}, {'name': 1}).limit(10)]
+            component_pool['thermal_paste'] = [c['name'] for c in db.components.find({'category': 'thermal_paste'}, {'name': 1}).limit(10)]
+            component_pool['wifi_adapters'] = [c['name'] for c in db.components.find({'category': 'wifi_adapters'}, {'name': 1}).limit(10)]
+            component_pool['speakers'] = [c['name'] for c in db.components.find({'category': 'speakers'}, {'name': 1}).limit(10)]
+            component_pool['microphones'] = [c['name'] for c in db.components.find({'category': 'microphones'}, {'name': 1}).limit(10)]
+            component_pool['ups'] = [c['name'] for c in db.components.find({'category': 'ups'}, {'name': 1}).limit(10)]
+            component_pool['tools'] = [c['name'] for c in db.components.find({'category': 'tools'}, {'name': 1}).limit(10)]
         except Exception as e:
             app.logger.warning(f"Could not fetch component pool: {e}")
             component_pool = None
@@ -2003,7 +2103,7 @@ def api_ai_engine_recommend():
         matched_components = {}
         if not recommendation.get('fallback', False):
             # Categories to match (All 16)
-            cats = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals']
+            cats = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals', 'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools']
             for comp_type in cats:
                 ai_suggestion = recommendation.get(comp_type, '')
                 if ai_suggestion:
@@ -2099,7 +2199,8 @@ def api_ai_engine_compatibility():
             'storage_id': 'STORAGE', 'case_id': 'CASE', 'cooler_id': 'COOLER',
             'monitor_id': 'MONITOR', 'os_id': 'OS', 'peripherals_id': 'PERIPHERALS', 
             'keyboard_id': 'KEYBOARD', 'mouse_id': 'MOUSE', 'headset_id': 'HEADSET', 'webcam_id': 'WEBCAM',
-            'fans_id': 'FANS'
+            'fans_id': 'FANS', 'thermal_paste_id': 'THERMAL_PASTE', 'wifi_id': 'WIFI', 'speakers_id': 'SPEAKERS',
+            'microphone_id': 'MICROPHONE', 'ups_id': 'UPS', 'tool_id': 'TOOLS'
         }
         for key, label in cols.items():
             cid = data.get(key)
@@ -2288,10 +2389,9 @@ def run_power_analysis(data):
 
         # 6. Peripherals Power (External Draw awareness)
         # Often negligible for PSU but good for total system context
-        periph_keys = ['keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id']
-        periph_power = 0
+        periph_keys = ['keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id', 'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id']
         for pk in periph_keys:
-            if data.get(pk): periph_power += 3 # Nominal 3W
+            if data.get(pk): periph_power += 3 # Nominal 3W (Average)
         
         power_breakdown['peripherals'] = periph_power
         total_base_watts += periph_power
@@ -2416,8 +2516,10 @@ def calculate_build_difficulty(build):
                 reasons.append("High-wattage cable management")
 
         # Total components check
-        comp_count = sum(1 for k in ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id'] if build.get(k) and build.get(k) != "None Selected")
-        if comp_count >= 8:
+        comp_count = sum(1 for k in ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'fans_id', 'thermal_paste_id', 'wifi_id', 'ups_id'] if build.get(k) and build.get(k) != "None Selected")
+        if comp_count >= 10:
+            score += 2
+        elif comp_count >= 7:
             score += 1
 
         # Complexity mapping
@@ -2467,12 +2569,17 @@ def get_build_insights_data(build):
         headset = get_component_by_id(build.get('headset_id'))
         webcam = get_component_by_id(build.get('webcam_id'))
         fans = get_component_by_id(build.get('fans_id'))
+        thermal_paste = get_component_by_id(build.get('thermal_paste_id'))
+        wifi = get_component_by_id(build.get('wifi_id'))
+        ups = get_component_by_id(build.get('ups_id'))
+        tools = get_component_by_id(build.get('tool_id'))
 
         # 1. Overview & Difficulty
         comp_keys = [
             'cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 
             'case_id', 'cooler_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id',
-            'fans_id', 'peripherals_id', 'monitor_id', 'os_id'
+            'fans_id', 'peripherals_id', 'monitor_id', 'os_id', 'thermal_paste_id',
+            'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id'
         ]
         comp_count = sum(1 for k in comp_keys if build.get(k) and build.get(k) != "None Selected")
         
@@ -2487,7 +2594,13 @@ def get_build_insights_data(build):
             'keyboard': ('keyboard_id', 'keyboards'), 'mouse': ('mouse_id', 'mice'),
             'headset': ('headset_id', 'headsets'), 'webcam': ('webcam_id', 'webcams'),
             'fans': ('fans_id', 'fans'), 'peripherals': ('peripherals_id', 'peripherals'),
-            'monitor': ('monitor_id', 'monitors'), 'os': ('os_id', 'os')
+            'monitor': ('monitor_id', 'monitors'), 'os': ('os_id', 'os'),
+            'thermal_paste': ('thermal_paste_id', 'thermal_paste'),
+            'wifi': ('wifi_id', 'wifi_adapters'),
+            'speakers': ('speakers_id', 'speakers'),
+            'microphone': ('microphone_id', 'microphones'),
+            'ups': ('ups_id', 'ups'),
+            'tools': ('tool_id', 'tools')
         }
         
         for cat, (key, est_cat) in cat_map.items():
@@ -2577,7 +2690,20 @@ def get_build_insights_data(build):
             steps.append({'step': current_step, 'title': 'GPU Installation', 'text': f"Insert the {gpu.get('name', 'GPU')} into the top PCIe slot. Secure the bracket and connect the required power cables."})
             current_step += 1
             
-        steps.append({'step': current_step, 'title': 'Final Cabling', 'text': 'Connect front panel headers, USB, and audio connectors. Organize cables with zip ties to ensure clear airflow.'})
+        steps.append({'step': current_step, 'title': 'Final Cabling & Assembly', 'text': 'Connect front panel headers, USB, and audio connectors. Organize cables with zip ties to ensure clear airflow.'})
+        current_step += 1
+
+        if thermal_paste:
+            steps.append({'step': current_step, 'title': 'Thermal Management', 'text': f"Apply a pea-sized amount of {thermal_paste.get('name', 'Thermal Paste')} to the CPU heatmap if not pre-applied on the cooler."})
+            current_step += 1
+            
+        if wifi:
+            steps.append({'step': current_step, 'title': 'Network Setup', 'text': f"Install the {wifi.get('name', 'Network Adapter')} into a PCIe slot or connect the USB receiver."})
+            current_step += 1
+
+        if ups:
+            steps.append({'step': current_step, 'title': 'Power Protection', 'text': f"Connect your PC and Monitor to the {ups.get('name', 'UPS / Surge Protector')} for clean power and backup."})
+            current_step += 1
 
         # 6. Setup Checklist
         checklist = [
@@ -2651,7 +2777,13 @@ def order_components():
                 'keyboard': request_data.get('keyboard_id'),
                 'mouse': request_data.get('mouse_id'),
                 'headset': request_data.get('headset_id'),
-                'webcam': request_data.get('webcam_id')
+                'webcam': request_data.get('webcam_id'),
+                'thermal_paste': request_data.get('thermal_paste_id'),
+                'wifi': request_data.get('wifi_id'),
+                'speakers': request_data.get('speakers_id'),
+                'microphone': request_data.get('microphone_id'),
+                'ups': request_data.get('ups_id'),
+                'tool': request_data.get('tool_id')
             }
         else:
             build = db.saved_builds.find_one({
@@ -2676,7 +2808,13 @@ def order_components():
                 'keyboard': build.get('keyboard_id'),
                 'mouse': build.get('mouse_id'),
                 'headset': build.get('headset_id'),
-                'webcam': build.get('webcam_id')
+                'webcam': build.get('webcam_id'),
+                'thermal_paste': build.get('thermal_paste_id'),
+                'wifi': build.get('wifi_id'),
+                'speakers': build.get('speakers_id'),
+                'microphone': build.get('microphone_id'),
+                'ups': build.get('ups_id'),
+                'tool': build.get('tool_id')
             }
 
         results = []
@@ -2907,6 +3045,12 @@ def api_ai_recommend():
             ('Headset',     'peripherals', 0.07),
             ('Webcam',      'peripherals', 0.06),
             ('Peripherals', 'peripherals', 0.05),
+            ('Thermal_Paste','thermal_paste', 0.02),
+            ('Wifi',        'wifi_adapters', 0.03),
+            ('Speakers',    'speakers',    0.05),
+            ('Microphone',  'microphones',  0.06),
+            ('UPS',         'ups',         0.08),
+            ('Tools',       'tools',       0.03),
         ]
 
         # Sub-category filters for peripherals
@@ -2930,6 +3074,8 @@ def api_ai_recommend():
             'OS': 'os', 'Fans': 'fans',
             'Keyboard': 'keyboards', 'Mouse': 'mice',
             'Headset': 'headsets', 'Webcam': 'webcams', 'Peripherals': 'peripherals',
+            'Thermal_Paste': 'thermal_paste', 'Wifi': 'wifi_adapters', 'Speakers': 'speakers', 
+            'Microphone': 'microphones', 'UPS': 'ups', 'Tools': 'tools'
         }
 
         for slot_key, db_cat, cap_pct in COMPONENT_SLOTS:
@@ -5398,9 +5544,15 @@ def api_component_prices():
             'peripherals': data.get('peripherals_id'),
             'keyboard': data.get('keyboard_id'),
             'mouse': data.get('mouse_id'),
-            'headset': data.get('headset_id'),
+                        'headset': data.get('headset_id'),
             'webcam': data.get('webcam_id'),
-            'fans': data.get('fans_id')
+            'fans': data.get('fans_id'),
+            'thermal_paste': data.get('thermal_paste_id'),
+            'wifi': data.get('wifi_id'),
+            'speakers': data.get('speakers_id'),
+            'microphone': data.get('microphone_id'),
+            'ups': data.get('ups_id'),
+            'tools': data.get('tool_id')
         }
         
         prices = {}
@@ -5420,7 +5572,10 @@ def api_component_prices():
                         'cpu': 'cpus', 'gpu': 'gpus', 'motherboard': 'motherboards',
                         'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
                         'case': 'cases', 'cooler': 'coolers', 'monitor': 'monitors',
-                        'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans'
+                        'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
+                        'thermal_paste': 'thermal_paste', 'wifi': 'wifi_adapters', 
+                        'speakers': 'speakers', 'microphone': 'microphones', 
+                        'ups': 'ups', 'tools': 'tools'
                     }
                     col = col_map.get(category, category)
                     comp = db[col].find_one({'_id': ObjectId(comp_id)})
@@ -5696,8 +5851,11 @@ def api_calculate_group_build():
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
             'case_id': 'case', 'cooler_id': 'cooler',
             'keyboard_id': 'keyboard', 'mouse_id': 'mouse',
-            'headset_id': 'headset', 'webcam_id': 'webcam', 'fans_id': 'fans', 
-            'peripherals_id': 'peripherals', 'monitor_id': 'monitor', 'os_id': 'os'
+                        'headset_id': 'headset', 'webcam_id': 'webcam', 'fans_id': 'fans', 
+            'peripherals_id': 'peripherals', 'monitor_id': 'monitor', 'os_id': 'os',
+            'thermal_paste_id': 'thermal_paste', 'wifi_id': 'wifi',
+            'speakers_id': 'speakers', 'microphone_id': 'microphone',
+            'ups_id': 'ups', 'tool_id': 'tools'
         }
         
         for key, cat in key_map.items():
