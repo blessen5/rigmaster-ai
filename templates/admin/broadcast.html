@@ -18,14 +18,14 @@
         .broadcast-grid {
             display: grid;
             grid-template-columns: 1fr 1.5fr;
-            gap: 2rem;
+            gap: 1.5rem;
             align-items: start;
         }
 
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-lg);
             height: 100%;
@@ -67,21 +67,22 @@
         .stats-banner {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
             border: 1px solid rgba(99, 102, 241, 0.2);
-            padding: 1.5rem;
+            padding: 0.4rem 1rem;
             border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 10px;
+            font-size: 0.85rem;
         }
 
         .maint-card {
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(10, 10, 10, 0.2) 100%);
             border: 1px solid var(--border);
             border-top: 4px solid var(--accent);
-            padding: 1.5rem;
+            padding: 1.25rem;
             border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
         }
 
         .preview-box {
@@ -118,9 +119,9 @@
             background: linear-gradient(135deg, var(--bg-card) 0%, rgba(102, 126, 234, 0.03) 100%);
             border: 1px solid var(--border);
             border-top: 4px solid var(--accent);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: var(--radius-lg);
-            margin-bottom: 2.5rem;
+            margin-bottom: 1.5rem;
         }
 
         .maint-header {
@@ -176,11 +177,11 @@
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
 
-    <header class="support-hero" style="padding: 10rem 0 5rem; text-align: center;">
+    <header class="support-hero" style="padding: 5rem 0 1.5rem; text-align: center;">
         <div class="container">
             <h1 class="text-gradient"
-                style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                style="font-size: 3rem; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 0.5rem;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 3L14.5 9H21L16 13L18 20L12 16L6 20L8 13L3 9H9.5L12 3Z" fill="url(#broad_grad)" />
                     <defs>
                         <linearGradient id="broad_grad" x1="3" y1="3" x2="21" y2="20" gradientUnits="userSpaceOnUse">
@@ -191,13 +192,13 @@
                 </svg>
                 Broadcast Center
             </h1>
-            <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">
+            <p style="color: var(--text-muted); font-size: 1.1rem;">
                 Send announcements, updates, and newsletters to all registered users.
             </p>
         </div>
     </header>
 
-    <main class="container" style="padding-bottom: 5rem;">
+    <main class="container" style="padding-bottom: 3rem;">
 
 
         <div class="broadcast-container">
@@ -205,18 +206,9 @@
                 <!-- Left Column: Controls & Stats -->
                 <div class="sidebar-cards">
                     <div class="stats-banner">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
-                            <path
-                                d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21"
-                                stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            <path
-                                d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z"
-                                stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                        <div>
-                            <h3 style="margin: 0; font-size: 1rem; color: var(--text-main);">Audience Reach</h3>
-                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);"><strong>{{ user_count }}</strong> recipients found.</p>
-                        </div>
+                        <i class="bi bi-people" style="color: var(--primary); font-size: 1.1rem;"></i>
+                        <span style="color: var(--text-muted); font-weight: 500;">Reach:</span>
+                        <span style="color: var(--text-main); font-weight: 700;">{{ user_count }} recipients</span>
                     </div>
 
                     <!-- System Control -->
@@ -270,10 +262,10 @@
                 </div>
 
                 <!-- Right Column: Email Broadcast -->
-                <div class="card" style="padding: 2.5rem;">
-                    <div style="margin-bottom: 2rem;">
-                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">Compose Broadcast</h2>
-                        <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--text-muted);">Send a secure email to all registered participants.</p>
+                <div class="card" style="padding: 1.5rem;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h2 style="margin: 0; font-size: 1.25rem; color: var(--text-main);">Compose Broadcast</h2>
+                        <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted);">Send a secure email to all registered participants.</p>
                     </div>
 
                     <form id="broadcastForm" onsubmit="sendBroadcast(event)">
