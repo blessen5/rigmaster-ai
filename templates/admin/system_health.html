@@ -200,8 +200,10 @@
                         <div style="font-size: 0.8rem;">
                             {% if 'Available' in status or 'Running' in status %}
                             <span style="color: #22c55e;">✓ {{ status }}</span>
-                            {% elif 'Not' in status %}
+                            {% elif 'Not' in status or 'Missing' in status %}
                             <span style="color: #fbbf24;">⚠ {{ status }}</span>
+                            {% elif 'Quota' in status or 'Invalid' in status or 'Error' in status or 'Degraded' in status %}
+                            <span style="color: #ef4444;">⚠ {{ status }}</span>
                             {% else %}
                             <span style="color: var(--text-muted);">{{ status }}</span>
                             {% endif %}
@@ -211,29 +213,7 @@
                 </div>
             </div>
 
-            <!-- Server Info -->
-            <div class="health-card">
-                <h3 style="margin-bottom: 1.5rem;">
-                    <span class="status-indicator status-healthy"></span>
-                    Server
-                </h3>
-                <div style="display: grid; gap: 0.75rem;">
-                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-md);">
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Platform</div>
-                        <div style="font-weight: 600; margin-top: 0.1rem; font-size: 0.8rem;">{{ server_info.platform
-                            }}</div>
-                    </div>
-                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-md);">
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Python Version</div>
-                        <div style="font-weight: 600; margin-top: 0.1rem; font-size: 0.8rem;">{{ python_version }}</div>
-                    </div>
-                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-md);">
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Database Size</div>
-                        <div style="font-weight: 600; margin-top: 0.1rem; font-size: 0.8rem;">{{ (db_stats.get('dataSize', 0) / 1024 /
-                            1024)|round(2) }} MB</div>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- Database Detailed Stats -->
             {% if db_stats %}

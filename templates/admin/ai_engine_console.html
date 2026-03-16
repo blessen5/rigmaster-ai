@@ -79,6 +79,11 @@
             color: #fbbf24;
         }
 
+        .status-pill.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
         .progress-fill {
             height: 100%;
             background: var(--primary);
@@ -191,7 +196,7 @@
             <div class="metric-card">
                 <div style="color: var(--text-muted); font-size: 0.9rem;">Cost Saved</div>
                 <div class="metric-value">$0</div>
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Free tier FTW! 🎉</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">Free tier FTW! ðŸŽ‰</div>
             </div>
         </div>
 
@@ -221,28 +226,28 @@
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                         <select id="preferred-ai" class="form-select" onchange="updatePreferredAI()"
                             style="flex: 1; min-width: 200px;">
-                            <option value="auto" {% if preferred_ai_provider=='auto' %}selected{% endif %}>🔄
+                            <option value="auto" {% if preferred_ai_provider=='auto' %}selected{% endif %}>ðŸ”„
                                 Auto-Rotate (Recommended)</option>
-                            <option value="groq" {% if preferred_ai_provider=='groq' %}selected{% endif %}>⚡ Groq
+                            <option value="groq" {% if preferred_ai_provider=='groq' %}selected{% endif %}>âš¡ Groq
                                 (Fastest)</option>
-                            <option value="mistral" {% if preferred_ai_provider=='mistral' %}selected{% endif %}>🚀
+                            <option value="mistral" {% if preferred_ai_provider=='mistral' %}selected{% endif %}>ðŸš€
                                 Mistral</option>
-                            <option value="gemini" {% if preferred_ai_provider=='gemini' %}selected{% endif %}>🌟 Google
+                            <option value="gemini" {% if preferred_ai_provider=='gemini' %}selected{% endif %}>ðŸŒŸ Google
                                 Gemini</option>
-                            <option value="deepseek" {% if preferred_ai_provider=='deepseek' %}selected{% endif %}>🧠
+                            <option value="deepseek" {% if preferred_ai_provider=='deepseek' %}selected{% endif %}>ðŸ§ 
                                 DeepSeek</option>
-                            <option value="openrouter" {% if preferred_ai_provider=='openrouter' %}selected{% endif %}>🌐
+                            <option value="openrouter" {% if preferred_ai_provider=='openrouter' %}selected{% endif %}>ðŸŒ
                                 OpenRouter</option>
-                            <option value="hf" {% if preferred_ai_provider=='hf' %}selected{% endif %}>🤗 Hugging Face
+                            <option value="hf" {% if preferred_ai_provider=='hf' %}selected{% endif %}>ðŸ¤— Hugging Face
                             </option>
                         </select>
                         <div id="provider-status-badge"
                             class="status-pill {{ 'active' if preferred_ai_provider == 'auto' else 'inactive' }}"
                             style="padding: 0.5rem 1rem; font-size: 0.8rem;">
                             {% if preferred_ai_provider == 'auto' %}
-                            ✅ Auto-Rotating
+                            âœ… Auto-Rotating
                             {% else %}
-                            🎯 {{ preferred_ai_provider | capitalize }} Prioritized
+                            ðŸŽ¯ {{ preferred_ai_provider | capitalize }} Prioritized
                             {% endif %}
                         </div>
                     </div>
@@ -252,15 +257,15 @@
 
         <!-- AI Provider Status -->
         <div class="request-list">
-            <h2 style="margin: 0 0 1.5rem 0;">🌐 AI Provider Status</h2>
+            <h2 style="margin: 0 0 1.5rem 0;">ðŸŒ AI Provider Status</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                 {% for provider, status in health.ai_providers.items() %}
                 <div
                     style="padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-md); text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 0.5rem;">
-                        {% if provider == 'groq' %}⚡{% elif provider == 'mistral' %}🚀{% elif provider == 'gemini'
-                        %}🌟{% elif provider == 'deepseek' %}🧠{% elif provider == 'hf' %}🤗{% elif provider ==
-                        'openrouter' %}🌐{% elif provider == 'cohere' %}🌀{% endif %}
+                        {% if provider == 'groq' %}âš¡{% elif provider == 'mistral' %}ðŸš€{% elif provider == 'gemini'
+                        %}ðŸŒŸ{% elif provider == 'deepseek' %}ðŸ§ {% elif provider == 'hf' %}ðŸ¤—{% elif provider ==
+                        'openrouter' %}ðŸŒ{% elif provider == 'cohere' %}ðŸŒ€{% endif %}
                     </div>
                     <div style="font-weight: 600; text-transform: capitalize;">{{ provider }}</div>
                     <div style="color: var(--text-muted); font-size: 0.85rem;">
@@ -270,7 +275,8 @@
                         provider == 'hf' %}Cloud (2-4s){% endif %}
                     </div>
                     {% set active = 'Available' in status or 'Running' in status %}
-                    <div class="status-pill {{ 'active' if active else 'inactive' }}">
+                    {% set error = 'Quota' in status or 'Invalid' in status or 'Error' in status or 'Degraded' in status %}
+                    <div class="status-pill {% if active %}active{% elif error %}error{% else %}inactive{% endif %}">
                         {{ status }}
                     </div>
                 </div>
@@ -283,7 +289,7 @@
             <!-- Activity Chart -->
             <div class="request-list" style="margin-top: 0; background: rgba(0,0,0,0.2); border: 1px solid var(--border);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 style="margin: 0; font-size: 1.1rem; opacity: 0.9;">📈 Request Activity</h2>
+                    <h2 style="margin: 0; font-size: 1.1rem; opacity: 0.9;">ðŸ“ˆ Request Activity</h2>
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Last 7 Days</span>
                 </div>
                 <div style="height: 300px;">
@@ -293,7 +299,7 @@
 
             <!-- Provider List (Moved into this grid for better flow) -->
             <div class="request-list" style="margin-top: 0; background: rgba(0,0,0,0.2); border: 1px solid var(--border);">
-                <h2 style="margin: 0 0 2rem 0; font-size: 1.1rem; opacity: 0.9;">📊 distribution</h2>
+                <h2 style="margin: 0 0 2rem 0; font-size: 1.1rem; opacity: 0.9;">ðŸ“Š distribution</h2>
                 <div style="display: grid; gap: 1.25rem;">
                     {% for provider, count in provider_stats.items() %}
                     <div>
@@ -349,14 +355,14 @@
             </p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                 {% set providers = [
-                ('groq', '⚡ Groq', 'gsk_...'),
-                ('mistral', '🚀 Mistral', '...'),
-                ('gemini', '🌟 Gemini', 'AIza...'),
-                ('deepseek', '🧠 DeepSeek', 'sk-...'),
-                ('hf', '🤗 Hugging Face', 'hf_...'),
-                ('openrouter', '🌐 OpenRouter', 'sk-or-...'),
+                ('groq', 'âš¡ Groq', 'gsk_...'),
+                ('mistral', 'ðŸš€ Mistral', '...'),
+                ('gemini', 'ðŸŒŸ Gemini', 'AIza...'),
+                ('deepseek', 'ðŸ§  DeepSeek', 'sk-...'),
+                ('hf', 'ðŸ¤— Hugging Face', 'hf_...'),
+                ('openrouter', 'ðŸŒ OpenRouter', 'sk-or-...'),
 
-                ('serpapi', '🔍 SerpAPI', 'Enter token...')
+                ('serpapi', 'ðŸ” SerpAPI', 'Enter token...')
                 ] %}
                 {% for id, label, placeholder in providers %}
                 <div>
@@ -364,7 +370,7 @@
                         {{ label }}
                         <span onclick="deleteKey('{{ id }}_key')"
                             style="float: right; cursor: pointer; color: #ef4444; font-size: 0.8rem;"
-                            title="Delete explicitly from DB">🗑️ Delete</span>
+                            title="Delete explicitly from DB">ðŸ—‘ï¸ Delete</span>
                     </label>
                     <input type="password" id="key-{{ id }}" value="{{ custom_keys.get(id + '_key', '') }}"
                         placeholder="{{ placeholder }}"
@@ -374,10 +380,10 @@
             </div>
             <div style="display: flex; gap: 1rem; margin-top: 1.5rem; align-items: center;">
                 <button class="btn btn-primary" onclick="saveApiKeys()" style="padding: 0.75rem 2rem;">
-                    💾 Save API Keys
+                    ðŸ’¾ Save API Keys
                 </button>
                 <button class="btn btn-secondary" onclick="toggleKeyVisibility()" style="padding: 0.75rem 1.5rem;">
-                    👁️ Show/Hide Keys
+                    ðŸ‘ï¸ Show/Hide Keys
                 </button>
             </div>
         </div>
@@ -421,14 +427,14 @@
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">SMTP
                         Password</label>
                     <input type="password" id="smtp-password" value="{{ smtp_settings.password }}"
-                        placeholder="••••••••"
+                        placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                         style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: white;">
                 </div>
             </div>
             <div style="display: flex; gap: 1rem; margin-top: 1.5rem; align-items: center;">
                 <button class="btn btn-primary" onclick="saveSmtpSettings()"
                     style="padding: 0.75rem 2rem; background: #10b981; border-color: #10b981;">
-                    � Save Email Settings
+                    ï¿½ Save Email Settings
                 </button>
             </div>
         </div>
@@ -449,13 +455,13 @@
                 <h2 style="margin: 0; font-size: 1.25rem;">Emergency Tools</h2>
             </div>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">
-                Perform critical system resets if AI providers or the cache become unresponsive. Use with caution —
+                Perform critical system resets if AI providers or the cache become unresponsive. Use with caution â€”
                 clearing cache may temporarily slow down responses as the system rebuilds it.
             </p>
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                 <button class="btn btn-secondary" onclick="clearAICache()"
                     style="padding: 0.75rem 2rem; color: #f87171; border-color: rgba(248, 113, 113, 0.4);">
-                    🔥 Purge AI Cache
+                    ðŸ”¥ Purge AI Cache
                 </button>
                 <span id="cache-status" style="font-size: 0.85rem; color: var(--text-muted);">
                     {{ stats.total_requests }} cached entries
@@ -583,12 +589,12 @@
                 }
             }
             async function clearAICache() {
-                if (!confirm('⚠️ CRITICAL: This will clear ALL cached AI responses. The site may be slower temporarily as it rebuilds the cache. Continue?')) return;
+                if (!confirm('âš ï¸ CRITICAL: This will clear ALL cached AI responses. The site may be slower temporarily as it rebuilds the cache. Continue?')) return;
                 try {
                     const res = await fetch('/api/admin/clear-cache', { method: 'POST' });
                     const result = await res.json();
                     if (result.status === 'success') {
-                        alert('✅ AI Cache purged successfully.');
+                        alert('âœ… AI Cache purged successfully.');
                         location.reload();
                     } else {
                         alert('Error: ' + result.message);
