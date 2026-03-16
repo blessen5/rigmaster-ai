@@ -1550,7 +1550,7 @@
                     document.getElementById('btn-fix-compatibility').style.display = 'none';
                 }
 
-                listEl.innerHTML = '';
+                listEl.textContent = ''; // Safer than innerHTML
                 validationResult.messages.forEach(msg => {
                     const li = document.createElement('li');
                     li.textContent = msg;
@@ -1785,7 +1785,13 @@
                     };
 
                     document.getElementById('cost-monthly').textContent = symbol + formatVal(monthlyCost);
-                    document.getElementById('carbon-footprint').innerHTML = `${yearlyCo2.toFixed(0)} <span style="font-size: 1rem;">kg CO2/yr</span>`;
+                    
+                    const carbonEl = document.getElementById('carbon-footprint');
+                    carbonEl.textContent = yearlyCo2.toFixed(0);
+                    const unitSpan = document.createElement('span');
+                    unitSpan.style.fontSize = '1rem';
+                    unitSpan.textContent = ' kg CO2/yr';
+                    carbonEl.appendChild(unitSpan);
 
                     // Dynamic tree equivalency
                     const trees = Math.ceil(yearlyCo2 / 21.8); // Avg tree absorbs ~21.8kg CO2/yr
