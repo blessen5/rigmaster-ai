@@ -4849,67 +4849,32 @@ def admin_system_health():
             except:
                 pass
 
+        # Create snapshot
+        overall_status = 'Healthy' if auth_status == 'Operational' and ai_services_running else 'Degraded'
         
-        # 1. CREATE SNAPSHOT (Calculated in memory)
-        health_snapshot = {
-            'timestamp': datetime.now(timezone.utc),
-            'overall_status': 'Healthy' if auth_status == 'Operational' and ai_services_running else 'Degraded',
-            'database': {
-                'status': health['database'],
-                'storage_size_mb': round(db_stats.get('storageSize', 0) / 1024 / 1024, 2)
-            },
-            'collections': health['collections'],
-            'ai_providers': health['ai_providers'],
-            'services': health['services'],
-            'db_stats': db_stats,
-        }
-
-        # 2. SAVE TO MONGODB (THE PRIMARY SOURCE OF TRUTH)
+        # Save snapshot for history (optional background logging)
         try:
-            db.system_health_logs.insert_one(health_snapshot)
-        except Exception as log_err:
-            app.logger.error(f"Failed to record health log: {log_err}")
-
-        # 3. FETCH THE LATEST DATA BACK FROM THE TABLE FOR THE UI
-        # This ensures the UI is strictly showing what is recorded in the database
-        health_history = []
-        display_health = health.copy() # Fallback
-        display_health['overall_status'] = health_snapshot.get('overall_status', 'Healthy')
-        try:
-            health_history = list(db.system_health_logs.find().sort('timestamp', -1).limit(10))
-            if health_history:
-                # Use the latest record from the table for the main display
-                latest_log = health_history[0]
-                
-                # Normalize database status string for the main badge display
-                db_data = latest_log.get('database')
-                if isinstance(db_data, dict):
-                    db_status_str = db_data.get('status', 'Unknown')
-                else:
-                    db_status_str = str(db_data)
-
-                display_health = {
-                    'database': db_status_str,
-                    'collections': latest_log.get('collections', []),
-                    'ai_providers': latest_log.get('ai_providers', {}),
-                    'services': latest_log.get('services', {}),
-                    'overall_status': latest_log.get('overall_status', 'Healthy')
-                }
-                # Also ensure we use the logged db_stats and server_info if available
-                db_stats = latest_log.get('db_stats', db_stats)
-                
-                # Format logs for history table
-                for log in health_history:
-                    log['_id'] = str(log['_id'])
-                    if 'timestamp' in log and log['timestamp']:
-                        log['date_str'] = log['timestamp'].strftime('%Y-%m-%d %H:%M') + ' (UTC)'
-        except Exception as fetch_err:
-            app.logger.warning(f"Fetch from history failed: {fetch_err}")
+            db.system_health_logs.insert_one({
+                'timestamp': datetime.now(timezone.utc),
+                'overall_status': overall_status,
+                'database': {'status': health['database'], 'storage_size_mb': round(db_stats.get('storageSize', 0) / 1024 / 1024, 2)},
+                'collections': health['collections'],
+                'ai_providers': health['ai_providers'],
+                'services': health['services'],
+                'db_stats': db_stats
+            })
+        except:
+            pass
 
         return render_template('admin/system_health.html', 
-                             health=display_health, 
-                             db_stats=db_stats,
-                             health_history=health_history)
+                             health={
+                                 'database': health['database'],
+                                 'collections': health['collections'],
+                                 'ai_providers': health['ai_providers'],
+                                 'services': health['services'],
+                                 'overall_status': overall_status
+                             }, 
+                             db_stats=db_stats)
     except Exception as e:
         app.logger.error(f"System health error: {e}")
         return f"Error: {e}", 500
