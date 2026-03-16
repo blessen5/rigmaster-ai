@@ -783,7 +783,7 @@ Return ONLY a valid JSON object. No conversational text.
 
 CRITICAL RULES:
 1. BUDGET LOCK: The 'estimated_total' MUST NOT exceed the target budget.
-2. COMPLETE BUILD: You MUST select ALL 16 component slots listed below. Every slot must have a value from the provided pool.
+2. COMPLETE BUILD: You MUST select ALL 22 component slots listed below. Every slot must have a value from the provided pool.
 3. IDs REQUIRED: Always use the format "ID:<24-char-hex>|Component Name" from the pool.
 4. SELECTION: Use ONLY components from the 'Available Components' list. Ensure compatibility.
 5. FORMAT: Strict JSON only. No markdown, no code blocks.

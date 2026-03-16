@@ -772,12 +772,12 @@
                 { k: 'Headset', l: 'Headset' },
                 { k: 'Webcam', l: 'Webcam' },
                 { k: 'Peripherals', l: 'Other Peripherals' },
-                { k: 'thermal_paste', l: 'Thermal Paste' },
-                { k: 'wifi', l: 'Network Adapter' },
-                { k: 'speakers', l: 'Audio Speakers' },
-                { k: 'microphone', l: 'Microphone' },
-                { k: 'ups', l: 'UPS / Surge' },
-                { k: 'tools', l: 'Assembly Tools' },
+                { k: 'Thermal_Paste', l: 'Thermal Paste' },
+                { k: 'Wifi', l: 'Network Adapter' },
+                { k: 'Speakers', l: 'Audio Speakers' },
+                { k: 'Microphone', l: 'Microphone' },
+                { k: 'UPS', l: 'UPS / Surge' },
+                { k: 'Tools', l: 'Assembly Tools' },
             ];
 
             const build = data.build || {};
@@ -870,6 +870,12 @@
                         headset_id: build.Headset?.id || build.headset?.id,
                         webcam_id: build.Webcam?.id || build.webcam?.id,
                         peripherals_id: build.Peripherals?.id || build.peripherals?.id,
+                        thermal_paste_id: build.Thermal_Paste?.id || build.thermal_paste?.id,
+                        wifi_id: build.Wifi?.id || build.wifi?.id,
+                        speakers_id: build.Speakers?.id || build.speakers?.id,
+                        microphone_id: build.Microphone?.id || build.microphone?.id,
+                        ups_id: build.UPS?.id || build.ups?.id,
+                        tool_id: build.Tools?.id || build.tools?.id,
                     };
 
                     const res = await fetch('/api/save_build', {

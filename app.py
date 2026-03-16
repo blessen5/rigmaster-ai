@@ -107,13 +107,13 @@ def clean_comp_name(name):
 
 def get_estimated_price(comp_name, cat):
     name = str(comp_name).upper()
-    if cat == 'cpus':
+    if cat == 'cpus' or cat == 'cpu':
         if 'THREADRIPPER' in name: return 1500
         if 'RYZEN 9' in name or 'CORE I9' in name: return 580
         if 'RYZEN 7' in name or 'CORE I7' in name: return 380
         if 'RYZEN 5' in name or 'CORE I5' in name: return 240
         return 140
-    if cat == 'gpus':
+    if cat == 'gpus' or cat == 'gpu':
         if '4090' in name: return 1800
         if '4080' in name or '7900 XTX' in name: return 1100
         if '4070 TI' in name or '7900 XT' in name: return 850
@@ -121,7 +121,7 @@ def get_estimated_price(comp_name, cat):
         if '4060 TI' in name or '7700 XT' in name: return 420
         if '4060' in name or '7600' in name: return 320
         return 250
-    if cat == 'motherboards': 
+    if cat == 'motherboards' or cat == 'motherboard': 
         if 'Z790' in name or 'X670' in name: return 320
         if 'B650' in name or 'B760' in name: return 200
         return 150
@@ -139,11 +139,11 @@ def get_estimated_price(comp_name, cat):
         if '850W' in name: return 160
         if '750W' in name: return 130
         return 100
-    if cat == 'cases': return 130
-    if cat == 'coolers': 
+    if cat == 'cases' or cat == 'case': return 130
+    if cat == 'coolers' or cat == 'cooler': 
         if 'LIQUID' in name or 'AIO' in name or '420' in name or '360' in name: return 160
         return 60
-    if cat == 'monitors':
+    if cat == 'monitors' or cat == 'monitor':
         if '4K' in name: return 600
         if '1440P' in name or '2K' in name: return 350
         return 180
@@ -152,28 +152,28 @@ def get_estimated_price(comp_name, cat):
         return 110
     if cat == 'peripherals':
         return 80
-    if cat == 'keyboards':
+    if cat == 'keyboards' or cat == 'keyboard':
         if 'MECHANICAL' in name: return 120
         return 70
-    if cat == 'mice':
+    if cat == 'mice' or cat == 'mouse':
         if 'WIRELESS' in name or 'LIGHTSPEED' in name: return 90
         return 60
-    if cat == 'headsets':
+    if cat == 'headsets' or cat == 'headset':
         if 'WIRELESS' in name or 'NOISE' in name: return 150
         return 80
-    if cat == 'webcams':
+    if cat == 'webcams' or cat == 'webcam':
         if '4K' in name or 'BRIO' in name: return 200
         return 100
     if cat == 'fans':
         return 30
     if cat == 'thermal_paste':
         return 15
-    if cat == 'wifi_adapters':
+    if cat == 'microphones' or cat == 'microphone':
+        return 120
+    if cat == 'wifi_adapters' or cat == 'wifi':
         return 40
     if cat == 'speakers':
         return 100
-    if cat == 'microphones':
-        return 120
     if cat == 'ups':
         return 200
     if cat == 'tools':
@@ -197,19 +197,35 @@ _PRICE_CAT_MAP = {
 def get_comp_price_usd(comp, id_key=None, est_cat=None):
     """Return the USD price for a component document.
     Reads the real 'price'/'msrp'/'cost' field first; falls back to
-    keyword-based heuristics if no price field is stored."""
+    keyword-based heuristics if no price field is stored or if price is 0."""
     if comp is None:
         return 0.0
-    raw = comp.get('price') or comp.get('msrp') or comp.get('cost')
+    
+    # Try multiple common price fields in order of reliability
+    price_fields = ['price', 'msrp', 'cost', 'retail_price', 'sale_price']
+    raw = None
+    for field in price_fields:
+        val = comp.get(field)
+        if val is not None and val != "" and val != 0 and val != 0.0 and str(val).strip() != "0":
+            raw = val
+            break
+            
     if raw is not None:
         try:
-            return float(str(raw).replace('$', '').replace(',', '').strip())
+            # Clean string of common currency symbols
+            p_str = str(raw).replace('$', '').replace(',', '').replace('₹', '').replace('Rs', '').strip()
+            p = float(p_str)
+            if p > 0:
+                return p
         except (ValueError, TypeError):
             pass
-    # Determine fallback category
+            
+    # Determine fallback category for estimation
     fallback_cat = est_cat
     if fallback_cat is None and id_key:
-        fallback_cat = _PRICE_CAT_MAP.get(id_key, 'peripherals')
+        # Try as build_id key first (e.g. 'cpu_id'), then as category name directly (e.g. 'cpu')
+        fallback_cat = _PRICE_CAT_MAP.get(id_key, id_key)
+        
     return get_estimated_price(comp.get('name', ''), fallback_cat or 'peripherals')
 
 def get_component_by_id(comp_id):
@@ -2064,28 +2080,36 @@ def api_ai_engine_recommend():
         # RAG Strategy: Get available components from database components table
         component_pool = {}
         try:
-            component_pool['cpus'] = [c['name'] for c in db.components.find({'category': 'cpu'}, {'name': 1}).limit(20)]
-            component_pool['gpus'] = [c['name'] for c in db.components.find({'category': 'gpu'}, {'name': 1}).limit(20)]
-            component_pool['motherboards'] = [c['name'] for c in db.components.find({'category': 'motherboard'}, {'name': 1}).limit(15)]
-            component_pool['ram'] = [c['name'] for c in db.components.find({'category': 'ram'}, {'name': 1}).limit(15)]
-            component_pool['storage'] = [c['name'] for c in db.components.find({'category': 'storage'}, {'name': 1}).limit(15)]
-            component_pool['psu'] = [c['name'] for c in db.components.find({'category': 'psu'}, {'name': 1}).limit(15)]
-            component_pool['cases'] = [c['name'] for c in db.components.find({'category': 'case'}, {'name': 1}).limit(15)]
-            component_pool['coolers'] = [c['name'] for c in db.components.find({'category': 'cooler'}, {'name': 1}).limit(15)]
-            component_pool['monitors'] = [c['name'] for c in db.components.find({'category': 'monitor'}, {'name': 1}).limit(10)]
-            component_pool['os'] = [c['name'] for c in db.components.find({'category': 'os'}, {'name': 1}).limit(5)]
-            component_pool['fans'] = [c['name'] for c in db.components.find({'category': 'fans'}, {'name': 1}).limit(10)]
-            component_pool['keyboards'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'keyboard'}, {'name': 1}).limit(10)]
-            component_pool['mice'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'mouse'}, {'name': 1}).limit(10)]
-            component_pool['headsets'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'headset'}, {'name': 1}).limit(10)]
-            component_pool['webcams'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'webcam'}, {'name': 1}).limit(10)]
-            component_pool['peripherals'] = [c['name'] for c in db.components.find({'category': 'peripherals', 'sub_category': 'other'}, {'name': 1}).limit(10)]
-            component_pool['thermal_paste'] = [c['name'] for c in db.components.find({'category': 'thermal_paste'}, {'name': 1}).limit(10)]
-            component_pool['wifi_adapters'] = [c['name'] for c in db.components.find({'category': 'wifi_adapters'}, {'name': 1}).limit(10)]
-            component_pool['speakers'] = [c['name'] for c in db.components.find({'category': 'speakers'}, {'name': 1}).limit(10)]
-            component_pool['microphones'] = [c['name'] for c in db.components.find({'category': 'microphones'}, {'name': 1}).limit(10)]
-            component_pool['ups'] = [c['name'] for c in db.components.find({'category': 'ups'}, {'name': 1}).limit(10)]
-            component_pool['tools'] = [c['name'] for c in db.components.find({'category': 'tools'}, {'name': 1}).limit(10)]
+            # Helper to format component list with IDs
+            def get_pool(query, limit=15):
+                return [f"ID:{str(c['_id'])}|{c['name']}" for c in db.components.find(query, {'_id': 1, 'name': 1}).limit(limit)]
+
+            component_pool['cpus'] = get_pool({'category': 'cpu'}, 20)
+            component_pool['gpus'] = get_pool({'category': 'gpu'}, 20)
+            component_pool['motherboards'] = get_pool({'category': 'motherboard'}, 15)
+            component_pool['ram'] = get_pool({'category': 'ram'}, 15)
+            component_pool['storage'] = get_pool({'category': 'storage'}, 15)
+            component_pool['psu'] = get_pool({'category': 'psu'}, 15)
+            component_pool['cases'] = get_pool({'category': 'case'}, 15)
+            component_pool['coolers'] = get_pool({'category': 'cooler'}, 15)
+            component_pool['monitors'] = get_pool({'category': 'monitor'}, 10)
+            component_pool['os'] = get_pool({'category': 'os'}, 5)
+            component_pool['fans'] = get_pool({'category': 'fans'}, 10)
+            
+            # Peripherals
+            component_pool['keyboards'] = get_pool({'category': 'peripherals', 'sub_category': 'keyboard'}, 10)
+            component_pool['mice'] = get_pool({'category': 'peripherals', 'sub_category': 'mouse'}, 10)
+            component_pool['headsets'] = get_pool({'category': 'peripherals', 'sub_category': 'headset'}, 10)
+            component_pool['webcams'] = get_pool({'category': 'peripherals', 'sub_category': 'webcam'}, 10)
+            component_pool['peripherals'] = get_pool({'category': 'peripherals', 'sub_category': 'other'}, 10)
+            
+            # PC Build Essentials (Requested by user)
+            component_pool['thermal_paste'] = get_pool({'category': 'thermal_paste'}, 10)
+            component_pool['wifi_adapters'] = get_pool({'category': 'wifi_adapters'}, 10)
+            component_pool['speakers'] = get_pool({'category': 'speakers'}, 10)
+            component_pool['microphones'] = get_pool({'category': 'microphones'}, 10)
+            component_pool['ups'] = get_pool({'category': 'ups'}, 10)
+            component_pool['tools'] = get_pool({'category': 'tools'}, 10)
         except Exception as e:
             app.logger.warning(f"Could not fetch component pool: {e}")
             component_pool = None
@@ -2101,33 +2125,67 @@ def api_ai_engine_recommend():
         
         # Try to match AI recommendations to actual database components
         matched_components = {}
-        if not recommendation.get('fallback', False):
-            # Categories to match (All 16)
-            cats = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals', 'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools']
+        if recommendation and not recommendation.get('fallback', False):
+            # Categories to match (All 22)
+            # aligned with ai_engine keys
+            cats = [
+                'cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 
+                'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals', 
+                'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'
+            ]
+            
             for comp_type in cats:
                 ai_suggestion = recommendation.get(comp_type, '')
                 if ai_suggestion:
-                    # Generic matching against unified components table
-                    search_term = ai_suggestion.split()[0]
-                    query = {'name': {'$regex': search_term, '$options': 'i'}}
+                    # 1. Try to extract ID from "ID:xxx|Name"
+                    match = None
+                    if "ID:" in ai_suggestion and "|" in ai_suggestion:
+                        try:
+                            cid = ai_suggestion.split('|')[0].replace('ID:', '').strip()
+                            match = db.components.find_one({'_id': ObjectId(cid)})
+                        except:
+                            pass
                     
-                    # Add category/sub-category filters for more accurate matching
-                    subcat_map = {'keyboard': 'keyboard', 'mouse': 'mouse', 'headset': 'headset', 'webcam': 'webcam'}
-                    if comp_type in subcat_map:
-                        query['category'] = 'peripherals'
-                        query['sub_category'] = subcat_map[comp_type]
-                    elif comp_type in ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'fans']:
-                        # Map to storage/psu/cpu/gpu etc
-                        cat_map = {'cpu':'cpu', 'gpu':'gpu', 'motherboard':'motherboard', 'ram':'ram', 'storage':'storage', 'psu':'psu', 'case':'case', 'cooler':'cooler', 'fans':'fans'}
-                        query['category'] = cat_map.get(comp_type, comp_type)
+                    # 2. Fallback to name-based regex matching if ID match failed
+                    if not match:
+                        # Clean name from ID:...| if present
+                        clean_name = ai_suggestion
+                        if "|" in clean_name: clean_name = clean_name.split('|')[-1].strip()
+                        elif "ID:" in clean_name: clean_name = clean_name.split(':')[-1].strip()
+                        
+                        search_term = clean_name.split()[0] if clean_name else ""
+                        if search_term:
+                            query = {'name': {'$regex': re.escape(search_term), '$options': 'i'}}
+                            
+                            # Apply Category Filters
+                            subcat_map = {'keyboard': 'keyboard', 'mouse': 'mouse', 'headset': 'headset', 'webcam': 'webcam'}
+                            if comp_type in subcat_map:
+                                query['category'] = 'peripherals'
+                                query['sub_category'] = subcat_map[comp_type]
+                            else:
+                                cat_map = {
+                                    'cpu':'cpu', 'gpu':'gpu', 'motherboard':'motherboard', 'ram':'ram', 
+                                    'storage':'storage', 'psu':'psu', 'case':'case', 'cooler':'cooler', 
+                                    'fans':'fans', 'wifi': 'wifi_adapters', 'microphone': 'microphones'
+                                }
+                                query['category'] = cat_map.get(comp_type, comp_type)
 
-                    try:
-                        match = db.components.find_one(query)
-                        if match:
-                            matched_components[comp_type + '_id'] = str(match['_id'])
-                            matched_components[comp_type + '_name'] = match['name']
-                    except:
-                        pass
+                            try:
+                                match = db.components.find_one(query)
+                            except:
+                                pass
+                    
+                    if match:
+                        # Map internal key names to UI/Database keys if different
+                        # (The UI uses some singular keys or shorthand like 'wifi')
+                        ui_key = comp_type
+                        if ui_key == 'wifi_adapters': ui_key = 'wifi'
+                        if ui_key == 'microphones': ui_key = 'microphone'
+                        
+                        matched_components[ui_key + '_id'] = str(match['_id'])
+                        matched_components[ui_key + '_name'] = match['name']
+                        matched_components[ui_key + '_price'] = get_comp_price_usd(match)
+
         
         
         return jsonify({
@@ -2389,6 +2447,7 @@ def run_power_analysis(data):
 
         # 6. Peripherals Power (External Draw awareness)
         # Often negligible for PSU but good for total system context
+        periph_power = 0
         periph_keys = ['keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id', 'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id']
         for pk in periph_keys:
             if data.get(pk): periph_power += 3 # Nominal 3W (Average)
@@ -2515,9 +2574,17 @@ def calculate_build_difficulty(build):
                 score += 1
                 reasons.append("High-wattage cable management")
 
-        # Total components check
-        comp_count = sum(1 for k in ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'fans_id', 'thermal_paste_id', 'wifi_id', 'ups_id'] if build.get(k) and build.get(k) != "None Selected")
-        if comp_count >= 10:
+        # Total components check (Total 22 slots)
+        required_keys = [
+            'cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'fans_id', 
+            'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id', 'monitor_id', 'os_id',
+            'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id'
+        ]
+        comp_count = sum(1 for k in required_keys if build.get(k) and build.get(k) != "None Selected")
+        
+        if comp_count >= 18:
+            score += 3
+        elif comp_count >= 12:
             score += 2
         elif comp_count >= 7:
             score += 1
@@ -2571,6 +2638,8 @@ def get_build_insights_data(build):
         fans = get_component_by_id(build.get('fans_id'))
         thermal_paste = get_component_by_id(build.get('thermal_paste_id'))
         wifi = get_component_by_id(build.get('wifi_id'))
+        speakers = get_component_by_id(build.get('speakers_id'))
+        microphone = get_component_by_id(build.get('microphone_id'))
         ups = get_component_by_id(build.get('ups_id'))
         tools = get_component_by_id(build.get('tool_id'))
 
@@ -2860,7 +2929,11 @@ def order_components():
                     search_data = search_response.json()
                     shopping_results = search_data.get('shopping_results', [])
                     
-                    reputable_sources = ["Amazon", "Best Buy", "B&H", "Micro Center", "Newegg", "Walmart", "Target"]
+                    reputable_sources = [
+                        "Amazon", "Best Buy", "B&H", "Micro Center", "Newegg", "Walmart", "Target",
+                        "Adorama", "Corsair", "EVGA", "ASUS", "MSI", "Gigabyte", "Samsung", 
+                        "Crucial", "Western Digital", "Seagate", "GameStop", "Costco", "Dell", "HP", "Lenovo"
+                    ]
                     filtered_listings = []
                     
                     for res in shopping_results:
@@ -2913,54 +2986,49 @@ def order_components():
                 except Exception as e:
                     app.logger.error(f"SerpAPI error for {query}: {e}")
             
-            # Mock data if no results or no API key
-            # Mock data if no results or no API key
+            # Always injection the direct DB verified source if it exists and has an external URL
+            db_link = comp.get('product_url') or comp.get('url')
+            if db_link and db_link != '#' and len(str(db_link)) > 5:
+                # Get correct price for verified listing
+                verified_price = get_comp_price_usd(comp, category=category)
+                db_listing = {
+                    'title': f"Verified: {comp.get('name')}",
+                    'price': format_price(verified_price) if verified_price > 0 else "View Price",
+                    'source': comp.get('retailer', "RigMaster Direct"),
+                    'link': db_link,
+                    'rating': 4.9,
+                    'is_verified': True
+                }
+                # Check if it duplicates a live result (fuzzy match on retailer)
+                is_duplicate = any(l.get('source', '').lower() in str(db_listing['source']).lower() for l in listings)
+                if not is_duplicate:
+                    listings.insert(0, db_listing)
+
+            # Final fallbacks if still NO listings found
             if not listings:
+                comp_price = get_comp_price_usd(comp, category=category)
+                search_path = urllib.parse.quote(query)
+                
                 if not serpapi_key:
-                    # Generic mock for demo - use a real Google Shopping search link
-                    search_path = urllib.parse.quote(query)
-                    # Extract price from component data similar to api_component_prices
-                    comp_price = comp.get('price', comp.get('msrp'))
-                    
-                    # Sometimes the unified table has placeholders like 404 or 0. Fetch real price if so:
-                    if not comp_price or comp_price == 404 or comp_price == 0:
-                        col_map = {
-                            'cpu': 'components', 'gpu': 'components', 'motherboard': 'components',
-                            'ram': 'components', 'storage': 'components', 'psu': 'components',
-                            'case': 'components', 'cooler': 'components', 'fans': 'components',
-                            'monitor': 'components', 'os': 'components', 'peripherals': 'components',
-                            'keyboard': 'components', 'mouse': 'components', 'headset': 'components', 'webcam': 'components'
-                        }
-                        spec_col = col_map.get(category, category)
-                        spec_comp = db[spec_col].find_one({'_id': ObjectId(comp_id)})
-                        if spec_comp:
-                            comp_price = spec_comp.get('price', spec_comp.get('msrp', comp_price))
-                    
-                    if isinstance(comp_price, str):
-                        try:
-                            # Handle string price (e.g., "$299.99", "299.99")
-                            clean_price = comp_price.replace('$', '').replace(',', '')
-                            if clean_price.strip():
-                                comp_price = float(clean_price)
-                            else:
-                                comp_price = None
-                        except (ValueError, AttributeError):
-                            comp_price = None
-                    
-                    if isinstance(comp_price, (int, float)) and comp_price > 0 and comp_price != 404:
-                        price_str = format_price(comp_price)
-                    else:
-                        price_str = "Price Unavailable"
-                        
+                    price_str = format_price(comp_price) if comp_price > 0 else "Price Unavailable"
                     listings = [{
-                        'title': f"Buy {comp.get('name')}",
+                        'title': f"Search: {comp.get('name')}",
                         'price': price_str,
-                        'source': "RigMaster Database",
+                        'source': "Google Shopping",
                         'link': f"https://www.google.com/search?q={search_path}&tbm=shop",
-                        'rating': 4.8
+                        'rating': 4.5
                     }]
                 else:
-                    listings = [{'title': 'No genuine listing found', 'price': '', 'source': '', 'link': '#'}]
+                    if comp_price > 0:
+                        listings = [{
+                            'title': f"Market Average: {comp.get('name')}",
+                            'price': format_price(comp_price),
+                            'source': "Price Index",
+                            'link': f"https://www.google.com/search?q={search_path}&tbm=shop",
+                            'rating': 4.0
+                        }]
+                    else:
+                        listings = [{'title': 'Market listing not found', 'price': '', 'source': 'SerpAPI Fallback', 'link': '#'}]
 
             # Update cache
             db.shopping_cache.update_one(
@@ -3107,12 +3175,7 @@ def api_ai_recommend():
             # Price every item — use heuristic estimate when no real price is stored
             est_cat = _est_cat_map.get(slot_key, 'peripherals')
             for item in raw_items:
-                p = get_comp_price_usd(item)
-                if p <= 0:
-                    p = get_estimated_price(item.get('name', ''), est_cat)
-                if p <= 0:
-                    p = 10  # absolute safety floor so nothing is ever skipped
-                item['_usd_price'] = p
+                item['_usd_price'] = get_comp_price_usd(item, est_cat=est_cat)
 
             # Apply budget cap — but always keep at least the 5 cheapest as fallback
             within_budget = [it for it in raw_items if it['_usd_price'] <= max_price_usd]
@@ -3343,13 +3406,7 @@ def ai_assistant():
         db_context_list = []
         try:
             def parse_component_price(component):
-                p = component.get('price') or component.get('msrp') or component.get('cost') or 0
-                if isinstance(p, str):
-                    try:
-                        p = float(p.replace('$', '').replace(',', ''))
-                    except:
-                        p = 0
-                return p if isinstance(p, (int, float)) else 0
+                return get_comp_price_usd(component)
 
             if page_context == 'builder':
                 builder_inventory = list(db.components.find(
@@ -3957,7 +4014,10 @@ def api_get_vault_data(build_id):
             'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu',
             'case_id': 'case', 'cooler_id': 'cooler',
             'keyboard_id': 'keyboard', 'mouse_id': 'mouse', 'headset_id': 'headset', 'webcam_id': 'webcam',
-            'fans_id': 'fans', 'monitor_id': 'monitor', 'os_id': 'os'
+            'fans_id': 'fans', 'monitor_id': 'monitor', 'os_id': 'os',
+            'thermal_paste_id': 'thermal_paste', 'wifi_id': 'wifi_adapters',
+            'speakers_id': 'speakers', 'microphone_id': 'microphones',
+            'ups_id': 'ups', 'tool_id': 'tools'
         }
 
         total_original_cost = 0
@@ -3970,7 +4030,8 @@ def api_get_vault_data(build_id):
                 comp = get_component_by_id(cid)
                 if comp:
                     name = comp.get('name', 'Unknown')
-                    price = get_estimated_price(name, price_cat_map.get(cat, cat))
+                    # Use the consolidated price helper for accuracy
+                    price = get_comp_price_usd(comp, key, cat)
                     total_original_cost += price
                     
                     # Warranty Calc
@@ -4041,7 +4102,10 @@ def api_predict_resale(build_id):
             'case_id': 'case', 'cooler_id': 'cooler',
             'keyboard_id': 'keyboard', 'mouse_id': 'mouse',
             'headset_id': 'headset', 'webcam_id': 'webcam',
-            'fans_id': 'fans', 'monitor_id': 'monitor', 'os_id': 'os'
+            'fans_id': 'fans', 'monitor_id': 'monitor', 'os_id': 'os',
+            'thermal_paste_id': 'thermal_paste', 'wifi_id': 'wifi_adapters',
+            'speakers_id': 'speakers', 'microphone_id': 'microphones',
+            'ups_id': 'ups', 'tool_id': 'tools'
         }
         
         component_data = []
@@ -4205,7 +4269,9 @@ def export_build(build_id):
             'case_id': 'case', 'cooler_id': 'cooler', 'monitor_id': 'monitor',
             'os_id': 'os', 'fans_id': 'fans', 'keyboard_id': 'keyboard',
             'mouse_id': 'mouse', 'headset_id': 'headset', 'webcam_id': 'webcam',
-            'peripherals_id': 'peripherals'
+            'peripherals_id': 'peripherals', 'thermal_paste_id': 'thermal_paste',
+            'wifi_id': 'wifi_adapters', 'speakers_id': 'speakers',
+            'microphone_id': 'microphones', 'ups_id': 'ups', 'tool_id': 'tools'
         }
         
         components = {}
@@ -4395,12 +4461,20 @@ def admin_dashboard():
         'fans': db.components.count_documents({'category': 'fans'}),
         'os': db.components.count_documents({'category': 'os'}),
         'monitors': db.components.count_documents({'category': 'monitor'}),
-        'peripherals': db.components.count_documents({'category': 'peripherals'})
+        'peripherals': db.components.count_documents({'category': 'peripherals'}),
+        'thermal_paste': db.components.count_documents({'category': 'thermal_paste'}),
+        'wifi': db.components.count_documents({'category': 'wifi_adapters'}),
+        'speakers': db.components.count_documents({'category': 'speakers'}),
+        'microphones': db.components.count_documents({'category': 'microphones'}),
+        'ups': db.components.count_documents({'category': 'ups'}),
+        'tools': db.components.count_documents({'category': 'tools'})
     }
     stats['total_components'] = sum([
         stats['cpus'], stats['gpus'], stats['motherboards'], stats['ram'], 
         stats['storage'], stats['psu'], stats['cases'], stats['coolers'],
-        stats['fans'], stats['os'], stats['monitors'], stats['peripherals']
+        stats['fans'], stats['os'], stats['monitors'], stats['peripherals'],
+        stats['thermal_paste'], stats['wifi'], stats['speakers'], stats['microphones'],
+        stats['ups'], stats['tools']
     ])
     
     # AI stats
@@ -4954,7 +5028,10 @@ def admin_get_components(category):
         'cases': 'case', 'coolers': 'cooler', 'fans': 'fans',
         'monitors': 'monitor', 'os': 'os', 'peripherals': 'peripherals',
         'keyboards': 'peripherals', 'mice': 'peripherals',
-        'headsets': 'peripherals', 'webcams': 'peripherals'
+        'headsets': 'peripherals', 'webcams': 'peripherals',
+        'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
+        'speakers': 'speakers', 'microphones': 'microphones',
+        'ups': 'ups', 'tools': 'tools'
     }
     
     if category not in cat_map:
@@ -4999,7 +5076,10 @@ def admin_add_component(category):
         'cases': 'case', 'coolers': 'cooler', 'fans': 'fans',
         'monitors': 'monitor', 'os': 'os', 'peripherals': 'peripherals',
         'keyboards': 'peripherals', 'mice': 'peripherals',
-        'headsets': 'peripherals', 'webcams': 'peripherals'
+        'headsets': 'peripherals', 'webcams': 'peripherals',
+        'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
+        'speakers': 'speakers', 'microphones': 'microphones',
+        'ups': 'ups', 'tools': 'tools'
     }
     target_cat = cat_map.get(category)
     if not target_cat:
@@ -5075,7 +5155,7 @@ def admin_import_components():
         stats = {'total': 0, 'added': 0, 'skipped': 0, 'errors': []}
         
         # Valid collections
-        collections = ['cpus', 'gpus', 'motherboards', 'ram', 'storage', 'psu', 'cases', 'coolers']
+        collections = ['cpus', 'gpus', 'motherboards', 'ram', 'storage', 'psu', 'cases', 'coolers', 'fans', 'monitors', 'os', 'peripherals', 'thermal_paste', 'wifi_adapters', 'speakers', 'microphones', 'ups', 'tools']
         
         for row in reader:
             stats['total'] += 1
@@ -5581,12 +5661,8 @@ def api_component_prices():
                     comp = db[col].find_one({'_id': ObjectId(comp_id)})
                 
                 if comp:
-                    # Extract price from component data
-                    price = comp.get('price', comp.get('msrp', 0))
-                    
-                    # Handle price as string (e.g., "$299.99")
-                    if isinstance(price, str):
-                        price = float(price.replace('$', '').replace(',', ''))
+                    # Use consistent price helper
+                    price = get_comp_price_usd(comp, category)
                     
                     if price and price > 0:
                         prices[category] = {
@@ -5599,7 +5675,7 @@ def api_component_prices():
                         }
                         total_cost += price
                     else:
-                        # No price data available
+                        # Safety fallback although get_comp_price_usd should already have handled it
                         prices[category] = {
                             'name': comp.get('name', 'Unknown'),
                             'price': None,
@@ -5823,15 +5899,8 @@ def api_calculate_group_build():
             comp = db.components.find_one({'_id': ObjectId(comp_id)})
             if not comp: return None
             
-            # Estimate price if not present
-            price = comp.get('price')
-            if not price:
-                price = get_estimated_price(comp.get('name'), category)
-            elif isinstance(price, str):
-                try:
-                    price = float(price.replace('$', '').replace(',', ''))
-                except:
-                    price = get_estimated_price(comp.get('name'), category)
+            # Use consistent price helper
+            price = get_comp_price_usd(comp, category=category)
             
             return {
                 'id': str(comp['_id']),
@@ -5853,8 +5922,8 @@ def api_calculate_group_build():
             'keyboard_id': 'keyboard', 'mouse_id': 'mouse',
                         'headset_id': 'headset', 'webcam_id': 'webcam', 'fans_id': 'fans', 
             'peripherals_id': 'peripherals', 'monitor_id': 'monitor', 'os_id': 'os',
-            'thermal_paste_id': 'thermal_paste', 'wifi_id': 'wifi',
-            'speakers_id': 'speakers', 'microphone_id': 'microphone',
+            'thermal_paste_id': 'thermal_paste', 'wifi_id': 'wifi_adapters',
+            'speakers_id': 'speakers', 'microphone_id': 'microphones',
             'ups_id': 'ups', 'tool_id': 'tools'
         }
         

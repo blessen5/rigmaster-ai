@@ -75,6 +75,39 @@
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
             border-color: var(--primary);
         }
+
+        .verified-badge {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+            border: 1px solid #10b981;
+            color: #10b981;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .shopping-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .shopping-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-light);
+            background: rgba(255, 255, 255, 0.05);
+        }
     </style>
 </head>
 
@@ -776,11 +809,13 @@
 
                             card.innerHTML = `
     <div class="comp-category">${item.category}</div>
+    ${listing.is_verified ? '<div class="verified-badge"><i class="bi bi-patch-check-fill"></i> Verified Purchase Link</div>' : ''}
     <div class="listing-title">${listing.title}</div>
-    <div class="listing-price">${listing.price || 'N/A'}</div>
+    <div class="listing-price" style="color: ${listing.is_verified ? '#10b981' : 'white'}">${listing.price || 'N/A'}</div>
     <div class="listing-source">${listing.source || ''}</div>
-    <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem;">Buy
-        Now</a>
+    <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem; background: ${listing.is_verified ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : ''}">
+        ${listing.is_verified ? 'Buy Verified' : 'Buy Now'}
+    </a>
     `;
                             resultsContainer.appendChild(card);
                         });

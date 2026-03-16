@@ -1132,7 +1132,7 @@
         function selectBuildForAnalysis(build) {
             const params = new URLSearchParams();
             params.set('build_id', build.id);
-            const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id'];
+            const keys = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id', 'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id'];
             keys.forEach(k => {
                 if (build[k]) params.set(k, build[k]);
             });
@@ -1212,6 +1212,12 @@
                 headset_id: urlParams.get('headset_id'),
                 webcam_id: urlParams.get('webcam_id'),
                 fans_id: urlParams.get('fans_id'),
+                thermal_paste_id: urlParams.get('thermal_paste_id'),
+                wifi_id: urlParams.get('wifi_id'),
+                speakers_id: urlParams.get('speakers_id'),
+                microphone_id: urlParams.get('microphone_id'),
+                ups_id: urlParams.get('ups_id'),
+                tool_id: urlParams.get('tool_id'),
                 name: '' // Placeholder for resolved name
             };
 
@@ -1305,7 +1311,8 @@
                 { id: 'keyboard', label: 'Keyboard', api: '/api/peripherals?sub_category=keyboard', db_key: 'keyboard_id' },
                 { id: 'mouse', label: 'Mouse', api: '/api/peripherals?sub_category=mouse', db_key: 'mouse_id' },
                 { id: 'headset', label: 'Headset', api: '/api/peripherals?sub_category=headset', db_key: 'headset_id' },
-                                { id: 'webcam', label: 'Webcam', api: '/api/peripherals?sub_category=webcam', db_key: 'webcam_id' },
+                { id: 'webcam', label: 'Webcam', api: '/api/peripherals?sub_category=webcam', db_key: 'webcam_id' },
+                { id: 'peripherals', label: 'Misc Peripherals', api: '/api/peripherals?sub_category=other', db_key: 'peripherals_id' },
                 { id: 'thermal_paste', label: 'Thermal Paste', api: '/api/thermal_paste', db_key: 'thermal_paste_id' },
                 { id: 'wifi', label: 'Network Adapter', api: '/api/wifi_adapters', db_key: 'wifi_id' },
                 { id: 'speakers', label: 'Speakers', api: '/api/speakers', db_key: 'speakers_id' },
@@ -1377,7 +1384,7 @@
 
                         // 2. Update lifecycle warning
                         let hasDeprecated = false;
-                        const catIds = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'];
+                        const catIds = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals', 'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'];
                         catIds.forEach(cid => {
                             const s = document.getElementById(`sim-select-${cid}`);
                             if (s && s.selectedIndex >= 0) {
@@ -1404,16 +1411,22 @@
 
                 const originalComponents = {};
                 const urlParams = new URLSearchParams(window.location.search);
-                const ALL_SLOTS = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id'];
+                const ALL_SLOTS = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id', 'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id', 'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id', 'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id', 'ups_id', 'tool_id'];
 
                 ALL_SLOTS.forEach(key => {
                     originalComponents[key] = urlParams.get(key);
                 });
 
                 const upgrades = {};
-                const slotKeys = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'];
+                const slotKeys = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals', 'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'];
                 slotKeys.forEach(id => {
-                    upgrades[id + '_id'] = document.getElementById(`sim-select-${id}`).value;
+                    const el = document.getElementById(`sim-select-${id}`);
+                    if (el) {
+                        let key = id + '_id';
+                        if (id === 'tools') key = 'tool_id';
+                        if (id === 'wifi') key = 'wifi_id';
+                        upgrades[key] = el.value;
+                    }
                 });
 
                 currentSimulationData = upgrades; // Store for saving
@@ -1459,10 +1472,17 @@
                 try {
                     // Pull the absolute latest values from the selects just in case they were changed after analysis
                     const latestUpgrades = {};
-                    const slotKeys = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals'];
+                    const slotKeys = ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'os', 'fans', 'keyboard', 'mouse', 'headset', 'webcam', 'peripherals', 'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'];
                     slotKeys.forEach(id => {
-                        const sVal = document.getElementById(`sim-select-${id}`).value;
-                        latestUpgrades[id + '_id'] = sVal;
+                        const el = document.getElementById(`sim-select-${id}`);
+                        if (el) {
+                            const val = el.value;
+                            // Match keys used in save_build
+                            let key = id + '_id';
+                            if (id === 'tools') key = 'tool_id';
+                            if (id === 'wifi') key = 'wifi_id';
+                            latestUpgrades[key] = val;
+                        }
                     });
 
                     const savePayload = { ...latestUpgrades };
