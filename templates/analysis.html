@@ -1889,12 +1889,75 @@
             }
         }
 
-        function applyFix(key, value) {
+        async function applyFix(key, value) {
             const urlParams = new URLSearchParams(window.location.search);
+            const buildId = urlParams.get('build_id');
+
+            // Set the new value for the fix
             urlParams.set(key, value);
-            // Also unset build_id if we change parts to avoid confusion
-            urlParams.delete('build_id');
-            window.location.search = urlParams.toString();
+
+            // If there's no buildId, we can't save. Just reload with the new part.
+            if (!buildId) {
+                window.location.search = urlParams.toString();
+                return;
+            }
+
+            // We have a buildId, so let's save the changes.
+            const buildData = {
+                build_id: buildId,
+                cpu_id: urlParams.get('cpu_id'),
+                gpu_id: urlParams.get('gpu_id'),
+                motherboard_id: urlParams.get('motherboard_id'),
+                ram_id: urlParams.get('ram_id'),
+                storage_id: urlParams.get('storage_id'),
+                psu_id: urlParams.get('psu_id'),
+                case_id: urlParams.get('case_id'),
+                cooler_id: urlParams.get('cooler_id'),
+                monitor_id: urlParams.get('monitor_id'),
+                os_id: urlParams.get('os_id'),
+                peripherals_id: urlParams.get('peripherals_id'),
+                keyboard_id: urlParams.get('keyboard_id'),
+                mouse_id: urlParams.get('mouse_id'),
+                headset_id: urlParams.get('headset_id'),
+                webcam_id: urlParams.get('webcam_id'),
+                fans_id: urlParams.get('fans_id'),
+                thermal_paste_id: urlParams.get('thermal_paste_id'),
+                wifi_id: urlParams.get('wifi_id'),
+                speakers_id: urlParams.get('speakers_id'),
+                microphone_id: urlParams.get('microphone_id'),
+                ups_id: urlParams.get('ups_id'),
+                tool_id: urlParams.get('tool_id'),
+            };
+
+            // Get the build name to preserve it
+            try {
+                const response = await fetch(`/api/get_build/${buildId}`);
+                const data = await response.json();
+                if (data.status === 'success' && data.build.name) {
+                    buildData.name = data.build.name;
+                }
+            } catch (e) {
+                console.error("Could not fetch build name, it may be reset.", e);
+            }
+
+
+            try {
+                const saveResponse = await fetch('/api/save_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buildData)
+                });
+                const saveResult = await saveResponse.json();
+                if (saveResult.status === 'success') {
+                    // Now reload the page with the updated URL.
+                    window.location.search = urlParams.toString();
+                } else {
+                    alert('Error saving build fix: ' + saveResult.message);
+                }
+            } catch (error) {
+                console.error('Failed to save build fix:', error);
+                alert('Connection error while saving the fix.');
+            }
         }
     </script>
     {% if session.get('user_id') %}
