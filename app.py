@@ -2990,7 +2990,7 @@ def order_components():
             db_link = comp.get('product_url') or comp.get('url')
             if db_link and db_link != '#' and len(str(db_link)) > 5:
                 # Get correct price for verified listing
-                verified_price = get_comp_price_usd(comp, category=category)
+                verified_price = get_comp_price_usd(comp, est_cat=category)
                 db_listing = {
                     'title': f"Verified: {comp.get('name')}",
                     'price': format_price(verified_price) if verified_price > 0 else "View Price",
@@ -3006,7 +3006,7 @@ def order_components():
 
             # Final fallbacks if still NO listings found
             if not listings:
-                comp_price = get_comp_price_usd(comp, category=category)
+                comp_price = get_comp_price_usd(comp, est_cat=category)
                 search_path = urllib.parse.quote(query)
                 
                 if not serpapi_key:
@@ -3014,7 +3014,7 @@ def order_components():
                     listings = [{
                         'title': f"Search: {comp.get('name')}",
                         'price': price_str,
-                        'source': "Google Shopping",
+                        'source': "Rigmaster Database",
                         'link': f"https://www.google.com/search?q={search_path}&tbm=shop",
                         'rating': 4.5
                     }]
@@ -5900,7 +5900,7 @@ def api_calculate_group_build():
             if not comp: return None
             
             # Use consistent price helper
-            price = get_comp_price_usd(comp, category=category)
+            price = get_comp_price_usd(comp, est_cat=category)
             
             return {
                 'id': str(comp['_id']),
