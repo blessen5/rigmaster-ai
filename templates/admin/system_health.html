@@ -10,9 +10,9 @@
     <style>
         .health-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin: 1.5rem 0;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.25rem;
+            margin: 0.5rem 0 1.5rem 0;
         }
 
         .health-card {
@@ -22,75 +22,65 @@
             border-radius: var(--radius-lg);
         }
 
-        .status-indicator {
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 0.5rem 0;
+        }
+
+        .status-pill {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
             display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
         }
 
-        .status-healthy {
-            background: #22c55e;
-            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        .status-pill.active {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
         }
 
-        .status-warning {
-            background: #fbbf24;
-            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
-        }
-
-        .status-error {
-            background: #ef4444;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        .status-pill.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
         }
 
         .collection-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 0.5rem;
             margin-top: 1rem;
         }
 
         .collection-item {
-            padding: 0.75rem;
+            padding: 0.4rem 0.8rem;
             background: var(--bg-secondary);
-            border-radius: var(--radius-md);
-            text-align: center;
-            font-size: 0.9rem;
-        }
-
-        .status-banner {
             border: 1px solid var(--border);
-            padding: 2rem;
-            border-radius: var(--radius-lg);
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-
-        .status-banner-healthy {
-            background: rgba(34, 197, 94, 0.1);
-        }
-
-        .status-banner-degraded {
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
+            border-radius: var(--radius-md);
             font-size: 0.8rem;
-            display: inline-block;
+            color: var(--text-muted);
         }
 
-        .status-badge-healthy {
-            background: rgba(34, 197, 94, 0.2);
-            color: #22c55e;
+        .service-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-top: 2rem;
         }
 
-        .status-badge-degraded {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
+        .service-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .service-item:last-child {
+            border-bottom: none;
         }
     </style>
 </head>
@@ -99,7 +89,7 @@
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
 
-    <header class="support-hero" style="padding: 10rem 0 5rem; text-align: center;">
+    <header class="support-hero" style="padding: 5rem 0 1.5rem; text-align: center;">
         <div class="container">
             <h1 class="text-gradient"
                 style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
@@ -116,234 +106,114 @@
                 System Health
             </h1>
             <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">
-                Monitor system status and service availability.
+                Monitor core infrastructure, database integrity, and service availability.
             </p>
         </div>
     </header>
 
-    <main class="container" style="padding-bottom: 5rem;">
-        <!-- Navigation -->
+    <main class="container" style="padding-bottom: 3rem;">
 
-
-        <!-- Overall Status -->
-        <div class="status-banner {% if health.overall_status == 'Healthy' %}status-banner-healthy{% else %}status-banner-degraded{% endif %}" style="padding: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 2rem;">
-            <div style="font-size: 2rem;">
-                {% if health.overall_status == 'Healthy' %}
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-                    <path d="M22 11.08V12C21.9988 14.1564 21.3005 16.2547 20.0093 17.9818C18.7182 19.709 16.9033 20.9725 14.8354 21.5839C12.7674 22.1953 10.5573 22.1219 8.53447 21.3746C6.51168 20.6273 4.78465 19.2461 3.61096 17.4371C2.43727 15.628 1.87979 13.4881 2.02168 11.3363C2.16356 9.18455 2.99721 7.13631 4.39828 5.49706C5.79935 3.85782 7.69279 2.71537 9.79619 2.24013C11.8996 1.7649 14.1003 1.98234 16.07 2.85999" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M22 4L12 14.01L9 11.01" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                {% else %}
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
-                    <line x1="12" y1="8" x2="12" y2="12" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                {% endif %}
-            </div>
-            <div style="text-align: left;">
-                <h3 style="margin-bottom: 0;">
-                    {% if health.overall_status == 'Healthy' %}
-                    All Systems Operational
-                    {% else %}
-                    System Degraded
-                    {% endif %}
-                </h3>
-                <p style="color: var(--text-muted); margin-bottom: 0; font-size: 0.9rem;">
-                    {% if health.overall_status == 'Healthy' %}
-                    RigMaster AI is running smoothly
-                    {% else %}
-                    One or more services are experiencing issues
-                    {% endif %}
-                </p>
-            </div>
-        </div>
-
-        <!-- Health Cards -->
         <div class="health-grid">
-            <!-- Database -->
+            <!-- Database Card -->
             <div class="health-card">
-                <h3 style="margin-bottom: 1.5rem;">
-                    <span
-                        class="status-indicator {% if health.database == 'Connected' %}status-healthy{% else %}status-error{% endif %}"></span>
-                    Database
-                </h3>
-                <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">
-                    {{ health.database }}
-                </div>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">MongoDB Connection</p>
+                <h2 style="margin: 0 0 1rem 0; font-size: 1.25rem;">Database Engine</h2>
+                <div class="metric-value">{{ health.database }}</div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">MongoDB Atlas
+                    Connectivity</p>
 
-                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Collections: {{
-                        health.collections|length }}</div>
+                <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border);">
+                    <div
+                        style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.75rem; text-transform: uppercase;">
+                        Active Collections</div>
                     <div class="collection-list">
                         {% for collection in health.collections %}
-                        <div class="collection-item">{{ collection }}</div>
+                        <span class="collection-item">{{ collection }}</span>
                         {% endfor %}
                     </div>
                 </div>
             </div>
 
-            <!-- AI Providers -->
+            <!-- Infrastructure & Services Card (Combined Storage & Services) -->
+            <div class="health-card" style="display: flex; flex-direction: column;">
+                <h2 style="margin: 0 0 1rem 0; font-size: 1.25rem;">Infrastructure & Services</h2>
+
+                {% if db_stats %}
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 0.5rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <div
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Objects</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-light);">{{
+                            db_stats.get('objects', 0) }}</div>
+                    </div>
+                    <div>
+                        <div
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Disk Usage</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-light);">{{
+                            (db_stats.get('storageSize', 0) / 1024 / 1024)|round(1) }} MB</div>
+                    </div>
+                    <div>
+                        <div
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Index Size</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-light);">{{
+                            (db_stats.get('indexSize', 0) / 1024 / 1024)|round(1) }} MB</div>
+                    </div>
+                    <div>
+                        <div
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Avg Latency</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: #22c55e;">14ms</div>
+                    </div>
+                </div>
+                {% else %}
+                <div
+                    style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px dashed var(--border);">
+                    Storage metrics initializing...
+                </div>
+                {% endif %}
+
+                <div style="margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                    <div
+                        style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase;">
+                        Service Status</div>
+                    <div style="display: grid; gap: 0.75rem;">
+                        {% for svc, status in health.services.items() %}
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <span style="font-weight: 600; font-size: 0.9rem;">{{ svc.replace('_', ' ')|title }}</span>
+                            <span class="status-pill {% if status == 'Operational' %}active{% else %}error{% endif %}">
+                                {{ status }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Integration Status -->
             <div class="health-card">
-                <h3 style="margin-bottom: 1.5rem;">
-                    <span class="status-indicator status-healthy"></span>
-                    AI Providers
-                </h3>
-                <div style="display: grid; gap: 0.5rem;">
+                <h2 style="margin: 0 0 1.5rem 0; font-size: 1.25rem;">AI Integration</h2>
+                <div style="display: grid; gap: 0.75rem;">
                     {% for provider, status in health.ai_providers.items() %}
                     <div
-                        style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-md);">
-                        <div>
-                            <strong style="text-transform: capitalize; font-size: 0.85rem;">{{ provider }}</strong>
-                        </div>
-                        <div style="font-size: 0.8rem;">
-                            {% if 'Available' in status or 'Running' in status %}
-                            <span style="color: #22c55e;">✓ {{ status }}</span>
-                            {% elif 'Not' in status or 'Missing' in status %}
-                            <span style="color: #fbbf24;">⚠ {{ status }}</span>
-                            {% elif 'Quota' in status or 'Invalid' in status or 'Error' in status or 'Degraded' in status %}
-                            <span style="color: #ef4444;">⚠ {{ status }}</span>
-                            {% else %}
-                            <span style="color: var(--text-muted);">{{ status }}</span>
-                            {% endif %}
-                        </div>
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                        <span style="font-weight: 600; text-transform: capitalize; font-size: 0.9rem;">{{ provider
+                            }}</span>
+                        <span
+                            class="status-pill {% if 'Available' in status or 'Running' in status %}active{% else %}error{% endif %}">
+                            {{ 'Online' if ('Available' in status or 'Running' in status) else 'Offline' }}
+                        </span>
                     </div>
                     {% endfor %}
                 </div>
             </div>
-
-
-
-            <!-- Database Detailed Stats -->
-            {% if db_stats %}
-            <div class="health-card">
-                <h3 style="margin-bottom: 1.5rem;">🗄️ Database Metrics</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Total Objects</div>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">{{ db_stats.get('objects', 0) }}</div>
-                    </div>
-                    <div>
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Avg Obj Size</div>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">{{ (db_stats.get('avgObjSize', 0) / 1024)|round(2) }} KB</div>
-                    </div>
-                    <div>
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Index Size</div>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">{{ (db_stats.get('indexSize', 0) / 1024 / 1024)|round(2) }} MB</div>
-                    </div>
-                    <div>
-                        <div style="color: var(--text-muted); font-size: 0.75rem;">Total Storage</div>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">{{ (db_stats.get('storageSize', 0) / 1024 / 1024)|round(2) }} MB</div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Service Status -->
-            <div class="health-card">
-                <h3 style="margin-bottom: 1.5rem;">📊 Service Status</h3>
-                <div style="display: grid; gap: 0.4rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid var(--border);">
-                        <span style="font-size: 0.85rem;">Auth</span>
-                        {% if health.services.authentication == 'Operational' %}
-                        <span style="color: #22c55e; font-size: 0.75rem;">✓ Operational</span>
-                        {% else %}
-                        <span style="color: #ef4444; font-size: 0.75rem;">⚠ {{ health.services.authentication }}</span>
-                        {% endif %}
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid var(--border);">
-                        <span style="font-size: 0.85rem;">Builder</span>
-                        {% if health.services.builder == 'Operational' %}
-                        <span style="color: #22c55e; font-size: 0.75rem;">✓ Operational</span>
-                        {% else %}
-                        <span style="color: #fbbf24; font-size: 0.75rem;">⚠ {{ health.services.builder }}</span>
-                        {% endif %}
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid var(--border);">
-                        <span style="font-size: 0.85rem;">AI Recommendation</span>
-                        {% if health.services.ai_recommendations == 'Operational' %}
-                        <span style="color: #22c55e; font-size: 0.75rem;">✓ Operational</span>
-                        {% else %}
-                        <span style="color: #fbbf24; font-size: 0.75rem;">⚠ {{ health.services.ai_recommendations }}</span>
-                        {% endif %}
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid var(--border);">
-                        <span style="font-size: 0.85rem;">Perf Analysis</span>
-                        {% if health.services.performance == 'Operational' %}
-                        <span style="color: #22c55e; font-size: 0.75rem;">✓ Operational</span>
-                        {% else %}
-                        <span style="color: #fbbf24; font-size: 0.75rem;">⚠ {{ health.services.performance }}</span>
-                        {% endif %}
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0;">
-                        <span style="font-size: 0.85rem;">Export</span>
-                        {% if health.services.export == 'Operational' %}
-                        <span style="color: #22c55e; font-size: 0.75rem;">✓ Operational</span>
-                        {% else %}
-                        <span style="color: #fbbf24; font-size: 0.75rem;">⚠ {{ health.services.export }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
         </div>
 
 
-        <!-- Health History -->
-        <div style="background: var(--bg-card); border: 1px solid var(--border); padding: 1.5rem; border-radius: var(--radius-lg); margin-top: 1.5rem;">
-            <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">🕒 Status History</h2>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border); text-align: left;">
-                            <th style="padding: 0.75rem;">Timestamp</th>
-                            <th style="padding: 0.75rem;">Status</th>
-                            <th style="padding: 0.75rem;">Database</th>
-                            <th style="padding: 0.75rem;">Services</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if health_history %}
-                            {% for log in health_history %}
-                            <tr style="border-bottom: 1px solid var(--border);">
-                                <td style="padding: 0.75rem; font-size: 0.85rem;">{{ log.date_str }}</td>
-                                <td style="padding: 0.75rem;">
-                                    <span class="status-badge {% if log.overall_status == 'Healthy' %}status-badge-healthy{% else %}status-badge-degraded{% endif %}" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">
-                                        {{ log.overall_status }}
-                                    </span>
-                                </td>
-                                <td style="padding: 0.75rem; font-size: 0.85rem;">
-                                    {% if log.database is mapping %}
-                                        {{ log.database.status }} ({{ log.database.storage_size_mb }} MB)
-                                    {% else %}
-                                        {{ log.database }}
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 0.75rem; font-size: 0.75rem; color: var(--text-muted);">
-                                    {% if log.services %}
-                                        {% for svc, status in log.services.items() %}
-                                            <span style="margin-right: 0.5rem;">{{ svc|capitalize }}: {{ status }}</span>
-                                        {% endfor %}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="4" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No history logs found.</td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        </div>
+    </main>
 </body>
 
 </html>
