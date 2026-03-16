@@ -45,17 +45,110 @@ class AIEngine:
         self.current_provider_index = 0
         
         self.providers = []
+        self._provider_health = {}  # {provider: {'status': 'Available', 'last_error': None, 'until': None}}
         self._refresh_providers()
         logger.info(f"AI Engine initialized with providers: {self.providers}")
 
+    def get_provider_health(self) -> Dict[str, Dict[str, Any]]:
+        """Return the current health/quota status of all providers."""
+        status = {}
+        # List of all potential providers
+        all_potential = ['deepseek', 'groq', 'gemini', 'mistral', 'openrouter', 'hf']
+        
+        for p in all_potential:
+            # Special case for HF library
+            if p == 'hf' and not self.is_hf_installed:
+                status[p] = {'status': 'Missing library', 'last_error': None}
+                continue
+                
+            # Check if key exists
+            key_attr = f"{p}_key" if p != 'hf' else "hf_key"
+            has_key = bool(getattr(self, key_attr, None))
+            
+            if not has_key:
+                status[p] = {'status': 'Not configured', 'last_error': None}
+                continue
+                
+            # Get tracked health or default to Available
+            health = self._provider_health.get(p, {'status': 'Available', 'last_error': None, 'until': None})
+            
+            # Check if temporary block has expired
+            if health.get('until') and datetime.now(timezone.utc) > health['until']:
+                health = {'status': 'Available', 'last_error': None, 'until': None}
+                self._provider_health[p] = health
+                
+            status[p] = health
+        return status
+
+    def _record_success(self, provider: str):
+        """Record a successful API call for a provider."""
+        self._provider_health[provider] = {
+            'status': 'Available',
+            'last_error': None,
+            'until': None
+        }
+        if provider == 'hf':
+            self._record_hf_success()
+
+    def _record_failure(self, provider: str, error: Exception):
+        """Record a failed API call and detect quota exhaustion."""
+        err_msg = str(error)
+        status = 'Degraded'
+        backoff_mins = 0
+        
+        # Detect Quota / Rate Limit (429)
+        is_quota = any(x in err_msg.lower() for x in ["429", "rate limit", "quota exceeded", "reach its limit", "insufficient_quota"])
+        is_auth = any(x in err_msg.lower() for x in ["401", "403", "invalid_api_key", "invalid key"])
+        
+        if is_quota:
+            status = 'Quota Exhausted'
+            backoff_mins = 60 # Block for 1 hour
+            logger.error(f"AI Provider {provider} QUOTA EXHAUSTED: {err_msg}")
+        elif is_auth:
+            status = 'Invalid Key'
+            logger.error(f"AI Provider {provider} AUTH ERROR: {err_msg}")
+        else:
+            logger.warning(f"AI Provider {provider} ERROR: {err_msg}")
+
+        self._provider_health[provider] = {
+            'status': status,
+            'last_error': err_msg,
+            'until': datetime.now(timezone.utc) + timedelta(minutes=backoff_mins) if backoff_mins > 0 else None
+        }
+        
+        if provider == 'hf':
+            hard = is_auth or "404" in err_msg
+            self._record_hf_failure(err_msg, hard=hard)
+
     def update_api_keys(self, keys: Dict[str, str]):
         """Update API keys dynamically from database settings."""
-        if keys.get('groq_key'): self.groq_key = keys.get('groq_key')
-        if keys.get('mistral_key'): self.mistral_key = keys.get('mistral_key')
-        if keys.get('gemini_key'): self.gemini_key = keys.get('gemini_key')
-        if keys.get('deepseek_key'): self.deepseek_key = keys.get('deepseek_key')
-        if keys.get('hf_key'): self.hf_key = keys.get('hf_key')
-        if keys.get('openrouter_key'): self.openrouter_key = keys.get('openrouter_key')
+        updated = []
+        if keys.get('groq_key'): 
+            self.groq_key = keys.get('groq_key')
+            updated.append('groq')
+        if keys.get('mistral_key'): 
+            self.mistral_key = keys.get('mistral_key')
+            updated.append('mistral')
+        if keys.get('gemini_key'): 
+            self.gemini_key = keys.get('gemini_key')
+            updated.append('gemini')
+        if keys.get('deepseek_key'): 
+            self.deepseek_key = keys.get('deepseek_key')
+            updated.append('deepseek')
+        if keys.get('hf_key'): 
+            self.hf_key = keys.get('hf_key')
+            updated.append('hf')
+        if keys.get('openrouter_key'): 
+            self.openrouter_key = keys.get('openrouter_key')
+            updated.append('openrouter')
+
+        # Reset health for updated keys so they are immediately usable
+        for p in updated:
+            if p in self._provider_health:
+                self._provider_health[p] = {'status': 'Available', 'last_error': None, 'until': None}
+                if p == 'hf':
+                    self._record_hf_success()
+
         self._refresh_providers()
 
         # Reset provider index if it's out of bounds
@@ -444,15 +537,27 @@ Return ONLY valid JSON with this structure:
         }
 
     def _get_prioritized_providers(self) -> List[Any]:
-        """Get providers list with the preferred one at the front (if set)."""
-        providers = self.providers.copy()
-        pref = getattr(self, 'preferred_provider', 'auto')
+        """Get providers list with the preferred one at the front and filtered by health."""
+        # 1. Start with available providers from refresh
+        candidates = self.providers.copy()
         
-        if pref != 'auto' and pref in providers:
-            # Move preferred to front
-            providers.remove(pref)
-            providers.insert(0, pref)
-        return providers
+        # 2. Filter out providers that are currently on timeout (Quota Exhausted)
+        healthy_providers = []
+        now = datetime.now(timezone.utc)
+        
+        for p in candidates:
+            health = self._provider_health.get(p)
+            if health and health.get('until') and now < health['until']:
+                continue # Skip blocked provider
+            healthy_providers.append(p)
+            
+        # 3. Apply preferred provider logic
+        pref = getattr(self, 'preferred_provider', 'auto')
+        if pref != 'auto' and pref in healthy_providers:
+            healthy_providers.remove(pref)
+            healthy_providers.insert(0, pref)
+            
+        return healthy_providers
 
     def _get_next_provider(self) -> str:
         """DEPRECATED: Use _get_prioritized_providers for more robust fallback."""
@@ -468,21 +573,29 @@ Return ONLY valid JSON with this structure:
         json_mode: bool = True
     ) -> Optional[str]:
         """
-        Call specific AI provider.
+        Call specific AI provider and track health.
         """
-        if provider == 'groq':
-            return self._call_groq(system_prompt, user_prompt, json_mode)
-        elif provider == 'deepseek':
-            return self._call_deepseek(system_prompt, user_prompt, json_mode)
-        elif provider == 'mistral':
-            return self._call_mistral(system_prompt, user_prompt, json_mode)
-        elif provider == 'gemini':
-            return self._call_gemini(system_prompt, user_prompt, json_mode)
-        elif provider == 'openrouter':
-            return self._call_openrouter(system_prompt, user_prompt, json_mode)
-        elif provider == 'hf':
-            return self._call_hf(system_prompt, user_prompt, json_mode)
-        return None
+        try:
+            res = None
+            if provider == 'groq':
+                res = self._call_groq(system_prompt, user_prompt, json_mode)
+            elif provider == 'deepseek':
+                res = self._call_deepseek(system_prompt, user_prompt, json_mode)
+            elif provider == 'mistral':
+                res = self._call_mistral(system_prompt, user_prompt, json_mode)
+            elif provider == 'gemini':
+                res = self._call_gemini(system_prompt, user_prompt, json_mode)
+            elif provider == 'openrouter':
+                res = self._call_openrouter(system_prompt, user_prompt, json_mode)
+            elif provider == 'hf':
+                res = self._call_hf(system_prompt, user_prompt, json_mode)
+            
+            if res:
+                self._record_success(provider)
+            return res
+        except Exception as e:
+            self._record_failure(provider, e)
+            raise # Re-raise so fallback logic can run
     
     def _call_groq(self, system_prompt: str, user_prompt: str, json_mode: bool) -> Optional[str]:
         """Call Groq API (Fast, Free tier: 30 req/min)."""

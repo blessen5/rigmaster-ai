@@ -4712,15 +4712,10 @@ def admin_ai_engine_console():
         try:
             from ai_engine import get_ai_engine
             ai_engine = get_ai_engine()
-            health['ai_providers'] = {
-                'groq': 'Available' if ai_engine.groq_key else 'Not configured',
-                'mistral': 'Available' if ai_engine.mistral_key else 'Not configured',
-                'gemini': 'Available' if ai_engine.gemini_key else 'Not configured',
-                'deepseek': 'Available' if ai_engine.deepseek_key else 'Not configured',
-                'openrouter': 'Available' if ai_engine.openrouter_key else 'Not configured',
-                'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured')
-            }
-        except:
+            provider_health = ai_engine.get_provider_health()
+            health['ai_providers'] = {p: h['status'] for p, h in provider_health.items()}
+        except Exception as e:
+            app.logger.error(f"Error getting AI health: {e}")
             pass
 
         custom_api_keys = get_site_setting('api_keys', {})
@@ -4828,13 +4823,8 @@ def admin_system_health():
         try:
             from ai_engine import get_ai_engine
             ai_engine = get_ai_engine()
-            health['ai_providers'] = {
-                'groq': 'Available' if ai_engine.groq_key else 'Not configured',
-                'mistral': 'Available' if ai_engine.mistral_key else 'Not configured',
-                'gemini': 'Available' if ai_engine.gemini_key else 'Not configured',
-                'deepseek': 'Available' if ai_engine.deepseek_key else 'Not configured',
-                'hf': 'Available' if (ai_engine.hf_key and ai_engine.is_hf_installed) else ('Missing library' if not ai_engine.is_hf_installed else 'Not configured')
-            }
+            provider_health = ai_engine.get_provider_health()
+            health['ai_providers'] = {p: h['status'] for p, h in provider_health.items()}
         except Exception as e:
             health['ai_providers'] = {'error': f'AI engine not available: {str(e)}'}
             
@@ -4859,14 +4849,6 @@ def admin_system_health():
             except:
                 pass
 
-        # Python version and platform
-        import sys
-        import platform
-        server_info = {
-            'python_version': sys.version,
-            'platform': platform.platform(),
-            'processor': platform.processor()
-        }
         
         # 1. CREATE SNAPSHOT (Calculated in memory)
         health_snapshot = {
@@ -4880,7 +4862,6 @@ def admin_system_health():
             'ai_providers': health['ai_providers'],
             'services': health['services'],
             'db_stats': db_stats,
-            'server_info': server_info
         }
 
         # 2. SAVE TO MONGODB (THE PRIMARY SOURCE OF TRUTH)
@@ -4916,7 +4897,6 @@ def admin_system_health():
                 }
                 # Also ensure we use the logged db_stats and server_info if available
                 db_stats = latest_log.get('db_stats', db_stats)
-                server_info = latest_log.get('server_info', server_info)
                 
                 # Format logs for history table
                 for log in health_history:
@@ -4929,9 +4909,7 @@ def admin_system_health():
         return render_template('admin/system_health.html', 
                              health=display_health, 
                              db_stats=db_stats,
-                             server_info=server_info,
-                             health_history=health_history,
-                             python_version=sys.version.split(' ')[0])
+                             health_history=health_history)
     except Exception as e:
         app.logger.error(f"System health error: {e}")
         return f"Error: {e}", 500
