@@ -206,7 +206,8 @@ class AIEngine:
         budget: str, 
         use_case: str, 
         preferences: Optional[Dict] = None,
-        component_pool: Optional[Dict] = None
+        component_pool: Optional[Dict] = None,
+        user_currency: str = 'USD'
     ) -> Dict[str, Any]:
         """
         Get AI-powered PC build recommendation.
@@ -216,13 +217,20 @@ class AIEngine:
             use_case: Use case description (e.g., "Gaming and Streaming")
             preferences: Optional dict with brand preferences, form factor, etc.
             component_pool: Optional dict with available components from database
+            user_currency: User's selected currency code (e.g., 'USD', 'EUR', 'INR')
             
         Returns:
             Dict with recommended components and reasoning
         """
+        # Convert budget to USD for AI processing
+        budget_usd = self._convert_budget_to_usd(budget, user_currency)
+        
+        # Convert component pool prices to user's currency for display
+        display_component_pool = self._convert_component_pool_currency(component_pool, user_currency)
+        
         # Build the prompt
-        system_prompt = self._build_system_prompt()
-        user_prompt = self._build_recommendation_prompt(budget, use_case, preferences, component_pool)
+        system_prompt = self._build_system_prompt(user_currency)
+        user_prompt = self._build_recommendation_prompt(budget_usd, use_case, preferences, display_component_pool, user_currency)
         
         # Try providers in priority order
         providers = self._get_prioritized_providers()
@@ -234,8 +242,12 @@ class AIEngine:
                 
                 if response:
                     # Parse and validate response
-                    result = self._parse_recommendation_response(response)
+                    result = self._parse_recommendation_response(response, display_component_pool)
                     if result:
+                        # Convert AI's total back to USD for storage
+                        if 'estimated_total' in result:
+                            result['estimated_total_usd'] = self._convert_to_usd(result['estimated_total'], user_currency)
+                            result['user_currency'] = user_currency
                         result['provider_used'] = provider
                         return result
             except Exception as e:
@@ -793,7 +805,7 @@ Return ONLY valid JSON with this structure:
                     output = client.text_generation(
                         prompt=prompt,
                         model=model,
-                        max_new_tokens=768,
+                        max_new_tokens=2048, # Increased to prevent truncation
                         temperature=0.3,
                         return_full_text=False
                     )
@@ -888,49 +900,51 @@ Return ONLY valid JSON with this structure:
         self._hf_models_cache_ts = datetime.now(timezone.utc)
         return final_models
     
-    def _build_system_prompt(self) -> str:
+    def _build_system_prompt(self, user_currency: str = 'USD') -> str:
         """Build system prompt for PC recommendation."""
-        return """You are an expert PC hardware architect. Your goal is to design a complete, high-performance build within the user's budget using ONLY the provided hardware list.
+        symbol = self._get_currency_symbol(user_currency)
+        return f"""You are an expert PC hardware architect. Your goal is to design a complete, high-performance build within the user's budget using ONLY the provided hardware list with REAL MARKET PRICES in {user_currency} ({symbol}).
+
+CRITICAL RULES FOR ACCURATE PRICING:
+1. PRICE ACCURACY: Each component shows its REAL price in {user_currency} (e.g., "{symbol}1500"). You MUST use these EXACT prices for calculations.
+2. BUDGET COMPLIANCE: Calculate the total cost using the provided prices. The 'estimated_total' MUST be accurate and within budget.
+3. NO HALLUCINATION: Do NOT invent prices or use your training data. Only use prices from the component list.
+4. COMPLETE BUILD: You MUST select ALL 22 component slots listed below. Every slot must have a value from the provided pool.
+5. IDs REQUIRED: Always use the format "ID:<24-char-hex>|Component Name|{symbol}Price" from the pool.
+6. SELECTION: Use ONLY components from the 'Available Components' list. Ensure compatibility.
 
 Return ONLY a valid JSON object. No conversational text.
 
-CRITICAL RULES:
-1. BUDGET LOCK: The 'estimated_total' MUST NOT exceed the target budget.
-2. COMPLETE BUILD: You MUST select ALL 22 component slots listed below. Every slot must have a value from the provided pool.
-3. IDs REQUIRED: Always use the format "ID:<24-char-hex>|Component Name" from the pool.
-4. SELECTION: Use ONLY components from the 'Available Components' list. Ensure compatibility.
-5. FORMAT: Strict JSON only. No markdown, no code blocks.
-
 JSON STRUCTURE (all 22 fields required):
-{
-    "cpu": "ID:69...|Component Name",
-    "gpu": "ID:69...|Component Name",
-    "motherboard": "ID:69...|Component Name",
-    "ram": "ID:69...|Component Name",
-    "storage": "ID:69...|Component Name",
-    "psu": "ID:69...|Component Name",
-    "case": "ID:69...|Component Name",
-    "cooler": "ID:69...|Component Name",
-    "monitor": "ID:69...|Component Name",
-    "os": "ID:69...|Component Name",
-    "fans": "ID:69...|Component Name",
-    "keyboard": "ID:69...|Component Name",
-    "mouse": "ID:69...|Component Name",
-    "headset": "ID:69...|Component Name",
-    "webcam": "ID:69...|Component Name",
-    "peripherals": "ID:69...|Component Name",
-    "thermal_paste": "ID:69...|Component Name",
-    "wifi": "ID:69...|Component Name",
-    "speakers": "ID:69...|Component Name",
-    "microphone": "ID:69...|Component Name",
-    "ups": "ID:69...|Component Name",
-    "tools": "ID:69...|Component Name",
+{{
+    "cpu": "ID:69...|Component Name|{symbol}Price",
+    "gpu": "ID:69...|Component Name|{symbol}Price",
+    "motherboard": "ID:69...|Component Name|{symbol}Price",
+    "ram": "ID:69...|Component Name|{symbol}Price",
+    "storage": "ID:69...|Component Name|{symbol}Price",
+    "psu": "ID:69...|Component Name|{symbol}Price",
+    "case": "ID:69...|Component Name|{symbol}Price",
+    "cooler": "ID:69...|Component Name|{symbol}Price",
+    "monitor": "ID:69...|Component Name|{symbol}Price",
+    "os": "ID:69...|Component Name|{symbol}Price",
+    "fans": "ID:69...|Component Name|{symbol}Price",
+    "keyboard": "ID:69...|Component Name|{symbol}Price",
+    "mouse": "ID:69...|Component Name|{symbol}Price",
+    "headset": "ID:69...|Component Name|{symbol}Price",
+    "webcam": "ID:69...|Component Name|{symbol}Price",
+    "peripherals": "ID:69...|Component Name|{symbol}Price",
+    "thermal_paste": "ID:69...|Component Name|{symbol}Price",
+    "wifi": "ID:69...|Component Name|{symbol}Price",
+    "speakers": "ID:69...|Component Name|{symbol}Price",
+    "microphone": "ID:69...|Component Name|{symbol}Price",
+    "ups": "ID:69...|Component Name|{symbol}Price",
+    "tools": "ID:69...|Component Name|{symbol}Price",
     "estimated_total": 1500,
     "reasoning": "Markdown explanation of choices and budget allocation.",
     "performance_notes": "Expected FPS/Benchmarks"
-}
+}}
 
-Select ALL slots. Allocate budget proportionally across all 22 components."""
+Select ALL slots. Use REAL prices from the component list for accurate total cost calculation."""
 
     
     def _build_recommendation_prompt(
@@ -938,12 +952,14 @@ Select ALL slots. Allocate budget proportionally across all 22 components."""
         budget: str, 
         use_case: str, 
         preferences: Optional[Dict],
-        component_pool: Optional[Dict]
+        component_pool: Optional[Dict],
+        user_currency: str = 'USD'
     ) -> str:
         """Build user prompt for recommendation."""
+        symbol = self._get_currency_symbol(user_currency)
         prompt = f"""Build a PC with the following requirements:
 
-Budget: {budget}
+Budget: {budget} (in {user_currency} {symbol})
 Use Case: {use_case}"""
         
         if preferences:
@@ -952,14 +968,22 @@ Use Case: {use_case}"""
                 prompt += f"\n- {key}: {value}"
         
         if component_pool:
-            prompt += "\n\nCRITICAL: You MUST select components ONLY from the following lists. Do NOT suggest anything from your general knowledge that isn't here:"
+            prompt += "\n\nCRITICAL REQUIREMENTS:"
+            prompt += "\n1. You MUST select components ONLY from the following lists. Do NOT suggest anything not listed here."
+            prompt += f"\n2. Each component shows: ID:xxx|Name|{symbol}Price - you MUST use the EXACT price shown in {user_currency}."
+            prompt += "\n3. Calculate the TOTAL build cost and ensure it stays within the budget."
+            prompt += "\n4. If the total exceeds budget, reduce component quality or remove optional items."
+            prompt += "\n5. Return the total cost in your response."
+            
+            prompt += f"\n\nAVAILABLE COMPONENTS (with real market prices in {user_currency} {symbol}):"
             for category, items in component_pool.items():
                 if items and len(items) > 0:
-                    prompt += f"\n{category}: {', '.join(items[:35])}"  # Increased limit for better selection
+                    prompt += f"\n{category.upper()}: {', '.join(items)}"
         
+        prompt += f"\n\nReturn your recommendation as JSON with component names and total cost in {user_currency} {symbol}."
         return prompt
     
-    def _parse_recommendation_response(self, response: str) -> Optional[Dict]:
+    def _parse_recommendation_response(self, response: str, component_pool: Optional[Dict] = None) -> Optional[Dict]:
         """Parse and validate AI recommendation response."""
         try:
             # Strip markdown code fences if the model wrapped JSON in ```
@@ -983,20 +1007,132 @@ Use Case: {use_case}"""
                 logger.warning("AI response has no recognisable component keys")
                 return None
 
+            # Validate and calculate actual total cost from component prices
+            if 'estimated_total' in data:
+                calculated_total = self._calculate_actual_total(data, component_pool)
+                data['calculated_total'] = calculated_total
+                data['price_accuracy'] = "verified" if abs(calculated_total - data.get('estimated_total', 0)) < 100 else "needs_review"
+
             return data
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse AI response as JSON: {e}\nRaw: {response[:300]}")
             return None
     
+    def _calculate_actual_total(self, recommendation: Dict, component_pool: Optional[Dict]) -> float:
+        """Calculate actual total cost from AI's component selections."""
+        total = 0.0
+        
+        if not component_pool:
+            return total
+            
+        # Extract prices from component selections
+        # Format: ID:xxx|Name|SymbolPrice
+        for category, selection in recommendation.items():
+            if category in ['estimated_total', 'reasoning', 'performance_notes', 'calculated_total', 'price_accuracy', 'provider_used', 'estimated_total_usd', 'user_currency', 'fallback']:
+                continue
+                
+            if isinstance(selection, str) and '|' in selection:
+                parts = selection.split('|')
+                if len(parts) >= 3:
+                    price_str = parts[2]
+                    # Remove any currency symbols found in CURRENCY_SYMBOLS or common ones
+                    from currencies_config import CURRENCY_SYMBOLS
+                    clean_price = price_str
+                    for sym in CURRENCY_SYMBOLS.values():
+                        if sym: clean_price = clean_price.replace(sym, '')
+                    clean_price = clean_price.replace('$', '').replace(',', '').strip()
+                    
+                    try:
+                        price = float(clean_price)
+                        total += price
+                    except ValueError:
+                        continue
+        
+        return total
+    
+    def _convert_budget_to_usd(self, budget: str, user_currency: str) -> str:
+        """Convert user's budget to USD for AI processing."""
+        try:
+            # Extract numeric value from budget string
+            import re
+            match = re.search(r'[\d,]+(?:\.\d+)?', budget)
+            if match:
+                amount = float(match.group(0).replace(',', ''))
+                # Convert to USD
+                from currencies_config import EXCHANGE_RATES
+                usd_amount = amount / EXCHANGE_RATES.get(user_currency, 1.0)
+                return f"${usd_amount:.0f}"
+        except:
+            pass
+        return budget  # Return original if conversion fails
+    
+    def _convert_component_pool_currency(self, component_pool: Optional[Dict], user_currency: str) -> Optional[Dict]:
+        """Convert component pool prices to user's currency for display."""
+        if not component_pool:
+            return component_pool
+            
+        from currencies_config import EXCHANGE_RATES
+        rate = EXCHANGE_RATES.get(user_currency, 1.0)
+        symbol = self._get_currency_symbol(user_currency)
+        
+        converted_pool = {}
+        for category, items in component_pool.items():
+            converted_items = []
+            for item in items:
+                if '|' in item and item.count('|') >= 2:
+                    parts = item.split('|')
+                    if len(parts) >= 3 and parts[2].startswith('$'):
+                        try:
+                            usd_price = float(parts[2].replace('$', ''))
+                            user_price = usd_price * rate
+                            converted_item = f"{parts[0]}|{parts[1]}|{symbol}{user_price:.0f}"
+                            converted_items.append(converted_item)
+                        except:
+                            converted_items.append(item)
+                    else:
+                        converted_items.append(item)
+                else:
+                    converted_items.append(item)
+            converted_pool[category] = converted_items
+            
+        return converted_pool
+    
+    def _get_currency_symbol(self, currency: str) -> str:
+        """Get currency symbol for display."""
+        from currencies_config import CURRENCY_SYMBOLS
+        return CURRENCY_SYMBOLS.get(currency, '$')
+    
+    def _convert_to_usd(self, amount: float, from_currency: str) -> float:
+        """Convert amount from user's currency back to USD."""
+        from currencies_config import EXCHANGE_RATES
+        rate = EXCHANGE_RATES.get(from_currency, 1.0)
+        return amount / rate
+    def _get_heuristic_recommendation(self, budget: str, use_case: str, user_currency: str = 'USD') -> Dict[str, Any]:
+        """Heuristic-based PC build recommendation when AI fails."""
+        # Extract budget amount
+        import re
+        budget_match = re.search(r'[\d,.]+', budget)
+        budget_num = float(budget_match.group(0).replace(',', '')) if budget_match else 1000.0
+        
+        # Convert to USD if needed for logic branches
+        from currencies_config import EXCHANGE_RATES
+        budget_usd = budget_num / EXCHANGE_RATES.get(user_currency, 1.0)
+        
+        # Determine tier
+        tier = 'budget'
+        if budget_usd > 2500: tier = 'ultra'
+        elif budget_usd > 1500: tier = 'high_end'
+        elif budget_usd > 800: tier = 'mid_range'
+        
         base_rec = {
-            'cpu': 'AMD Ryzen 5 5600' if budget_num < 1000 else 'AMD Ryzen 7 7800X3D',
-            'gpu': 'NVIDIA RTX 4060' if budget_num < 1000 else 'NVIDIA RTX 4080',
-            'motherboard': 'B550 ATX' if budget_num < 1000 else 'X670 ATX',
-            'ram': '16GB DDR4-3200' if budget_num < 1000 else '32GB DDR5-6000',
+            'cpu': 'AMD Ryzen 5 5600' if budget_usd < 1000 else 'AMD Ryzen 7 7800X3D',
+            'gpu': 'NVIDIA RTX 4060' if budget_usd < 1000 else 'NVIDIA RTX 4080',
+            'motherboard': 'B550 ATX' if budget_usd < 1000 else 'X670 ATX',
+            'ram': '16GB DDR4-3200' if budget_usd < 1000 else '32GB DDR5-6000',
             'storage': '1TB NVMe SSD',
-            'psu': '650W 80+ Bronze' if budget_num < 1000 else '850W 80+ Gold',
+            'psu': '650W 80+ Bronze' if budget_usd < 1000 else '850W 80+ Gold',
             'case': 'Mid-Tower ATX Case',
-            'cooler': 'Stock Cooler' if budget_num < 1000 else '360mm AIO Liquid Cooler',
+            'cooler': 'Stock Cooler' if budget_usd < 1000 else '360mm AIO Liquid Cooler',
             'monitor': '24" 1080p 144Hz Monitor',
             'os': 'Windows 11 Home',
             'fans': '3x 120mm Case Fans',
@@ -1005,8 +1141,8 @@ Use Case: {use_case}"""
             'headset': 'Gaming Headset with Mic',
             'webcam': '1080p HD Webcam',
             'peripherals': 'Misc Cable Management Kit',
-            'estimated_total': f"${budget_num}",
-            'reasoning': f"Heuristic selection for {use_case} build.",
+            'estimated_total': budget_num,
+            'reasoning': f"Heuristic selection for {use_case} build (AI providers unavailable).",
             'performance_notes': "Solid performance for target use case."
         }
         
