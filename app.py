@@ -28,6 +28,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from ai_engine import get_ai_engine
 from currencies_config import EXCHANGE_RATES, CURRENCY_SYMBOLS
+from price_fetcher import get_price_fetcher
 
 
 
@@ -2634,12 +2635,10 @@ def api_ai_engine_recommend():
             # Helper to format component list with IDs
             def get_pool(query, limit=15):
                 components = []
-                for c in db.components.find(query, {'_id': 1, 'name': 1, 'price': 1}).limit(limit):
-                    price = c.get('price', 0)
-                    if price and price > 0:
-                        components.append(f"ID:{str(c['_id'])}|{c['name']}|${price:.0f}")
-                    else:
-                        components.append(f"ID:{str(c['_id'])}|{c['name']}")
+                # Fetch only ID and Name - NO PRICES for the AI Engine
+                # This prevents the AI from "hallucinating" or prioritizing based on outdated prices
+                for c in db.components.find(query, {'_id': 1, 'name': 1}).limit(limit):
+                    components.append(f"ID:{str(c['_id'])}|{c['name']}")
                 return components
 
             component_pool['cpus'] = get_pool({'category': 'cpu'}, 20)
@@ -2744,7 +2743,25 @@ def api_ai_engine_recommend():
                         
                         matched_components[ui_key + '_id'] = str(match['_id'])
                         matched_components[ui_key + '_name'] = match['name']
-                        matched_components[ui_key + '_price'] = get_comp_price_usd(match)
+                        
+                        # FETCH REAL-TIME PRICE VIA SERPAPI (favored over DB)
+                        fetcher = get_price_fetcher(db=db)
+                        live_data = fetcher.fetch_component_price(match['name'], comp_type)
+                        
+                        if live_data and live_data.get('price_usd'):
+                            matched_components[ui_key + '_price'] = live_data['price_usd']
+                            matched_components[ui_key + '_source'] = live_data.get('source')
+                            matched_components[ui_key + '_link'] = live_data.get('link')
+                        else:
+                            # Fallback to normalized database price if live search fails
+                            matched_components[ui_key + '_price'] = get_comp_price_usd(match)
+                            matched_components[ui_key + '_source'] = "Database"
+
+            # Recalculate total build cost based on LIVE prices
+            total_cost_usd = sum(v for k, v in matched_components.items() if k.endswith('_price'))
+            recommendation['calculated_total_usd'] = total_cost_usd
+            recommendation['calculated_total'] = total_cost_usd * EXCHANGE_RATES.get(user_currency, 1.0)
+            recommendation['estimated_total'] = recommendation['calculated_total']
 
         
         
@@ -2897,6 +2914,43 @@ def api_ai_engine_performance():
             'message': str(e)
         }), 500
 
+
+
+@app.route('/api/get-price', methods=['GET'])
+@login_required
+def api_get_price():
+    """
+    NEW: Fetch real-time price for a component name
+    Requirement: AI generates names, backend fetches real prices
+    """
+    name = request.args.get('name')
+    category = request.args.get('category', '')
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Missing component name'}), 400
+        
+    fetcher = get_price_fetcher(db=db)
+    price_data = fetcher.fetch_component_price(name, category)
+    
+    if price_data:
+        # Convert to user's currency
+        currency = session.get('currency', 'USD')
+        rate = EXCHANGE_RATES.get(currency, 1.0)
+        local_price = price_data['price_usd'] * rate
+        
+        return jsonify({
+            'status': 'success',
+            'name': name,
+            'price_usd': price_data['price_usd'],
+            'local_price': local_price,
+            'formatted_price': format_price(price_data['price_usd']),
+            'source': price_data.get('source'),
+            'link': price_data.get('link')
+        })
+    else:
+        return jsonify({
+            'status': 'error',
+            'message': 'Price not found'
+        }), 404
 
 
 @app.route('/api/analyze_power', methods=['POST'])
@@ -3918,12 +3972,25 @@ def api_ai_recommend():
 
             comp_id = str(comp_doc['_id'])
             comp_name = comp_doc.get('name', 'Unknown Component')
-            price_usd = comp_doc.get('_usd_price') or get_comp_price_usd(comp_doc)
+            
+            # Use PriceFetcher for real-time pricing instead of database estimates
+            from price_fetcher import get_price_fetcher
+            price_fetcher = get_price_fetcher()
+            price_data = price_fetcher.fetch_component_price(comp_name)
+            
+            if price_data and price_data.get('price'):
+                price_usd = price_data['price']
+                price_source = price_data.get('source', 'api')
+            else:
+                # Fallback to database price if API fails
+                price_usd = comp_doc.get('_usd_price') or get_comp_price_usd(comp_doc)
+                price_source = 'database_fallback'
 
             final_build[slot_key] = {
                 'id': comp_id,
                 'name': comp_name,
-                'estimated_price': round(price_usd, 2)
+                'estimated_price': round(price_usd, 2),
+                'price_source': price_source
             }
             total_usd += price_usd
 
@@ -6932,6 +6999,79 @@ def profile():
     except Exception as e:
         app.logger.error(f"Profile error: {e}")
         return render_template('error.html', message="Could not load profile"), 500
+
+
+@app.route('/api/fetch-prices', methods=['POST'])
+@login_required
+def api_fetch_prices():
+    """
+    Fetch real-time prices for components using PriceFetcher
+    """
+    try:
+        from price_fetcher import get_price_fetcher
+        
+        data = request.json
+        component_names = data.get('component_names', [])
+        
+        if not component_names:
+            return jsonify({'status': 'error', 'message': 'No component names provided'}), 400
+        
+        price_fetcher = get_price_fetcher()
+        results = {}
+        
+        for comp_name in component_names:
+            if not comp_name or not isinstance(comp_name, str):
+                continue
+                
+            try:
+                price_data = price_fetcher.fetch_component_price(comp_name)
+                if price_data:
+                    results[comp_name] = price_data
+                else:
+                    # Fallback to database price if available
+                    comp = db.components.find_one({'name': {'$regex': comp_name, '$options': 'i'}})
+                    if comp:
+                        db_price = get_comp_price_usd(comp)
+                        if db_price > 0:
+                            results[comp_name] = {
+                                'price': db_price,
+                                'currency': 'USD',
+                                'source': 'database_fallback',
+                                'timestamp': datetime.now(timezone.utc).isoformat()
+                            }
+                        else:
+                            results[comp_name] = {
+                                'price': None,
+                                'currency': 'USD',
+                                'source': 'unavailable',
+                                'error': 'Price not found in database'
+                            }
+                    else:
+                        results[comp_name] = {
+                            'price': None,
+                            'currency': 'USD',
+                            'source': 'unavailable',
+                            'error': 'Component not found'
+                        }
+            except Exception as e:
+                app.logger.error(f"Error fetching price for {comp_name}: {e}")
+                results[comp_name] = {
+                    'price': None,
+                    'currency': 'USD',
+                    'source': 'error',
+                    'error': str(e)
+                }
+        
+        return jsonify({
+            'status': 'success',
+            'prices': results,
+            'currency': session.get('currency', 'USD'),
+            'currency_symbol': CURRENCY_SYMBOLS.get(session.get('currency', 'USD'), '$')
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Price fetch API error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 if __name__ == '__main__':
