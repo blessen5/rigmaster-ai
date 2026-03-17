@@ -226,7 +226,7 @@ class AIEngine:
         budget_usd = self._convert_budget_to_usd(budget, user_currency)
         
         # Convert component pool prices to user's currency for display
-        display_component_pool = self._convert_component_pool_currency(component_pool, user_currency)
+        display_component_pool = component_pool  # No longer need currency conversion since prices are removed
         
         # Build the prompt
         system_prompt = self._build_system_prompt(user_currency)
@@ -244,10 +244,6 @@ class AIEngine:
                     # Parse and validate response
                     result = self._parse_recommendation_response(response, display_component_pool)
                     if result:
-                        # Convert AI's total back to USD for storage
-                        if 'estimated_total' in result:
-                            result['estimated_total_usd'] = self._convert_to_usd(result['estimated_total'], user_currency)
-                            result['user_currency'] = user_currency
                         result['provider_used'] = provider
                         return result
             except Exception as e:
@@ -903,48 +899,47 @@ Return ONLY valid JSON with this structure:
     def _build_system_prompt(self, user_currency: str = 'USD') -> str:
         """Build system prompt for PC recommendation."""
         symbol = self._get_currency_symbol(user_currency)
-        return f"""You are an expert PC hardware architect. Your goal is to design a complete, high-performance build within the user's budget using ONLY the provided hardware list with REAL MARKET PRICES in {user_currency} ({symbol}).
+        return f"""You are an expert PC hardware architect. Your goal is to design a complete, high-performance build within the user's budget using ONLY the provided hardware list.
 
-CRITICAL RULES FOR ACCURATE PRICING:
-1. PRICE ACCURACY: Each component shows its REAL price in {user_currency} (e.g., "{symbol}1500"). You MUST use these EXACT prices for calculations.
-2. BUDGET COMPLIANCE: Calculate the total cost using the provided prices. The 'estimated_total' MUST be accurate and within budget.
-3. NO HALLUCINATION: Do NOT invent prices or use your training data. Only use prices from the component list.
+CRITICAL RULES FOR COMPONENT SELECTION:
+1. COMPONENT SELECTION: Select components ONLY from the provided hardware list. Do NOT suggest anything not listed.
+2. BUDGET AWARENESS: Consider the budget when selecting components, but do NOT calculate or include prices in your response.
+3. NO PRICE GENERATION: Do NOT generate, estimate, or include any prices in your response. Prices will be fetched separately.
 4. COMPLETE BUILD: You MUST select ALL 22 component slots listed below. Every slot must have a value from the provided pool.
-5. IDs REQUIRED: Always use the format "ID:<24-char-hex>|Component Name|{symbol}Price" from the pool.
-6. SELECTION: Use ONLY components from the 'Available Components' list. Ensure compatibility.
+5. IDs REQUIRED: Always use the format "ID:<24-char-hex>|Component Name" from the pool.
+6. COMPATIBILITY: Ensure selected components are compatible with each other.
 
 Return ONLY a valid JSON object. No conversational text.
 
 JSON STRUCTURE (all 22 fields required):
 {{
-    "cpu": "ID:69...|Component Name|{symbol}Price",
-    "gpu": "ID:69...|Component Name|{symbol}Price",
-    "motherboard": "ID:69...|Component Name|{symbol}Price",
-    "ram": "ID:69...|Component Name|{symbol}Price",
-    "storage": "ID:69...|Component Name|{symbol}Price",
-    "psu": "ID:69...|Component Name|{symbol}Price",
-    "case": "ID:69...|Component Name|{symbol}Price",
-    "cooler": "ID:69...|Component Name|{symbol}Price",
-    "monitor": "ID:69...|Component Name|{symbol}Price",
-    "os": "ID:69...|Component Name|{symbol}Price",
-    "fans": "ID:69...|Component Name|{symbol}Price",
-    "keyboard": "ID:69...|Component Name|{symbol}Price",
-    "mouse": "ID:69...|Component Name|{symbol}Price",
-    "headset": "ID:69...|Component Name|{symbol}Price",
-    "webcam": "ID:69...|Component Name|{symbol}Price",
-    "peripherals": "ID:69...|Component Name|{symbol}Price",
-    "thermal_paste": "ID:69...|Component Name|{symbol}Price",
-    "wifi": "ID:69...|Component Name|{symbol}Price",
-    "speakers": "ID:69...|Component Name|{symbol}Price",
-    "microphone": "ID:69...|Component Name|{symbol}Price",
-    "ups": "ID:69...|Component Name|{symbol}Price",
-    "tools": "ID:69...|Component Name|{symbol}Price",
-    "estimated_total": 1500,
-    "reasoning": "Markdown explanation of choices and budget allocation.",
-    "performance_notes": "Expected FPS/Benchmarks"
+    "cpu": "ID:69...|Component Name",
+    "gpu": "ID:69...|Component Name",
+    "motherboard": "ID:69...|Component Name",
+    "ram": "ID:69...|Component Name",
+    "storage": "ID:69...|Component Name",
+    "psu": "ID:69...|Component Name",
+    "case": "ID:69...|Component Name",
+    "cooler": "ID:69...|Component Name",
+    "monitor": "ID:69...|Component Name",
+    "os": "ID:69...|Component Name",
+    "fans": "ID:69...|Component Name",
+    "keyboard": "ID:69...|Component Name",
+    "mouse": "ID:69...|Component Name",
+    "headset": "ID:69...|Component Name",
+    "webcam": "ID:69...|Component Name",
+    "peripherals": "ID:69...|Component Name",
+    "thermal_paste": "ID:69...|Component Name",
+    "wifi": "ID:69...|Component Name",
+    "speakers": "ID:69...|Component Name",
+    "microphone": "ID:69...|Component Name",
+    "ups": "ID:69...|Component Name",
+    "tools": "ID:69...|Component Name",
+    "reasoning": "Markdown explanation of choices and compatibility considerations.",
+    "performance_notes": "Expected performance characteristics"
 }}
 
-Select ALL slots. Use REAL prices from the component list for accurate total cost calculation."""
+Select ALL slots. Focus on compatibility and performance for the use case."""
 
     
     def _build_recommendation_prompt(
@@ -970,17 +965,28 @@ Use Case: {use_case}"""
         if component_pool:
             prompt += "\n\nCRITICAL REQUIREMENTS:"
             prompt += "\n1. You MUST select components ONLY from the following lists. Do NOT suggest anything not listed here."
-            prompt += f"\n2. Each component shows: ID:xxx|Name|{symbol}Price - you MUST use the EXACT price shown in {user_currency}."
-            prompt += "\n3. Calculate the TOTAL build cost and ensure it stays within the budget."
-            prompt += "\n4. If the total exceeds budget, reduce component quality or remove optional items."
-            prompt += "\n5. Return the total cost in your response."
+            prompt += "\n2. Each component shows: ID:xxx|Name - select based on compatibility and performance for the use case."
+            prompt += "\n3. Focus on component quality and compatibility rather than price (prices will be checked separately)."
+            prompt += "\n4. Ensure all selected components are compatible with each other."
             
-            prompt += f"\n\nAVAILABLE COMPONENTS (with real market prices in {user_currency} {symbol}):"
+            prompt += "\n\nAVAILABLE COMPONENTS:"
             for category, items in component_pool.items():
                 if items and len(items) > 0:
-                    prompt += f"\n{category.upper()}: {', '.join(items)}"
+                    # Remove price information from component strings for AI
+                    clean_items = []
+                    for item in items:
+                        # Remove price part: "ID:xxx|Name|$Price" -> "ID:xxx|Name"
+                        if '|' in item:
+                            parts = item.split('|')
+                            if len(parts) >= 2:
+                                clean_items.append(f"{parts[0]}|{parts[1]}")
+                            else:
+                                clean_items.append(item)
+                        else:
+                            clean_items.append(item)
+                    prompt += f"\n{category.upper()}: {', '.join(clean_items)}"
         
-        prompt += f"\n\nReturn your recommendation as JSON with component names and total cost in {user_currency} {symbol}."
+        prompt += "\n\nReturn your recommendation as JSON with component selections and compatibility reasoning."
         return prompt
     
     def _parse_recommendation_response(self, response: str, component_pool: Optional[Dict] = None) -> Optional[Dict]:
@@ -1007,11 +1013,11 @@ Use Case: {use_case}"""
                 logger.warning("AI response has no recognisable component keys")
                 return None
 
-            # Validate and calculate actual total cost from component prices
-            if 'estimated_total' in data:
-                calculated_total = self._calculate_actual_total(data, component_pool)
-                data['calculated_total'] = calculated_total
-                data['price_accuracy'] = "verified" if abs(calculated_total - data.get('estimated_total', 0)) < 100 else "needs_review"
+            # Remove any price-related fields that might have been hallucinated
+            data.pop('estimated_total', None)
+            data.pop('calculated_total', None)
+            data.pop('price_accuracy', None)
+            data.pop('estimated_total_usd', None)
 
             return data
         except json.JSONDecodeError as e:
