@@ -249,7 +249,7 @@
             <!-- Compact List of messages -->
             <div id="analysis-results" style="display: none; margin-bottom: 2rem;">
                 <ul id="compat-messages"
-                    style="list-style: none; padding: 0; margin: 0; display: flex; overflow-x: auto; gap: 1.2rem; white-space: nowrap; padding-bottom: 1rem; scrollbar-width: thin; scrollbar-color: var(--border) transparent;">
+                    style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.8rem; padding-bottom: 0.5rem;">
                 </ul>
             </div>
 
@@ -265,10 +265,13 @@
                                 d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
                             </path>
                         </svg>
-                        Compatibility Fix Suggestions
+                        AI Build Recommendations
                     </h2>
-                    <button onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
-                        style="background: transparent; border: none; color: var(--text-muted); cursor: pointer;">Dismiss</button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span id="fix-panel-status-tag" style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 20px; background: rgba(239,68,68,0.15); color: #f87171; font-weight: 600; letter-spacing: 0.03em;"></span>
+                        <button onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
+                            style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem;">✕ Dismiss</button>
+                    </div>
                 </div>
                 <div id="fix-options-container"
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
@@ -1538,26 +1541,70 @@
                 statusEl.textContent = validationResult.status;
                 if (validationResult.status === 'Compatible') {
                     statusEl.style.color = '#4ade80';
+                    const fixBtnCompat = document.getElementById('btn-fix-compatibility');
+                    if (fixBtnCompat) fixBtnCompat.style.display = 'none';
                 } else if (validationResult.status === 'Not Compatible') {
                     statusEl.style.color = '#f87171';
                     const fixBtn = document.getElementById('btn-fix-compatibility');
                     if (fixBtn) {
                         fixBtn.style.display = 'block';
+                        fixBtn.textContent = '🔧 Get Fix Suggestions';
+                        fixBtn.onclick = () => showFixSuggestions(data);
+                    }
+                } else if (validationResult.status === 'Borderline') {
+                    statusEl.style.color = '#fbbf24';
+                    const fixBtn = document.getElementById('btn-fix-compatibility');
+                    if (fixBtn) {
+                        fixBtn.style.display = 'block';
+                        fixBtn.textContent = '⚠️ View Improvement Suggestions';
                         fixBtn.onclick = () => showFixSuggestions(data);
                     }
                 } else {
                     statusEl.style.color = '#fbbf24';
-                    document.getElementById('btn-fix-compatibility').style.display = 'none';
+                    const fixBtnOther = document.getElementById('btn-fix-compatibility');
+                    if (fixBtnOther) fixBtnOther.style.display = 'none';
                 }
 
-                listEl.textContent = ''; // Safer than innerHTML
+                listEl.innerHTML = ''; // Clear previous messages
                 validationResult.messages.forEach(msg => {
                     const li = document.createElement('li');
                     li.textContent = msg;
-                    li.style.background = 'rgba(0,0,0,0.3)';
                     li.style.padding = '0.5rem 1rem';
                     li.style.borderRadius = '8px';
                     li.style.fontSize = '0.85rem';
+                    li.style.lineHeight = '1.4';
+                    li.style.maxWidth = '100%';
+                    li.style.whiteSpace = 'normal';
+                    li.style.wordBreak = 'break-word';
+
+                    // Color-code based on message content
+                    const msgUpper = msg.toUpperCase();
+                    const isError = msgUpper.includes('MISMATCH') || msgUpper.includes('DEFICIT') || 
+                                    msgUpper.includes('INCOMPATIB') || msgUpper.includes('NOT COMPAT') ||
+                                    msgUpper.includes('OVERLOAD') || msgUpper.includes('MISSING:') ||
+                                    msgUpper.includes('CLEARANCE:') || msgUpper.includes('COOLING MISSING');
+                    const isSuccess = msgUpper.includes('ALL SELECTED COMPONENTS') || msgUpper.includes('SYSTEMS CHECK');
+                    const isWarning = msgUpper.includes('ADVISORY') || msgUpper.includes('ALERT') || 
+                                      msgUpper.includes('BIOS') || msgUpper.includes('NOTE') ||
+                                      msgUpper.includes('BORDERLINE') || msgUpper.includes('INCOMPLETE BUILD');
+
+                    if (isError) {
+                        li.style.background = 'rgba(239, 68, 68, 0.12)';
+                        li.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                        li.style.color = '#fca5a5';
+                    } else if (isSuccess) {
+                        li.style.background = 'rgba(74, 222, 128, 0.1)';
+                        li.style.border = '1px solid rgba(74, 222, 128, 0.25)';
+                        li.style.color = '#86efac';
+                    } else if (isWarning) {
+                        li.style.background = 'rgba(251, 191, 36, 0.1)';
+                        li.style.border = '1px solid rgba(251, 191, 36, 0.25)';
+                        li.style.color = '#fde68a';
+                    } else {
+                        li.style.background = 'rgba(0,0,0,0.3)';
+                        li.style.border = '1px solid rgba(255,255,255,0.06)';
+                        li.style.color = 'var(--text-main)';
+                    }
                     listEl.appendChild(li);
                 });
 
@@ -1858,9 +1905,14 @@
         async function showFixSuggestions(buildData) {
             const panel = document.getElementById('fix-suggestions-panel');
             const container = document.getElementById('fix-options-container');
+            const statusTag = document.getElementById('fix-panel-status-tag');
 
             panel.style.display = 'block';
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem;"><p style="color: var(--text-muted);">Scanning database for compatible parts...</p></div>';
+            if (statusTag) { statusTag.textContent = 'Scanning...'; }
+            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem;">
+                <div class="typing-indicator" style="justify-content: center; margin-bottom: 1rem;"><span></span><span></span><span></span></div>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Scanning database for the best compatible replacements...</p>
+            </div>`;
             panel.scrollIntoView({ behavior: 'smooth' });
 
             try {
@@ -1872,26 +1924,46 @@
                 const result = await response.json();
 
                 if (result.status === 'success' && result.suggestions.length > 0) {
-                    container.innerHTML = result.suggestions.map(s => `
-                        <div class="step-card" style="text-align: left; padding: 1.5rem; background: rgba(0,0,0,0.2); border-left: 4px solid #f87171;">
-                            <h4 style="color: white; font-size: 1rem; margin-bottom: 0.5rem;">${s.title}</h4>
-                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;">${s.reason}</p>
-                            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                                ${s.options.map(opt => `
-                                    <button class="btn btn-secondary" style="font-size: 0.8rem; text-align: left; padding: 0.7rem; display: flex; justify-content: space-between; border-color: rgba(255,255,255,0.05);" 
-                                            onclick="applyFix('${s.category}_id', '${opt.id}')">
-                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${opt.name}</span>
-                                        <span style="color: #4ade80; font-weight: 700;">+ Use</span>
+                    if (statusTag) { statusTag.textContent = `${result.suggestions.length} suggestion${result.suggestions.length !== 1 ? 's' : ''} found`; }
+                    
+                    container.innerHTML = result.suggestions.map(s => {
+                        const catLabel = (s.category || '').replace(/_/g, ' ').toUpperCase();
+                        return `
+                        <div class="step-card" style="text-align: left; padding: 1.5rem; background: rgba(0,0,0,0.25); border-left: 4px solid #f87171; border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;">
+                                <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">${catLabel}</span>
+                            </div>
+                            <h4 style="color: white; font-size: 1rem; margin-bottom: 0.4rem; line-height: 1.3;">${s.title}</h4>
+                            <p style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 1.2rem; line-height: 1.5;">${s.reason}</p>
+                            <div style="display: flex; flex-direction: column; gap: 0.7rem;">
+                                ${s.options.map((opt, idx) => `
+                                    <button class="btn btn-secondary" 
+                                            style="font-size: 0.82rem; text-align: left; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-color: rgba(255,255,255,0.08); border-radius: 10px; gap: 0.5rem;" 
+                                            onclick="applyFix('${ s.category === 'tools' ? 'tool' : s.category }_id', '${opt.id}')">
+                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${opt.name}</span>
+                                        <span style="color: #4ade80; font-weight: 700; flex-shrink: 0; font-size: 0.78rem;">✓ Apply Fix</span>
                                     </button>
                                 `).join('')}
                             </div>
-                        </div>
-                    `).join('');
+                        </div>`;
+                    }).join('');
+                } else if (result.status === 'Incomplete Selection') {
+                    if (statusTag) { statusTag.textContent = 'Incomplete build'; statusTag.style.background = 'rgba(251,191,36,0.15)'; statusTag.style.color = '#fbbf24'; }
+                    container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem;">
+                        <p style="color: #fde68a; margin-bottom: 1rem;">⚠️ Please add CPU, Motherboard, and RAM to your build before fix suggestions can be generated.</p>
+                        <a href="{{ url_for('builder') }}" class="btn btn-primary" style="display: inline-block; padding: 0.7rem 1.5rem; font-size: 0.9rem;">Go to Builder</a>
+                    </div>`;
                 } else {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">No easy fixes found. Try manual part swaps in the Builder.</div>';
+                    if (statusTag) { statusTag.textContent = 'All clear'; statusTag.style.background = 'rgba(74,222,128,0.15)'; statusTag.style.color = '#4ade80'; }
+                    container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                        <p style="margin-bottom: 1rem; font-size: 0.95rem;">✅ No automatic fixes are needed. Your build is already well-configured.</p>
+                        <p style="font-size: 0.85rem;">For manual customization, visit the <a href="{{ url_for('builder') }}" style="color: var(--accent);">Builder</a>.</p>
+                    </div>`;
                 }
             } catch (e) {
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #f87171; padding: 2rem;">Failed to load suggestions.</div>';
+                console.error('Fix suggestions error:', e);
+                if (statusTag) { statusTag.textContent = 'Error'; }
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #f87171; padding: 2rem;">Failed to load suggestions. Please try again.</div>';
             }
         }
 
