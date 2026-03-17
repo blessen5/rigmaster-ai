@@ -197,7 +197,8 @@ _PRICE_CAT_MAP = {
 def get_comp_price_usd(comp, id_key=None, est_cat=None):
     """Return the USD price for a component document.
     Reads the real 'price'/'msrp'/'cost' field first; falls back to
-    keyword-based heuristics if no price field is stored or if price is 0."""
+    keyword-based heuristics if no price field is stored or if price is 0.
+    Automatically normalizes local currency prices (matching ₹, £, €, etc.) to USD."""
     if comp is None:
         return 0.0
     
@@ -212,18 +213,34 @@ def get_comp_price_usd(comp, id_key=None, est_cat=None):
             
     if raw is not None:
         try:
-            # Clean string of common currency symbols
-            p_str = str(raw).replace('$', '').replace(',', '').replace('₹', '').replace('Rs', '').strip()
-            p = float(p_str)
-            if p > 0:
-                return p
-        except (ValueError, TypeError):
+            # Detect currency symbol and determine normalization rate
+            raw_s = str(raw).strip().upper()
+            norm_rate = 1.0
+            
+            # Prioritize non-USD symbols to avoid false positives with $
+            for code, sym in CURRENCY_SYMBOLS.items():
+                if sym and sym != '$' and sym in raw_s:
+                    norm_rate = EXCHANGE_RATES.get(code, 1.0)
+                    break
+            else:
+                # Fallback check for $ if no other symbol was found
+                if '$' in raw_s:
+                    norm_rate = EXCHANGE_RATES.get('USD', 1.0)
+
+            # Extract numeric value (remove currency symbols, commas, etc.)
+            # Match digits and decimal point only
+            clean_match = re.search(r'[\d,.]+', raw_s)
+            if clean_match:
+                p_str = clean_match.group(0).replace(',', '')
+                p = float(p_str)
+                if p > 0:
+                    return p / norm_rate
+        except Exception:
             pass
             
     # Determine fallback category for estimation
     fallback_cat = est_cat
     if fallback_cat is None and id_key:
-        # Try as build_id key first (e.g. 'cpu_id'), then as category name directly (e.g. 'cpu')
         fallback_cat = _PRICE_CAT_MAP.get(id_key, id_key)
         
     return get_estimated_price(comp.get('name', ''), fallback_cat or 'peripherals')
@@ -1514,7 +1531,6 @@ def api_fix_compatibility():
         def get_comp(comp_id):
             if not comp_id or comp_id == "None Selected": return None
             try: 
-                from bson.objectid import ObjectId
                 return db.components.find_one({'_id': ObjectId(comp_id)})
             except: return None
 
@@ -1523,6 +1539,11 @@ def api_fix_compatibility():
         ram = get_comp(data.get('ram_id'))
         case = get_comp(data.get('case_id'))
         psu = get_comp(data.get('psu_id'))
+        gpu = get_comp(data.get('gpu_id'))
+        cooler = get_comp(data.get('cooler_id'))
+        
+        if not cpu or not mobo or not ram:
+            return jsonify({'suggestions': [], 'status': 'Incomplete Selection'})
         
         suggestions = []
         
@@ -1532,108 +1553,248 @@ def api_fix_compatibility():
         mobo_ff = infer_mobo_form_factor(mobo) if mobo else None
         case_ffs = infer_case_supported_form_factors(case) if case else []
         
+        # Build Tier for better suggestions
+        system_tier = max(get_comp_tier(cpu), get_comp_tier(gpu) if gpu else 1)
+        
         socket_mismatch = cpu_sock and mobo_sock and cpu_sock not in [s.strip() for s in mobo_sock.split('/')]
         ff_mismatch = mobo_ff and case_ffs and mobo_ff not in case_ffs
         
         if socket_mismatch:
-            # Fix 1: Change Motherboard to match CPU AND CASE
+            # Fix 1: Change Motherboard to match CPU AND CASE AND TIER
             query = {'category': 'motherboard'}
-            all_mobos = list(db.components.find(query).limit(1000))
+            # Limit search but filter for tier later
+            all_mobos = list(db.components.find(query).limit(500))
             matches = []
             for m in all_mobos:
                 ms = infer_mobo_socket(m)
                 mf = infer_mobo_form_factor(m)
+                mt = get_comp_tier(m)
+                
                 # Must match CPU socket AND Case size
                 if ms and cpu_sock in [s.strip() for s in ms.split('/')]:
                     if not case_ffs or (mf in case_ffs):
-                        matches.append({'id': str(m['_id']), 'name': m.get('name')})
+                        # Distance to system tier (0 is best)
+                        dist = abs(mt - system_tier)
+                        matches.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': dist})
             
             if matches:
-                options = random.sample(matches, min(3, len(matches)))
+                # Sort by tier proximity then select best matches
+                matches.sort(key=lambda x: x['dist'])
+                options = [{'id': m['id'], 'name': m['name']} for m in matches[:3]]
                 suggestions.append({
                     'category': 'motherboard',
-                    'title': f'Compatible Motherboard for {cpu.get("name")}',
-                    'reason': f'Socket mismatch identified. These boards fit your {cpu.get("name")} AND your current case.',
+                    'title': f'Compatible {cpu_sock} Motherboard',
+                    'reason': f'Socket mismatch identified. These {cpu_sock} boards fit your build and match your component tier.',
                     'options': options
                 })
 
         if ff_mismatch:
             # Fix A: Suggest Larger Case
-            cases = list(db.components.find({'category': 'case'}).limit(1000))
+            cases = list(db.components.find({'category': 'case'}).limit(500))
             matching_cases = []
             for c in cases:
                 cffs = infer_case_supported_form_factors(c)
+                ct = get_comp_tier(c)
                 if mobo_ff in cffs:
-                    matching_cases.append({'id': str(c['_id']), 'name': c.get('name')})
+                    matching_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(ct - system_tier)})
             
             if matching_cases:
+                matching_cases.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'case',
-                    'title': f'Larger Case for your {mobo_ff} Board',
-                    'reason': f'Your current motherboard is too large for the selected case. These cases support {mobo_ff} boards.',
-                    'options': random.sample(matching_cases, min(3, len(matching_cases)))
+                    'title': f'Compatible Case for {mobo_ff}',
+                    'reason': f'Selected case is too small for your motherboard. These cases support {mobo_ff} designs.',
+                    'options': [{'id': c['id'], 'name': c['name']} for c in matching_cases[:3]]
                 })
-            
-            # Fix B: Suggest Smaller Motherboard (if not already suggested by socket fix)
-            if not socket_mismatch:
-                query = {'category': 'motherboard'}
-                all_mobos = list(db.components.find(query).limit(1000))
-                matching_mobos = []
-                for m in all_mobos:
-                    ms = infer_mobo_socket(m)
-                    mf = infer_mobo_form_factor(m)
-                    if ms and cpu_sock in [s.strip() for s in ms.split('/')] and mf in case_ffs:
-                        matching_mobos.append({'id': str(m['_id']), 'name': m.get('name')})
-                
-                if matching_mobos:
-                    suggestions.append({
-                        'category': 'motherboard',
-                        'title': f'Smaller {cpu_sock} Motherboard',
-                        'reason': f'Your current board is too big for the case. These {cpu_sock} boards will fit.',
-                        'options': random.sample(matching_mobos, min(3, len(matching_mobos)))
-                    })
 
-        # 2. RAM Check
+        # 2. RAM Check (Generation & Tier)
         ram_gen = infer_ram_generation(ram, is_mobo=False) if ram else None
         mobo_ram_gen = infer_ram_generation(mobo, is_mobo=True) if mobo else None
         
         if ram_gen and mobo_ram_gen and ram_gen != mobo_ram_gen:
-            rams = list(db.components.find({'category': 'ram'}).limit(1000))
+            rams = list(db.components.find({'category': 'ram', 'status': {'$ne': 'Deprecated'}}).limit(500))
             compatible_rams = []
             for r in rams:
                 rg = infer_ram_generation(r, is_mobo=False)
+                rt = get_comp_tier(r)
                 if rg == mobo_ram_gen:
-                    compatible_rams.append({'id': str(r['_id']), 'name': r.get('name')})
+                    compatible_rams.append({'id': str(r['_id']), 'name': r.get('name'), 'dist': abs(rt - system_tier)})
             
             if compatible_rams:
+                compatible_rams.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'ram',
                     'title': f'Correct {mobo_ram_gen} Memory',
                     'reason': f'Motherboard requires {mobo_ram_gen}, but selected RAM is {ram_gen}.',
-                    'options': random.sample(compatible_rams, min(3, len(compatible_rams)))
+                    'options': [{'id': r['id'], 'name': r['name']} for r in compatible_rams[:3]]
                 })
 
-        # 3. PSU Check (Capacity)
+        # 3. PSU Check (Capacity, Quality, & Form Factor)
         power_analysis = run_power_analysis(data)
-        if power_analysis.get('adequacy_status') == 'Insufficient':
-            rec_wattage = power_analysis.get('recommended_wattage', 600)
-            target_wattage = rec_wattage + 100
-            psus = list(db.components.find({'category': 'psu'}).limit(1000))
+        psu_status = power_analysis.get('adequacy_status')
+        rec_wattage = power_analysis.get('recommended_wattage', 600)
+        target_wattage = rec_wattage + 100
+        
+        # Check Case PSU support (SFX vs ATX)
+        case_name = normalize(case.get('name')) if case else ""
+        needs_sfx = 'MINI' in case_name or 'ITX' in case_name or 'SFX' in case_name
+        
+        if psu_status == 'Insufficient':
+            psus = list(db.components.find({'category': 'psu', 'status': {'$ne': 'Deprecated'}}).limit(500))
             beefy_psus = []
             for p in psus:
                 wattage_str = str(p.get('wattage') or p.get('power', '0'))
-                import re
                 nums = re.findall(r'\d+', wattage_str)
                 w = int(nums[0]) if nums else 0
+                pt = get_comp_tier(p)
+                p_name = normalize(p.get('name'))
+                
+                # Filter for SFX if needed
+                if needs_sfx and ('SFX' not in p_name and 'SF-L' not in p_name):
+                    continue
+                
                 if w >= target_wattage:
-                    beefy_psus.append({'id': str(p['_id']), 'name': p.get('name')})
+                    beefy_psus.append({'id': str(p['_id']), 'name': p.get('name'), 'dist': abs(pt - system_tier)})
             
             if beefy_psus:
+                beefy_psus.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'psu',
-                    'title': f'Higher Wattage PSU ({target_wattage}W+)',
-                    'reason': f'Current build estimated draw ({power_analysis.get("total_base_wattage")}W) exceeds your PSU capacity.',
-                    'options': random.sample(beefy_psus, min(3, len(beefy_psus)))
+                    'title': f'Higher Capacity PSU ({target_wattage}W+)',
+                    'reason': f'Build estimated draw ({power_analysis.get("total_base_wattage")}W) exceeds current PSU capacity. {"SFX PSU required for your case." if needs_sfx else ""}',
+                    'options': [{'id': p['id'], 'name': p['name']} for p in beefy_psus[:3]]
+                })
+
+        # 4. Resolve Missing Components (Tier-Matched)
+        critical_slots = {
+            'cpu_id': 'cpu', 'gpu_id': 'gpu', 'motherboard_id': 'motherboard', 
+            'ram_id': 'ram', 'storage_id': 'storage', 'psu_id': 'psu', 'case_id': 'case'
+        }
+        
+        for key, cat in critical_slots.items():
+            if not data.get(key) or data.get(key) == "None Selected":
+                if cat == 'gpu' and cpu:
+                    c_name = normalize(cpu.get('name'))
+                    if not ('-F' in c_name or ('RYZEN' in c_name and 'G' not in c_name and '7000' not in c_name and '9000' not in c_name)):
+                        continue 
+
+                items = list(db.components.find({'category': cat, 'status': {'$ne': 'Deprecated'}}).limit(500))
+                matches = []
+                for i in items:
+                    it = get_comp_tier(i)
+                    matches.append({'id': str(i['_id']), 'name': i.get('name'), 'dist': abs(it - system_tier)})
+                
+                if matches:
+                    matches.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': cat.replace('_adapters', ''),
+                        'title': f'Add {cat.upper().replace("_", " ")}',
+                        'reason': f'Professional recommendation for your component tier.',
+                        'options': [{'id': m['id'], 'name': m['name']} for m in matches[:3]]
+                    })
+
+        # 5. Clearance Resolution (GPU/Cooler Length/Height)
+        if case:
+            c_g_max = parse_dimension_mm(case, ['max_video_card_length', 'video_card_max_length', 'gpu_clearance'])
+            c_c_max = parse_dimension_mm(case, ['max_cpucooler_height', 'cpu_cooler_clearance', 'cooler_clearance'])
+            
+            if gpu:
+                g_len = parse_dimension_mm(gpu, ['length', 'video_card_length', 'gpu_length'])
+                if g_len > 0 and c_g_max > 0 and g_len > c_g_max:
+                    # Suggest a larger case
+                    cases = list(db.components.find({'category': 'case', 'status': {'$ne': 'Deprecated'}}).limit(300))
+                    fitting_cases = []
+                    for c in cases:
+                        if parse_dimension_mm(c, ['max_video_card_length', 'video_card_max_length']) >= g_len:
+                            fitting_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                    
+                    if fitting_cases:
+                        fitting_cases.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'case',
+                            'title': 'Larger Case for GPU Clearance',
+                            'reason': f'Selected card ({int(g_len)}mm) exceeds current case limit ({int(c_g_max)}mm).',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in fitting_cases[:3]]
+                        })
+
+            if cooler and cooler != "None Selected":
+                c_height = parse_dimension_mm(cooler, ['height', 'cooler_height'])
+                if c_height > 0 and c_c_max > 0 and c_height > c_c_max:
+                    # Suggest a larger case OR a shorter cooler
+                    coolers = list(db.components.find({'category': 'cooler', 'status': {'$ne': 'Deprecated'}}).limit(300))
+                    fitting_coolers = []
+                    for co in coolers:
+                        if parse_dimension_mm(co, ['height', 'cooler_height']) <= c_c_max:
+                            fitting_coolers.append({'id': str(co['_id']), 'name': co.get('name'), 'dist': abs(get_comp_tier(co) - system_tier)})
+                    
+                    if fitting_coolers:
+                        fitting_coolers.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'cooler',
+                            'title': 'Shorter CPU Cooler',
+                            'reason': f'Current cooler ({int(c_height)}mm) is too tall for case ({int(c_c_max)}mm).',
+                            'options': [{'id': co['id'], 'name': co['name']} for co in fitting_coolers[:3]]
+                        })
+
+        # 6. Memory Slot Resolution
+        if ram and mobo:
+            sticks = parse_ram_stick_count(ram)
+            slots = infer_mobo_ram_slots(mobo)
+            if sticks > slots:
+                # Suggest a board with more slots
+                mobos = list(db.components.find({'category': 'motherboard', 'status': {'$ne': 'Deprecated'}}).limit(300))
+                matching_mobos = []
+                for m in mobos:
+                    if infer_mobo_ram_slots(m) >= sticks and (not cpu_sock or cpu_sock in [s.strip() for s in infer_mobo_socket(m).split('/')]):
+                        matching_mobos.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                
+                if matching_mobos:
+                    matching_mobos.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'motherboard',
+                        'title': f'Motherboard with {sticks}+ DIMM Slots',
+                        'reason': f'Selected memory kit has {sticks} sticks, but motherboard only has {slots} slots.',
+                        'options': [{'id': m['id'], 'name': m['name']} for m in matching_mobos[:3]]
+                    })
+
+        # Logic-based recommendations (TDP & Cooling)
+        cpu_tdp = 0
+        if cpu:
+            tdp_str = str(cpu.get('tdp', '0'))
+            nums = re.findall(r'\d+', tdp_str)
+            cpu_tdp = int(nums[0]) if nums else 0
+
+        # Cooler Check (Socket & TDP)
+        if cpu_sock and (not data.get('cooler_id') or data.get('cooler_id') == "None Selected"):
+            if cpu_tdp > 65:
+                # Filter for coolers that support the socket
+                coolers = list(db.components.find({'category': 'cooler'}).limit(300))
+                matching_coolers = []
+                for c in coolers:
+                    cs = infer_cooler_socket_support(c)
+                    ct = get_comp_tier(c)
+                    if not cs or cpu_sock in cs:
+                        matching_coolers.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(ct - system_tier)})
+                
+                if matching_coolers:
+                    matching_coolers.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'cooler',
+                        'title': f'Compatible {cpu_sock} Cooler',
+                        'reason': 'Recommended for stable thermals with your processor.',
+                        'options': [{'id': c['id'], 'name': c['name']} for c in matching_coolers[:3]]
+                    })
+
+        # WiFi Redundancy
+        wifi_adapter = get_comp(data.get('wifi_id'))
+        if mobo and wifi_adapter:
+            m_feat = normalize(mobo.get('features') or "")
+            if 'WIFI' in normalize(mobo.get('name')) or 'WIFI' in m_feat:
+                suggestions.append({
+                    'category': 'wifi',
+                    'title': 'Remove Redundant WiFi',
+                    'reason': 'Motherboard already includes WiFi. You can remove this to reduce cost.',
+                    'options': [{'id': 'None Selected', 'name': 'Remove Adapter (Save Cost)'}]
                 })
 
         return jsonify({
@@ -1897,24 +2058,85 @@ def infer_cpu_socket(doc):
     
     # 3. Name Heuristics
     name = normalize(doc.get('name'))
+    
+    # AMD Heuristics
     if 'RYZEN' in name:
         if any(x in name for x in ['7600', '7700', '7800', '7900', '7950', '9600', '9700', '9800', '9900', '9950']): return 'AM5'
+        if 'THREADRIPPER' in name:
+            if any(x in name for x in ['79', '78']): return 'STR5'
+            if any(x in name for x in ['39', '29']): return 'STRX4'
+            return 'TR4'
         return 'AM4'
+    
+    if 'ATHLON' in name or 'SEMPRON' in name:
+        if any(x in name for x in ['5350', '5150', '3850', '2650']): return 'AM1'
+        if 'X4' in name:
+            if any(x in name for x in ['950', '970']): return 'AM4'
+            if any(x in name for x in ['845', '860K', '870K', '880K']): return 'FM2+'
+        if 'II' in name: return 'AM3'
+        return 'AM1' if 'AM1' in name else None
+
+    if 'FX-' in name: return 'AM3+'
+    if 'A10-' in name or 'A8-' in name or 'A6-' in name or 'A4-' in name:
+        if any(x in name for x in ['7', '6', '5']): return 'FM2+'
+        return 'FM2'
+
+    # Intel Heuristics
     if 'CORE ULTRA' in name:
         return 'LGA1851'
-    if 'I9-' in name or 'I7-' in name or 'I5-' in name:
-        num_match = re.search(r'-(\d{2})', name)
+    if any(x in name for x in ['I9-', 'I7-', 'I5-', 'I3-', 'PENTIUM', 'CELERON']):
+        # Search for 4-5 digit model numbers
+        num_match = re.search(r'(\d{4,5})', name)
         if num_match:
-            gen = int(num_match.group(1))
-            if gen >= 12: return 'LGA1700'
-            if gen >= 10: return 'LGA1200'
-            if gen >= 6: return 'LGA1151'
+            model = int(num_match.group(1))
+            if model >= 12000: return 'LGA1700'
+            if model >= 10000: return 'LGA1200'
+            if model >= 8000: return 'LGA1151' # 8th/9th Gen
+            if model >= 6000: return 'LGA1151' # 6th/7th Gen
+            if model >= 4000: return 'LGA1150'
+            if model >= 2000: return 'LGA1155'
+        
+        # Generation specific tags
+        if '-14' in name or '-13' in name or '-12' in name: return 'LGA1700'
+        if '-11' in name or '-10' in name: return 'LGA1200'
+        if '-9' in name or '-8' in name: return 'LGA1151'
+        if '-7' in name or '-6' in name: return 'LGA1151'
+        if '-4' in name: return 'LGA1150'
+        if '-3' in name or '-2' in name: return 'LGA1155'
+        
     return None
 
 
 def infer_mobo_socket(doc):
-    s = normalize(doc.get('socket_cpu') or doc.get('socket') or doc.get('socket_type'))
-    if s: return s
+    # 1. Explicit field
+    s = normalize(doc.get('socket_cpu') or doc.get('socket') or doc.get('socket_type') or doc.get('chipset'))
+    if s:
+        if 'AM5' in s: return 'AM5'
+        if 'AM4' in s: return 'AM4'
+        if 'LGA1700' in s: return 'LGA1700'
+        if 'LGA1200' in s: return 'LGA1200'
+        if 'AM1' in s: return 'AM1'
+        if 'FM2+' in s: return 'FM2+'
+        return s
+    
+    # 2. Heuristic from Chipset/Name
+    name = normalize(doc.get('name'))
+    chipset = normalize(doc.get('chipset'))
+    combined = name + " " + chipset
+    
+    # AMD
+    if any(x in combined for x in ['X870', 'X670', 'B650', 'A620']): return 'AM5'
+    if any(x in combined for x in ['X570', 'B550', 'A520', 'X470', 'B450', 'B350', 'A320']): return 'AM4'
+    if any(x in combined for x in ['A88X', 'A78', 'A68H', 'A58']): return 'FM2+'
+    if 'AM1' in combined: return 'AM1'
+    
+    # Intel
+    if any(x in combined for x in ['Z890', 'B860']): return 'LGA1851'
+    if any(x in combined for x in ['Z790', 'B760', 'H770', 'Z690', 'B660', 'H610']): return 'LGA1700'
+    if any(x in combined for x in ['Z590', 'B560', 'H510', 'Z490', 'B460', 'H410']): return 'LGA1200'
+    if any(x in combined for x in ['Z390', 'Z370', 'B365', 'B360', 'H370', 'H310', 'Z270', 'Z170', 'B250', 'B150']): return 'LGA1151'
+    if any(x in combined for x in ['Z97', 'H97', 'Z87', 'H87', 'B85']): return 'LGA1150'
+    
     return None
 
 def infer_ram_generation(doc, is_mobo=False):
@@ -1942,6 +2164,8 @@ def infer_ram_generation(doc, is_mobo=False):
                 name = normalize(doc.get('name'))
                 if 'D5' in name or 'DDR5' in name: return 'DDR5'
                 return 'DDR4'
+            if 'AM1' in sock or 'FM2+' in sock or 'FM2' in sock or 'AM3+' in sock or 'AM3' in sock or 'LGA1150' in sock or 'LGA1155' in sock:
+                return 'DDR3'
             if 'AM4' in sock or 'LGA1200' in sock or 'LGA1151' in sock: return 'DDR4'
     return None
 
@@ -2013,6 +2237,112 @@ def infer_case_supported_form_factors(doc):
     
     return ['ATX', 'Micro ATX', 'Mini ITX'] # Default to common Mid Tower
 
+def infer_cooler_socket_support(doc):
+    """Parses supported sockets for a cooler from various fields."""
+    import re
+    val = normalize(doc.get('sockets') or doc.get('socket_support') or doc.get('socket') or doc.get('name'))
+    
+    # Common socket patterns
+    sockets = []
+    if 'AM5' in val: sockets.append('AM5')
+    if 'AM4' in val: sockets.append('AM4')
+    if 'LGA1700' in val or '1700' in val: sockets.append('LGA1700')
+    if 'LGA1200' in val or '1200' in val: sockets.append('LGA1200')
+    if '1151' in val or '1150' in val or '1155' in val: sockets.append('LGA1151'); sockets.append('LGA1150'); sockets.append('LGA1155')
+    if 'AM1' in val: sockets.append('AM1')
+    if 'FM2' in val: sockets.append('FM2'); sockets.append('FM2+')
+    if 'TR4' in val or 'STR4' in val: sockets.append('TR4'); sockets.append('STRX4')
+    
+    # If no sockets found but it's a "Universal" cooler
+    if not sockets and any(x in val for x in ['UNIVERSAL', 'MULTI-SOCKET', 'ALL-IN-ONE']):
+        return ['AM4', 'AM5', 'LGA1700', 'LGA1200']
+        
+    return sockets
+
+def parse_ram_stick_count(doc):
+    """Infers the number of sticks in a memory kit."""
+    import re
+    val = normalize(doc.get('name') or doc.get('capacity') or doc.get('modules') or "")
+    # Match "2 x 16GB", "Kit of 2", "2 sticks"
+    match = re.search(r'(\d+)\s*x\s*', val)
+    if match: return int(match.group(1))
+    match = re.search(r'kit of (\d+)', val)
+    if match: return int(match.group(1))
+    
+    # Heuristic: Dual channel kits often have even capacities
+    cap = parse_ram_capacity(doc)
+    if cap in [16, 32, 64, 128]: return 2 # Common safe assumption for kits
+    return 1
+
+def infer_mobo_ram_slots(doc):
+    """Infers the number of RAM slots on a motherboard."""
+    val = normalize(doc.get('memory_slots') or doc.get('ram_slots') or doc.get('name') or "")
+    if '4' in val: return 4
+    if '2' in val: return 2
+    if '8' in val: return 8
+    
+    # Form factor heuristic
+    ff = infer_mobo_form_factor(doc)
+    if ff == 'Mini ITX': return 2
+    return 4 # Default for ATX/mATX
+
+def infer_mobo_storage_slots(doc):
+    """Infers M.2 and SATA slot counts from motherboard data."""
+    val = normalize(doc.get('storage_slots') or doc.get('m2_slots') or doc.get('sata_slots') or doc.get('name') or "")
+    m2_count = 0
+    # Match "2x M.2" or "2 x M.2"
+    m2_match = re.search(r'(\d+)\s*x\s*m\.2', val)
+    if m2_match: m2_count = int(m2_match.group(1))
+    elif 'M.2' in val: m2_count = 1
+    
+    sata_count = 4 # Default
+    sata_match = re.search(r'(\d+)\s*x\s*sata', val)
+    if sata_match: sata_count = int(sata_match.group(1))
+    
+    return {'m2': m2_count, 'sata': sata_count}
+
+def get_comp_tier(doc):
+    """Estimates the 'Tier' of a component (1=Budget, 2=Mid, 3=Enthusiast)."""
+    if not doc: return 1
+    price = get_comp_price_usd(doc)
+    cat = normalize(doc.get('category'))
+    
+    if cat == 'CPU':
+        if price > 450: return 3
+        if price > 200: return 2
+        return 1
+    if cat == 'GPU':
+        if price > 700: return 3
+        if price > 350: return 2
+        return 1
+    if price > 200: return 3
+    if price > 100: return 2
+    return 1
+
+def parse_dimension_mm(doc, fields):
+    """Parses a millimeter dimension from a list of possible fields."""
+    import re
+    for field in fields:
+        val = doc.get(field)
+        if val is None: continue
+        val_str = str(val)
+        # Match '330mm', '330 mm', '330.5mm'
+        match = re.search(r'(\d+(?:\.\d+)?)\s*(?:mm|millimeters)', val_str, re.I)
+        if match:
+            return float(match.group(1))
+        # If it's a pure number, assume mm
+        try:
+            num = float(val_str)
+            if num > 0: return num
+        except: pass
+    
+    # Try searching the name as fallback
+    name = doc.get('name', '')
+    match = re.search(r'(\d+(?:\.\d+)?)\s*mm', name, re.I)
+    if match: return float(match.group(1))
+    
+    return 0.0
+
 def parse_ram_capacity(doc):
     """Parses total RAM capacity (in GB) from name or capacity field."""
     # 1. Check explicit capacity field
@@ -2040,7 +2370,6 @@ def run_validation_logic(data):
         def get_doc(oid):
             if not oid: return None
             try:
-                from bson.objectid import ObjectId
                 return db.components.find_one({'_id': ObjectId(oid)})
             except: return None
 
@@ -2059,7 +2388,7 @@ def run_validation_logic(data):
         if not cpu or not mobo or not ram:
              return {'status': 'Incomplete Selection', 'messages': ['Please select CPU, Motherboard, and RAM to perform validation.']}
 
-        # 2. CPU Socket Check
+        # 2. CPU Socket & BIOS advisory
         cpu_sock = infer_cpu_socket(cpu)
         mobo_sock = infer_mobo_socket(mobo)
         
@@ -2068,11 +2397,50 @@ def run_validation_logic(data):
             if cpu_sock not in mobo_sockets:
                 status = "Not Compatible"
                 messages.append(f"Socket Mismatch: {cpu.get('name')} ({cpu_sock}) does not fit {mobo.get('name')} ({mobo_sock}).")
-        elif not cpu_sock:
-            messages.append(f"Advisory: Could not verify CPU socket for {cpu.get('name')}.")
-            status = "Unknown" if status == "Compatible" else status
+            else:
+                # BIOS Update Advisory (PCPartPicker style)
+                m_name = normalize(mobo.get('name'))
+                c_name = normalize(cpu.get('name'))
+                if 'B450' in m_name and '5000' in c_name:
+                    messages.append("BIOS Advisory: Ryzen 5000 CPUs may require a BIOS update on B450 motherboards.")
+                if 'A320' in m_name and '3000' in c_name:
+                    messages.append("BIOS Advisory: Ryzen 3000 CPUs may require a BIOS update on A320 motherboards.")
+        
+        # 2.1 Physical Clearances
+        if case:
+            # GPU Length
+            if gpu:
+                g_len = parse_dimension_mm(gpu, ['length', 'video_card_length', 'gpu_length'])
+                c_g_max = parse_dimension_mm(case, ['max_video_card_length', 'video_card_max_length', 'gpu_clearance'])
+                if g_len > 0 and c_g_max > 0 and g_len > c_g_max:
+                    status = "Not Compatible"
+                    messages.append(f"Physical Clearance: {gpu.get('name')} ({int(g_len)}mm) is too long for the selected case (Max: {int(c_g_max)}mm).")
+            
+            # Cooler Height
+            if cooler and cooler != "None Selected":
+                c_height = parse_dimension_mm(cooler, ['height', 'cooler_height'])
+                c_c_max = parse_dimension_mm(case, ['max_cpucooler_height', 'cpu_cooler_clearance', 'cooler_clearance'])
+                if c_height > 0 and c_c_max > 0 and c_height > c_c_max:
+                    status = "Not Compatible"
+                    messages.append(f"Physical Clearance: {cooler.get('name')} ({int(c_height)}mm) is too tall for the selected case (Max: {int(c_c_max)}mm).")
+            
+            # PSU Length
+            if psu:
+                p_len = parse_dimension_mm(psu, ['length', 'psu_length'])
+                c_p_max = parse_dimension_mm(case, ['max_psu_length', 'psu_clearance'])
+                if p_len > 0 and c_p_max > 0 and p_len > c_p_max:
+                    messages.append(f"Advisory: {psu.get('name')} ({int(p_len)}mm) exceeds recommended PSU length for this case.")
+                    if status == "Compatible": status = "Borderline"
+                
+                # Modularity Check (PCPartPicker style for small cases)
+                c_name = normalize(case.get('name'))
+                if any(x in c_name for x in ['MINI', 'ITX', 'SMALL', 'SFF']):
+                    p_name = normalize(psu.get('name'))
+                    if 'MODULAR' not in p_name and 'SEMI' not in p_name:
+                        messages.append("Assembly Note: Using a non-modular PSU in a small form factor case may make cable management extremely difficult.")
+                        if status == "Compatible": status = "Borderline"
 
-        # 3. RAM Generation & Capacity Check
+        # 3. RAM Generation, Capacity, & Slot Check
         cpu_ram_gen = infer_ram_generation(ram, is_mobo=False)
         mobo_ram_gen = infer_ram_generation(mobo, is_mobo=True)
 
@@ -2080,6 +2448,14 @@ def run_validation_logic(data):
             status = "Not Compatible"
             messages.append(f"RAM Type Mismatch: Motherboard requires {mobo_ram_gen} but selected RAM is {cpu_ram_gen}.")
         
+        # RAM Slot Check
+        if ram and mobo:
+            sticks = parse_ram_stick_count(ram)
+            slots = infer_mobo_ram_slots(mobo)
+            if sticks > slots:
+                status = "Not Compatible"
+                messages.append(f"Memory Slot Conflict: Selected kit has {sticks} sticks, but motherboard only has {slots} slots.")
+
         # RAM Capacity Check
         ram_cap = parse_ram_capacity(ram)
         mobo_max_ram = mobo.get('max_ram') or mobo.get('max_memory')
@@ -2118,39 +2494,113 @@ def run_validation_logic(data):
                     if status == "Compatible": status = "Borderline"
                     messages.append(f"Missing Component: A PSU with at least {rec_w}W is recommended for this configuration.")
 
-        # 6. Storage & M.2 Check
+        # 6. Storage & Resource Sharing
         if storage and mobo:
             s_type = normalize(storage.get('type') or storage.get('form_factor') or storage.get('interface'))
             is_m2 = 'M.2' in s_type or 'NVME' in s_type
             mobo_slots = infer_mobo_storage_slots(mobo)
+            
             if is_m2 and mobo_slots['m2'] == 0:
                 status = "Not Compatible"
                 messages.append("Storage Mismatch: Selected M.2 drive, but motherboard has no M.2 slots.")
+            
+            # Resource Sharing Advisory (PCPartPicker style)
+            m_name = normalize(mobo.get('name'))
+            if is_m2 and any(x in m_name for x in ['B450', 'B550', 'H610', 'H410']):
+                messages.append("Resource Advisory: Using the M.2 slot may disable one or more SATA 6.0 Gb/s ports on this chipset.")
+                if status == "Compatible": status = "Borderline"
 
-        # 7. Cooling Advisory
+        # 7. Cooler Compatibility & TDP Check
         if cpu:
             tdp = cpu.get('tdp', 0)
             if isinstance(tdp, str):
                 import re
                 nums = re.findall(r'\d+', tdp)
                 tdp = int(nums[0]) if nums else 0
-            
-            if tdp > 125:
-                if not cooler or cooler == "None Selected":
-                    messages.append("Thermal Warning: High-TDP CPU selected. Aftermarket cooling is required but not selected.")
-                    if status == "Compatible": status = "Borderline"
-                else:
-                    c_name = normalize(cooler.get('name'))
-                    c_type = normalize(cooler.get('type'))
-                    if 'LIQUID' not in c_name and 'AIO' not in c_name and 'LIQUID' not in c_type and tdp > 180:
-                        messages.append("Thermal Advisory: Extreme power CPU. Ensure your air cooler is high-performance or consider liquid cooling.")
 
-        # 8. Component Completion Check
-        critical_slots = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'psu_id', 'case_id']
-        missing = [s.replace('_id','').upper() for s in critical_slots if not data.get(s) or data.get(s) == "None Selected"]
-        if missing:
-             messages.append(f"Incomplete Build: Missing {', '.join(missing)}. System cannot be assembled without these.")
+            if cooler and cooler != "None Selected":
+                c_sock_support = infer_cooler_socket_support(cooler)
+                if cpu_sock and c_sock_support and cpu_sock not in c_sock_support:
+                    status = "Not Compatible"
+                    messages.append(f"Cooling Mismatch: {cooler.get('name')} does not officially support {cpu_sock} sockets.")
+                
+                c_name = normalize(cooler.get('name'))
+                c_type = normalize(cooler.get('type'))
+                if 'LIQUID' not in c_name and 'AIO' not in c_name and 'LIQUID' not in c_type:
+                    if tdp > 180:
+                        messages.append("Thermal Warning: High-power CPU detected. Air cooling may struggle; a 240mm+ AIO is recommended.")
+                        if status == "Compatible": status = "Borderline"
+                
+            # Radiator Support Check (AIO Only)
+            if cooler and cooler != "None Selected" and case:
+                c_name = normalize(cooler.get('name'))
+                ca_name = normalize(case.get('name'))
+                rad_match = re.search(r'(120|140|240|280|360|420)\s*(?:mm)?', c_name)
+                if rad_match and ('LIQUID' in c_name or 'AIO' in c_name):
+                    rad_size = int(rad_match.group(1))
+                    # Check if case supports this size
+                    if rad_size > 280 and any(x in ca_name for x in ['MINI', 'ITX', 'H210']):
+                         messages.append(f"Radiator Alert: Cases like {case.get('name')} may not support {rad_size}mm radiators. Verify mounting points.")
+                         if status == "Compatible": status = "Borderline"
+                    elif rad_size > 360:
+                         messages.append(f"Radiator Alert: {rad_size}mm rads require large enthusiast cases. Verify compatibility.")
+                         if status == "Compatible": status = "Borderline"
+            elif tdp > 105 and (not cooler or cooler == "None Selected"):
+                status = "Not Compatible"
+                messages.append("Cooling Missing: High-TDP processor selects requires aftermarket cooling for operation.")
+
+        # 8. Component Completion Check (Expanded for all 22 slots)
+        critical_slots = ['cpu_id', 'motherboard_id', 'ram_id', 'psu_id', 'case_id', 'storage_id']
+        missing_crit = [s.replace('_id','').upper() for s in critical_slots if not data.get(s) or data.get(s) == "None Selected"]
+        
+        # Check if integrated graphics exist, else GPU is critical
+        has_igpu = False
+        if cpu:
+            c_name = normalize(cpu.get('name'))
+            # Intel F-series and AMD non-G series (or specific chips) lack iGPU
+            if 'INTEL' in c_name and '-F' in c_name: has_igpu = False
+            elif 'RYZEN' in c_name and 'G' not in c_name and '7000' not in c_name and '9000' not in c_name: has_igpu = False # Zen 4+ has iGPU usually
+            else: has_igpu = True
+            
+        if not has_igpu and (not data.get('gpu_id') or data.get('gpu_id') == "None Selected"):
+            missing_crit.append("GPU (Required for Display)")
+
+        if missing_crit:
+             messages.append(f"Incomplete Build: Missing {', '.join(missing_crit)}. System cannot be assembled or booted without these.")
              if status == "Compatible": status = "Borderline"
+
+        # 9. Eco & Utility Advisories
+        wifi_id = data.get('wifi_id')
+        if wifi_id and wifi_id != "None Selected" and mobo:
+            m_name = normalize(mobo.get('name'))
+            if 'WIFI' in m_name:
+                messages.append(f"Advisory: {mobo.get('name')} already has built-in WiFi. The selected WiFi adapter may be redundant.")
+        
+        ups_id = data.get('ups_id')
+        if ups_id and ups_id != "None Selected":
+             # Basic UPS wattage check if data available
+             ups = get_component_by_id(ups_id)
+             if ups:
+                ups_w = ups.get('wattage') or ups.get('power') or 0
+                if isinstance(ups_w, str):
+                    try: ups_w = int(re.findall(r'\d+', ups_w)[0])
+                    except: ups_w = 0
+                
+                p_res = run_power_analysis(data)
+                draw = p_res.get('total_base_wattage', 0)
+                if ups_w > 0 and ups_w < draw:
+                    messages.append(f"UPS Alert: UPS capacity ({ups_w}W) is lower than your system draw ({draw}W).")
+                    if status == "Compatible": status = "Borderline"
+
+        # 10. Assembly Prep
+        if not data.get('thermal_paste_id') or data.get('thermal_paste_id') == "None Selected":
+            if cpu and cpu.get('tdp', 0) and int(str(cpu.get('tdp', 0)).replace('W','').strip()) > 100:
+                messages.append("Assembly Note: High-performance thermal paste recommended for this CPU.")
+        
+        if not data.get('tool_id') or data.get('tool_id') == "None Selected":
+            diff = calculate_build_difficulty(data)
+            if diff['level'] == 'Advanced':
+                messages.append("Advisory: This is an advanced build. Ensure you have the necessary precision tools.")
 
         if not messages and status == "Compatible":
             messages.append("Systems check: All selected components are compatible!")
@@ -3047,11 +3497,36 @@ def order_components():
                         
                         is_genuine = any(rep.lower() in source.lower() for rep in reputable_sources)
                         
-                        extracted = res.get('extracted_price')
-                        if isinstance(extracted, (int, float)):
-                            display_price = format_price(extracted)
-                        else:
-                            display_price = res.get('price', '')
+                        # IMPORTANT: SerpAPI prices come in LOCAL CURRENCY based on geography or query.
+                        # format_price() expects values in USD. We must normalize to USD first.
+                        extracted_val = res.get('extracted_price')
+                        price_str = res.get('price', '')
+                        normalized_usd = 0.0
+                        
+                        try:
+                            if isinstance(extracted_val, (int, float)):
+                                # If we have a raw number, we still need to know its currency.
+                                # Check the price string symbol.
+                                cur_code = 'USD' # default
+                                for code, sym in CURRENCY_SYMBOLS.items():
+                                    if sym and sym in price_str and (sym != '$' or code == 'USD'):
+                                        cur_code = code
+                                        break
+                                normalized_usd = float(extracted_val) / EXCHANGE_RATES.get(cur_code, 1.0)
+                            elif price_str:
+                                # Manual extraction and normalization
+                                p_clean = re.sub(r'[^\d.]', '', price_str.replace(',', ''))
+                                if p_clean:
+                                    cur_code = 'USD'
+                                    for code, sym in CURRENCY_SYMBOLS.items():
+                                        if sym and sym in price_str and (sym != '$' or code == 'USD'):
+                                            cur_code = code
+                                            break
+                                    normalized_usd = float(p_clean) / EXCHANGE_RATES.get(cur_code, 1.0)
+                        except:
+                            normalized_usd = 0.0
+
+                        display_price = format_price(normalized_usd) if normalized_usd > 0 else price_str
                             
                         if is_genuine or (rating >= 4.0 and reviews >= 10):
                             filtered_listings.append({
@@ -3073,11 +3548,31 @@ def order_components():
                     # Fallback to standard if none met criteria
                     if not listings:
                         for res in shopping_results[:3]:
-                            extracted = res.get('extracted_price')
-                            if isinstance(extracted, (int, float)):
-                                display_price = format_price(extracted)
-                            else:
-                                display_price = res.get('price', '')
+                            extracted_val = res.get('extracted_price')
+                            price_str = res.get('price', '')
+                            normalized_usd = 0.0
+                            
+                            try:
+                                if isinstance(extracted_val, (int, float)):
+                                    cur_code = 'USD'
+                                    for code, sym in CURRENCY_SYMBOLS.items():
+                                        if sym and sym in price_str and (sym != '$' or code == 'USD'):
+                                            cur_code = code
+                                            break
+                                    normalized_usd = float(extracted_val) / EXCHANGE_RATES.get(cur_code, 1.0)
+                                elif price_str:
+                                    p_clean = re.sub(r'[^\d.]', '', price_str.replace(',', ''))
+                                    if p_clean:
+                                        cur_code = 'USD'
+                                        for code, sym in CURRENCY_SYMBOLS.items():
+                                            if sym and sym in price_str and (sym != '$' or code == 'USD'):
+                                                cur_code = code
+                                                break
+                                        normalized_usd = float(p_clean) / EXCHANGE_RATES.get(cur_code, 1.0)
+                            except:
+                                normalized_usd = 0.0
+
+                            display_price = format_price(normalized_usd) if normalized_usd > 0 else price_str
                                 
                             listings.append({
                                 'title': res.get('title'),
