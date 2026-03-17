@@ -211,16 +211,18 @@
                     </div>
                 </div>
 
-                <div style="display: grid; gap: 1rem; flex-grow: 1; margin-bottom: 2.5rem;">
-                    {% for cat, name in build.components.items() %}
-                    <div
-                        style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                        <span
-                            style="color: var(--primary-light); font-weight: 700; font-size: 0.75rem; text-transform: uppercase;">{{
-                            cat }}</span>
-                        <span style="font-size: 0.95rem; text-align: right; max-width: 70%;">{{ name }}</span>
+                 <div id="components-{{ build.id }}" style="display: none; flex-grow: 1; margin-bottom: 2.5rem; max-height: 400px; overflow-y: auto; padding-right: 1rem;">
+                    <div style="display: block; gap: 1rem;">
+                        {% for cat, name in build.components.items() %}
+                        <div
+                            style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                            <span
+                                style="color: var(--primary-light); font-weight: 700; font-size: 0.75rem; text-transform: uppercase;">{{
+                                cat }}</span>
+                            <span style="font-size: 0.95rem; text-align: right; max-width: 70%;">{{ name }}</span>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
 
                     {% if build.project_total and '0' not in build.project_total or build.project_total|length > 3 %}
                     <div
@@ -236,7 +238,7 @@
 
 
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
                     <a href="{{ url_for('builder') }}?build_id={{ build.id }}" class="btn btn-secondary"
                         style="text-align: center;">View in Builder</a>
                     <button class="btn btn-primary" onclick="orderComponents('{{ build.id }}')">Order
@@ -249,9 +251,11 @@
                         style="border-color: var(--accent); color: var(--accent);">
                         💰 Resale Predictor
                     </button>
-
-
                 </div>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <button class="btn btn-secondary" onclick="toggleComponents('{{ build.id }}')">Show Details</button>
+                </div>
+
 
             </div>
             {% endfor %}
@@ -388,6 +392,18 @@
             const modal = document.getElementById('shopping-modal');
             if (event.target == modal) {
                 closeModal();
+            }
+        }
+
+        function toggleComponents(buildId) {
+            const components = document.getElementById(`components-${buildId}`);
+            const button = event.target;
+            if (components.style.display === 'none') {
+                components.style.display = 'block';
+                button.textContent = 'Hide Details';
+            } else {
+                components.style.display = 'none';
+                button.textContent = 'Show Details';
             }
         }
 
