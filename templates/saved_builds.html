@@ -436,14 +436,23 @@
                             const card = document.createElement('div');
                             card.className = 'shopping-card';
 
-                            card.innerHTML = `
-                                <div class="comp-category">${item.category}</div>
-                                <div class="listing-title">${listing.title}</div>
-                                <div class="listing-price">${listing.price || 'N/A'}</div>
-                                <div class="listing-source">${listing.source || ''}</div>
-                                ${listing.rating ? `<div class="listing-rating" style="color: #fbbf24; margin-bottom: 0.5rem;">★ ${listing.rating}</div>` : ''}
-                                <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem; text-decoration: none; text-align: center;">Buy Now</a>
-                            `;
+                                // Defensive UI cleanup for fallbacks
+                                let displayTitle = listing.title || 'Unknown';
+                                if (displayTitle.startsWith('Search: ')) displayTitle = displayTitle.replace('Search: ', '');
+                                
+                                // User requested ONLY "Market Search" - hide specific retailer names
+                                let displaySource = 'Market Search'; 
+                                
+                                let hideRating = true; // Hide ratings as requested
+
+                                card.innerHTML = `
+                                    <div class="comp-category">${item.category}</div>
+                                    <div class="listing-title">${displayTitle}</div>
+                                    <div class="listing-price">${listing.price || 'N/A'}</div>
+                                    <div class="listing-source">${displaySource}</div>
+                                    ${!hideRating ? `<div class="listing-rating" style="color: #fbbf24; margin-bottom: 0.5rem;">★ ${listing.rating}</div>` : ''}
+                                    <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem; text-decoration: none; text-align: center;">Buy Now</a>
+                                `;
                             resultsContainer.appendChild(card);
                         });
                     });

@@ -807,16 +807,22 @@
                             const card = document.createElement('div');
                             card.className = 'shopping-card';
 
+                            let displayTitle = listing.title || 'Unknown';
+                            if (displayTitle.startsWith('Search: ')) displayTitle = displayTitle.replace('Search: ', '');
+                            
+                            // Only "Market Search" required
+                            let displaySource = 'Market Search';
+
                             card.innerHTML = `
-    <div class="comp-category">${item.category}</div>
-    ${listing.is_verified ? '<div class="verified-badge"><i class="bi bi-patch-check-fill"></i> Verified Purchase Link</div>' : ''}
-    <div class="listing-title">${listing.title}</div>
-    <div class="listing-price" style="color: ${listing.is_verified ? '#10b981' : 'white'}">${listing.price || 'N/A'}</div>
-    <div class="listing-source">${listing.source || ''}</div>
-    <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem; background: ${listing.is_verified ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : ''}">
-        ${listing.is_verified ? 'Buy Verified' : 'Buy Now'}
-    </a>
-    `;
+                                <div class="comp-category">${item.category}</div>
+                                ${listing.is_verified ? '<div class="verified-badge"><i class="bi bi-patch-check-fill"></i> Verified Purchase Link</div>' : ''}
+                                <div class="listing-title">${displayTitle}</div>
+                                <div class="listing-price" style="color: ${listing.is_verified ? '#10b981' : 'white'}">${listing.price || 'N/A'}</div>
+                                <div class="listing-source">${displaySource}</div>
+                                <a href="${listing.link}" target="_blank" class="btn btn-primary" style="margin-top: auto; padding: 0.5rem; background: ${listing.is_verified ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : ''}">
+                                    ${listing.is_verified ? 'Buy Verified' : 'Buy Now'}
+                                </a>
+                            `;
                             resultsContainer.appendChild(card);
                         });
                     });

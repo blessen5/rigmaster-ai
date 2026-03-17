@@ -33,7 +33,12 @@ from price_fetcher import get_price_fetcher
 
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key_rigmaster_8822')
+_secret = os.getenv('SECRET_KEY')
+if not _secret:
+    import secrets
+    _secret = secrets.token_hex(32)
+    app.logger.warning("SECRET_KEY not set in environment — using a random key. Sessions will not survive restarts.")
+app.secret_key = _secret
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
 
 DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'deepseek')
@@ -308,7 +313,11 @@ def set_currency():
 
 
 # MongoDB configuration
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://rigmaster_user:MMdm2NPf8J737U8D@cluster0.99f5zmr.mongodb.net/rigmaster?retryWrites=true&w=majority&appName=Cluster0')
+MONGO_URI = os.getenv('MONGO_URI')
+if not MONGO_URI:
+    # Fallback only for local development — set MONGO_URI in production!
+    MONGO_URI = 'mongodb://localhost:27017/rigmaster'
+    app.logger.warning("MONGO_URI not set — connecting to localhost. Set it in your .env for production.")
 _mongo_client = None
 
 def get_db():
@@ -359,16 +368,53 @@ db = get_db()
 _last_db_retry = 0
 DB_RETRY_INTERVAL = 30  # Only retry connection every 30 seconds
 
+def _ensure_indexes():
+    """Create MongoDB indexes on startup for performance. Safe to re-run (idempotent)."""
+    if db is None:
+        return
+    try:
+        # Speed up category/name lookups (used heavily by component selects + AI pool)
+        db.components.create_index([("category", 1), ("name", 1)], background=True)
+        db.components.create_index([("category", 1), ("sub_category", 1)], background=True)
+        
+        # Make shopping cache lookups unique and fast
+        db.shopping_cache.create_index("query", unique=True, background=True)
+        
+        # Auto-delete expired shopping cache entries (TTL index)
+        db.shopping_cache.create_index("expires_at", expireAfterSeconds=0, background=True)
+
+        # Speed up saved build lookups per user
+        db.saved_builds.create_index([("user_id", 1), ("created_at", -1)], background=True)
+        
+        # Speed up AI recommendation cache lookups
+        db.ai_cache.create_index("cache_key", unique=True, background=True)
+        
+        app.logger.info("MongoDB indexes verified/created.")
+    except Exception as e:
+        app.logger.warning(f"Could not create indexes: {e}")
+
+_ensure_indexes()
+
+# AI key sync throttling — avoid hitting DB on every request
+_last_key_sync = 0.0
+_KEY_SYNC_INTERVAL = 60  # seconds
+
 @app.before_request
 def ensure_db():
     global db, _last_db_retry
     if db is None:
-        import time
         now = time.time()
         if now - _last_db_retry > DB_RETRY_INTERVAL:
             _last_db_retry = now
             db = get_db()
     
+    # Sync API keys from DB to AI Engine — throttled to once every 60 seconds
+    global _last_key_sync
+    now = time.time()
+    if now - _last_key_sync < _KEY_SYNC_INTERVAL:
+        return  # Skip sync, not due yet
+    _last_key_sync = now
+
     # Dynamically sync API keys from Database to AI Engine
     try:
         from ai_engine import get_ai_engine
@@ -3640,9 +3686,9 @@ def order_components():
                             listings.append({
                                 'title': res.get('title'),
                                 'price': display_price,
-                                'source': res.get('source'),
+                                'source': "Market Search", # Overwrite specific retailers like Amazon/Newegg
                                 'link': res.get('link'),
-                                'rating': res.get('rating', '')
+                                'rating': 0 # Hide rating for consistency
                             })
                             
                 except Exception as e:
@@ -3674,11 +3720,11 @@ def order_components():
                 if not serpapi_key:
                     price_str = format_price(comp_price) if comp_price > 0 else "Price Unavailable"
                     listings = [{
-                        'title': f"Search: {comp.get('name')}",
+                        'title': comp.get('name'),
                         'price': price_str,
-                        'source': "Rigmaster Database",
+                        'source': comp.get('retailer', "Market Search"),
                         'link': f"https://www.google.com/search?q={search_path}&tbm=shop",
-                        'rating': 4.5
+                        'rating': 0
                     }]
                 else:
                     if comp_price > 0:

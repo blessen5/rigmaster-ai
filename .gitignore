@@ -87,6 +87,12 @@ verify_count.json
 cache_check.json
 resale_final_log.json
 group_sample.json
+*_samples*.json
+*_samples_large.json
+new_comp_schema.json
+comp_schema.json
+*.bat
+quick_download_models.ps1
 
 # Embedded git repos (don't commit these)
 chatbot_repo/
