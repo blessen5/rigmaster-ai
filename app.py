@@ -2633,7 +2633,14 @@ def api_ai_engine_recommend():
         try:
             # Helper to format component list with IDs
             def get_pool(query, limit=15):
-                return [f"ID:{str(c['_id'])}|{c['name']}" for c in db.components.find(query, {'_id': 1, 'name': 1}).limit(limit)]
+                components = []
+                for c in db.components.find(query, {'_id': 1, 'name': 1, 'price': 1}).limit(limit):
+                    price = c.get('price', 0)
+                    if price and price > 0:
+                        components.append(f"ID:{str(c['_id'])}|{c['name']}|${price:.0f}")
+                    else:
+                        components.append(f"ID:{str(c['_id'])}|{c['name']}")
+                return components
 
             component_pool['cpus'] = get_pool({'category': 'cpu'}, 20)
             component_pool['gpus'] = get_pool({'category': 'gpu'}, 20)
@@ -2666,12 +2673,14 @@ def api_ai_engine_recommend():
             component_pool = None
         
         # Get AI recommendation
+        user_currency = session.get('currency', 'USD')
         ai_engine = get_ai_engine()
         recommendation = ai_engine.get_pc_recommendation(
             budget=budget,
             use_case=use_case,
             preferences=preferences,
-            component_pool=component_pool
+            component_pool=component_pool,
+            user_currency=user_currency
         )
         
         # Try to match AI recommendations to actual database components
@@ -3813,7 +3822,8 @@ def api_ai_recommend():
             budget=f"{symbol}{int(raw_budget):,}",
             use_case=usage,
             preferences={"requirements": requirements, "currency": user_currency, "currency_symbol": symbol},
-            component_pool=engine_pool
+            component_pool=engine_pool,
+            user_currency=user_currency
         )
         ai_reasoning = None
         if recommendation:
