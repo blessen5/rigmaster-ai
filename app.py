@@ -1611,6 +1611,7 @@ def api_fix_compatibility():
         psu = get_comp(data.get('psu_id'))
         gpu = get_comp(data.get('gpu_id'))
         cooler = get_comp(data.get('cooler_id'))
+        storage = get_comp(data.get('storage_id'))
         
         if not cpu or not mobo or not ram:
             return jsonify({'suggestions': [], 'status': 'Incomplete Selection'})
