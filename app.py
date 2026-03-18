@@ -386,10 +386,14 @@ def _ensure_indexes():
         # Speed up saved build lookups per user
         db.saved_builds.create_index([("user_id", 1), ("created_at", -1)], background=True)
         
-        # Speed up AI recommendation cache lookups
-        db.ai_cache.create_index("cache_key", unique=True, background=True)
+        # Speed up AI recommendation cache lookups - MUST BE SPARSE to allow logging entries without cache keys
+        try:
+            # Drop old non-sparse index if it exists
+            db.ai_cache.drop_index("cache_key_1")
+        except: pass
+        db.ai_cache.create_index("cache_key", unique=True, sparse=True, background=True)
         
-        app.logger.info("MongoDB indexes verified/created.")
+        app.logger.info("MongoDB indexes verified/created (AI Cache Sparke/Unique).")
     except Exception as e:
         app.logger.warning(f"Could not create indexes: {e}")
 
