@@ -1924,6 +1924,315 @@ def api_fix_compatibility():
                         'options': [{'id': str(p['_id']), 'name': p.get('name')} for p in pastes[:3]]
                     })
 
+        # ===== ADVANCED SUGGESTION TIER =====
+        
+        # --- 10. CPU Power Delivery & Voltage Optimization ---
+        if cpu and mobo:
+            cpu_tdp = infer_cpu_tdp(cpu)
+            cpu_voltage = infer_cpu_voltage(cpu)
+            mobo_vrm = infer_mobo_vrm_phases(mobo)
+            
+            if cpu_tdp > 140 and mobo_vrm < 16:
+                # Suggest high-end motherboards with better VRM
+                try:
+                    cpu_socket = infer_cpu_socket(cpu)
+                    high_vrm_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
+                    vrm_matches = []
+                    for m in high_vrm_mobos:
+                        if cpu_socket and cpu_socket in [s.strip() for s in (infer_mobo_socket(m) or '').split('/')]:
+                            mobo_vrm_check = infer_mobo_vrm_phases(m)
+                            if mobo_vrm_check >= 16:
+                                vrm_matches.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                    if vrm_matches:
+                        vrm_matches.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'motherboard',
+                            'title': f'High-Power-Delivery Motherboard (16+ Phase VRM)',
+                            'reason': f'Your {int(cpu_tdp)}W CPU benefits from robust VRM; current board has only {mobo_vrm} phases.',
+                            'options': [{'id': m['id'], 'name': m['name']} for m in vrm_matches[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 11. GPU Performance & Power Optimization ---
+        if gpu and psu:
+            gpu_vram = infer_gpu_vram(gpu)
+            gpu_tdp = infer_gpu_tdp(gpu)
+            psu_wattage = extract_numeric_value(psu.get('wattage') or psu.get('power'))
+            gpu_bus = infer_gpu_bus_width(gpu)
+            
+            # Suggest better GPUs with more VRAM
+            if gpu_vram > 0 and gpu_vram <= 8:
+                try:
+                    all_gpus = list(db.components.find({'category': 'gpu'}).limit(300))
+                    better_gpus = []
+                    for g in all_gpus:
+                        g_vram = infer_gpu_vram(g)
+                        if g_vram > gpu_vram and psu_wattage > infer_gpu_tdp(g) * 1.5:
+                            better_gpus.append({'id': str(g['_id']), 'name': g.get('name'), 'dist': abs(get_comp_tier(g) - system_tier)})
+                    if better_gpus:
+                        better_gpus.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'gpu',
+                            'title': f'Upgrade GPU: {int(gpu_vram)}GB → {int(infer_gpu_vram(better_gpus[0]['name']))}GB+',
+                            'reason': f'Current GPU has {int(gpu_vram)}GB VRAM; system has power headroom for higher VRAM models.',
+                            'options': [{'id': g['id'], 'name': g['name']} for g in better_gpus[:3]]
+                        })
+                except Exception:
+                    pass
+            
+            # Suggest wider memory bus GPUs
+            if gpu_bus > 0 and gpu_bus < 256:
+                try:
+                    all_gpus = list(db.components.find({'category': 'gpu'}).limit(300))
+                    better_bus = []
+                    for g in all_gpus:
+                        g_bus = infer_gpu_bus_width(g)
+                        if g_bus >= 256 and get_comp_tier(g) <= get_comp_tier(gpu) + 1:
+                            better_bus.append({'id': str(g['_id']), 'name': g.get('name'), 'dist': abs(infer_gpu_bus_width(g) - 256)})
+                    if better_bus:
+                        better_bus.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'gpu',
+                            'title': f'Enhance GPU Memory Bus: {int(gpu_bus)}-bit → 256-bit+',
+                            'reason': f'Current GPU has {int(gpu_bus)}-bit bus; wider bus improves bandwidth and stability.',
+                            'options': [{'id': g['id'], 'name': g['name']} for g in better_bus[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 12. RAM Performance Optimization ---
+        if ram and mobo:
+            ram_speed = infer_ram_speed(ram)
+            ram_timing = infer_ram_timing(ram)
+            ram_voltage = infer_ram_voltage(ram)
+            ram_gen = infer_ram_generation(ram, is_mobo=False)
+            mobo_gen = infer_ram_generation(mobo, is_mobo=True)
+            
+            # Suggest faster RAM for same generation
+            if ram_speed > 0 and ram_speed < 5400 and ram_gen == mobo_gen:
+                try:
+                    all_ram = list(db.components.find({'category': 'ram'}).limit(300))
+                    faster_ram = []
+                    for r in all_ram:
+                        if infer_ram_generation(r, is_mobo=False) == ram_gen and infer_ram_speed(r) > ram_speed:
+                            faster_ram.append({'id': str(r['_id']), 'name': r.get('name'), 'dist': abs(get_comp_tier(r) - system_tier)})
+                    if faster_ram:
+                        faster_ram.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'ram',
+                            'title': f'Faster RAM: {int(ram_speed)}MHz → 5600MHz+',
+                            'reason': f'Upgrading RAM speed improves system responsiveness and gaming FPS. Current: {int(ram_speed)}MHz.',
+                            'options': [{'id': r['id'], 'name': r['name']} for r in faster_ram[:3]]
+                        })
+                except Exception:
+                    pass
+            
+            # Suggest lower-latency RAM
+            if ram_timing > 20 and ram_gen == 'DDR5':
+                try:
+                    all_ram = list(db.components.find({'category': 'ram'}).limit(250))
+                    tight_ram = []
+                    for r in all_ram:
+                        if infer_ram_generation(r, is_mobo=False) == 'DDR5' and infer_ram_timing(r) < ram_timing and infer_ram_timing(r) > 0:
+                            tight_ram.append({'id': str(r['_id']), 'name': r.get('name'), 'dist': abs(get_comp_tier(r) - system_tier)})
+                    if tight_ram:
+                        tight_ram.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'ram',
+                            'title': f'Tighter Timings: CL{int(ram_timing)} → CL16-18',
+                            'reason': f'Tighter CAS latency (CL{int(ram_timing)} → CL16-18) improves latency-sensitive workloads.',
+                            'options': [{'id': r['id'], 'name': r['name']} for r in tight_ram[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 13. Motherboard Connectivity & Feature Upgrades ---
+        if mobo:
+            mobo_usb = extract_usb_ports(mobo)
+            mobo_audio = infer_audio_codec(mobo)
+            mobo_pcie = infer_mobo_pcie_lanes(mobo)
+            
+            # Suggest boards with more USB ports
+            if mobo_usb['usb3'] < 4 or mobo_usb['type_c'] == 0:
+                try:
+                    mobo_socket = infer_mobo_socket(mobo)
+                    cpu_sock_match = infer_cpu_socket(cpu) if cpu else None
+                    upgraded_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
+                    better_usb = []
+                    for m in upgraded_mobos:
+                        if (not cpu_sock_match or cpu_sock_match in [s.strip() for s in (infer_mobo_socket(m) or '').split('/')]):
+                            m_usb = extract_usb_ports(m)
+                            if m_usb['usb3'] >= 6 or m_usb['type_c'] >= 2:
+                                better_usb.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                    if better_usb:
+                        better_usb.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'motherboard',
+                            'title': 'Enhanced Connectivity: USB 3.x + Type-C',
+                            'reason': f'Current board has {mobo_usb["usb3"]} USB 3.x + {mobo_usb["type_c"]} Type-C; upgrade for modern peripherals.',
+                            'options': [{'id': m['id'], 'name': m['name']} for m in better_usb[:3]]
+                        })
+                except Exception:
+                    pass
+            
+            # Suggest boards with better audio
+            if mobo_audio != 'High-End':
+                try:
+                    mobo_socket = infer_mobo_socket(mobo)
+                    cpu_sock_match = infer_cpu_socket(cpu) if cpu else None
+                    audio_upgrade = list(db.components.find({'category': 'motherboard'}).limit(300))
+                    better_audio = []
+                    for m in audio_upgrade:
+                        if (not cpu_sock_match or cpu_sock_match in [s.strip() for s in (infer_mobo_socket(m) or '').split('/')]):
+                            if infer_audio_codec(m) == 'High-End' and get_comp_tier(m) <= system_tier + 1:
+                                better_audio.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                    if better_audio:
+                        better_audio.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'motherboard',
+                            'title': 'High-End Audio Codec Upgrade',
+                            'reason': f'Current board: {mobo_audio}; upgrade to High-End codec for audiophile-grade sound.',
+                            'options': [{'id': m['id'], 'name': m['name']} for m in better_audio[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 14. Storage – NVMe Optimization ---
+        if storage:
+            storage_protocol = infer_storage_protocol(storage)
+            storage_interface = infer_storage_interface(storage)
+            
+            # Suggest PCIe 5.0 storage if on compatible system
+            if storage_interface == 'NVMe' and 'PCIe 4' in str(storage_protocol):
+                if mobo and mobo_pcie >= 20:
+                    try:
+                        all_storage = list(db.components.find({'category': 'storage'}).limit(200))
+                        pcie5_storage = []
+                        for s in all_storage:
+                            if 'PCIe 5' in infer_storage_protocol(s):
+                                pcie5_storage.append({'id': str(s['_id']), 'name': s.get('name'), 'dist': abs(get_comp_tier(s) - system_tier)})
+                        if pcie5_storage:
+                            pcie5_storage.sort(key=lambda x: x['dist'])
+                            suggestions.append({
+                                'category': 'storage',
+                                'title': 'PCIe 5.0 NVMe Storage Upgrade',
+                                'reason': 'Your system supports PCIe 5.0; upgrade to newest gen for future-proofing.',
+                                'options': [{'id': s['id'], 'name': s['name']} for s in pcie5_storage[:3]]
+                            })
+                    except Exception:
+                        pass
+        
+        # --- 15. Cooler TDP Rating & Performance ---
+        if cpu and cooler:
+            cpu_tdp = infer_cpu_tdp(cpu)
+            if cpu_tdp > 100:
+                try:
+                    cpu_sock_check = infer_cpu_socket(cpu)
+                    all_coolers = list(db.components.find({'category': 'cooler'}).limit(300))
+                    premium_coolers = []
+                    for c in all_coolers:
+                        c_sock = infer_cooler_socket_support(c)
+                        if cpu_sock_check and cpu_sock_check in c_sock:
+                            c_name = normalize(c.get('name', ''))
+                            if any(x in c_name for x in ['AIO', 'LIQUID', 'ELITE', 'DARK', 'NOCTUA']):
+                                premium_coolers.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                    if premium_coolers:
+                        premium_coolers.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'cooler',
+                            'title': f'Premium Cooling for {int(cpu_tdp)}W CPU',
+                            'reason': f'High-performance CPU ({int(cpu_tdp)}W) benefits from top-tier cooling solution.',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in premium_coolers[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 16. PSU Efficiency & Modularity ---
+        if psu:
+            psu_efficiency = infer_psu_efficiency_rating(psu)
+            psu_modularity = infer_psu_modularity(psu)
+            psu_wattage = extract_numeric_value(psu.get('wattage') or psu.get('power'))
+            
+            # Suggest higher efficiency
+            if psu_efficiency not in ['Platinum', 'Titanium'] and psu_wattage > 650:
+                try:
+                    all_psus = list(db.components.find({'category': 'psu'}).limit(200))
+                    efficient_psus = []
+                    for p in all_psus:
+                        p_watt = extract_numeric_value(p.get('wattage') or p.get('power'))
+                        if p_watt >= psu_wattage * 0.9 and infer_psu_efficiency_rating(p) in ['Platinum', 'Titanium']:
+                            efficient_psus.append({'id': str(p['_id']), 'name': p.get('name'), 'dist': abs(get_comp_tier(p) - system_tier)})
+                    if efficient_psus:
+                        efficient_psus.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'psu',
+                            'title': f'Upgrade to {infer_psu_efficiency_rating(efficient_psus[0]["name"])} Rated PSU',
+                            'reason': f'Platinum/Titanium PSU reduces power loss, heat, and electricity costs over time.',
+                            'options': [{'id': p['id'], 'name': p['name']} for p in efficient_psus[:3]]
+                        })
+                except Exception:
+                    pass
+            
+            # Suggest modular PSU
+            if psu_modularity == 'Non-Modular':
+                try:
+                    all_psus = list(db.components.find({'category': 'psu'}).limit(200))
+                    modular_psus = []
+                    for p in all_psus:
+                        p_watt = extract_numeric_value(p.get('wattage') or p.get('power'))
+                        if p_watt >= psu_wattage * 0.9 and infer_psu_modularity(p) in ['Fully Modular', 'Semi-Modular']:
+                            modular_psus.append({'id': str(p['_id']), 'name': p.get('name'), 'dist': abs(get_comp_tier(p) - system_tier)})
+                    if modular_psus:
+                        modular_psus.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'psu',
+                            'title': 'Modular/Semi-Modular PSU for Better Cable Management',
+                            'reason': 'Modular cables reduce clutter, improve airflow, and simplify future upgrades.',
+                            'options': [{'id': p['id'], 'name': p['name']} for p in modular_psus[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 17. Case Airflow & Thermal Optimization ---
+        if case and cpu:
+            cpu_tdp = infer_cpu_tdp(cpu)
+            case_airflow = infer_case_airflow_design(case)
+            if cpu_tdp > 100 and case_airflow == 'Standard':
+                try:
+                    all_cases = list(db.components.find({'category': 'case'}).limit(250))
+                    airflow_cases = []
+                    for c in all_cases:
+                        if infer_case_airflow_design(c) in ['Optimized Flow', 'Open-Frame']:
+                            airflow_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                    if airflow_cases:
+                        airflow_cases.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'case',
+                            'title': 'Optimized Airflow Case for High-Performance System',
+                            'reason': f'Your {int(cpu_tdp)}W system benefits from case with optimized airflow design.',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in airflow_cases[:3]]
+                        })
+                except Exception:
+                    pass
+        
+        # --- 18. Premium Thermal Paste for High-End Builds ---
+        if cpu and (not data.get('thermal_paste_id') or data.get('thermal_paste_id') == "None Selected"):
+            cpu_tdp = infer_cpu_tdp(cpu)
+            if cpu_tdp > 140:
+                try:
+                    premium_pastes = list(db.components.find({'category': 'thermal_paste'}).limit(15))
+                    if premium_pastes:
+                        paste_options = [{'id': str(p['_id']), 'name': p.get('name')} for p in premium_pastes]
+                        suggestions.append({
+                            'category': 'thermal_paste',
+                            'title': 'Ultra-Premium Thermal Paste (High-TDP System)',
+                            'reason': f'Your {int(cpu_tdp)}W CPU requires premium thermal interface for optimal heat transfer.',
+                            'options': paste_options[:3]
+                        })
+                except Exception:
+                    pass
+
         return jsonify({'status': 'success', 'suggestions': suggestions})
     except Exception as e:
         app.logger.error(f"Fix Error: {e}")
@@ -2527,6 +2836,327 @@ def parse_ram_capacity(doc):
     
     return 0.0
 
+# ============================================================================
+# ADVANCED COMPATIBILITY HELPERS (CPU, GPU, RAM, Mobo, Storage, PSU, Thermal)
+# ============================================================================
+
+def extract_numeric_value(text, pattern=r'(\d+(?:\.\d+)?)'):
+    """Extract the first numeric value from text."""
+    import re
+    if not text: return 0
+    match = re.search(pattern, str(text))
+    return float(match.group(1)) if match else 0
+
+def infer_cpu_tdp(doc):
+    """Extracts CPU TDP in watts."""
+    if not doc: return 0
+    for field in ['tdp', 'thermal_design_power', 'power_consumption', 'max_power']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return val
+    # Heuristic from name
+    name = normalize(doc.get('name', ''))
+    if 'HX' in name or 'KS' in name: return 140
+    if 'K' in name or 'X' in name: return 125
+    return 65
+
+def infer_cpu_voltage(doc):
+    """Extracts CPU core voltage specification."""
+    if not doc: return None
+    for field in ['voltage', 'core_voltage', 'vcore', 'default_voltage']:
+        val = doc.get(field)
+        if val:
+            val_str = str(val).strip()
+            if 'V' in val_str.upper():
+                try:
+                    return float(val_str.replace('V', '').strip())
+                except: pass
+    # Standard fallback based on socket
+    sock = infer_cpu_socket(doc)
+    if sock in ['LGA1700', 'AM5']: return 1.35
+    if sock in ['LGA1200', 'AM4']: return 1.20
+    return 1.10
+
+def infer_cpu_base_clock(doc):
+    """Extracts CPU base frequency in GHz."""
+    if not doc: return 0
+    for field in ['base_frequency', 'base_clock', 'clock_speed', 'frequency']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0:
+            return val / 1000 if val > 10 else val  # Handle MHz vs GHz
+    return 0
+
+def infer_cpu_boost_clock(doc):
+    """Extracts CPU max turbo frequency in GHz."""
+    if not doc: return 0
+    for field in ['boost_frequency', 'turbo_frequency', 'max_frequency', 'max_clock']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0:
+            return val / 1000 if val > 10 else val
+    return 0
+
+def infer_cpu_core_count(doc):
+    """Extracts number of CPU cores."""
+    if not doc: return 0
+    for field in ['cores', 'core_count', 'num_cores']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return int(val)
+    # Heuristic from name
+    name = normalize(doc.get('name', ''))
+    if 'HX45' in name: return 12
+    if 'HX' in name: return 8
+    return 0
+
+def infer_gpu_vram(doc):
+    """Extracts dedicated GPU VRAM in GB."""
+    if not doc: return 0
+    for field in ['vram', 'memory', 'memory_size', 'memory_gb']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return val
+    # Fallback to name parsing
+    name = normalize(doc.get('name', ''))
+    for size in [24, 12, 8, 6, 4, 3, 2, 1]:
+        if f'{size}GB' in name or f'{size}G ' in name:
+            return size
+    return 0
+
+def infer_gpu_bus_width(doc):
+    """Extracts GPU memory bus width in bits."""
+    if not doc: return 0
+    for field in ['bus_width', 'memory_bus', 'memory_interface', 'interface']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return int(val)
+    # Common patterns in name
+    name = str(doc.get('name', '')).upper()
+    if '384-bit' in name: return 384
+    if '256-bit' in name: return 256
+    if '192-bit' in name: return 192
+    if '128-bit' in name: return 128
+    return 0
+
+def infer_gpu_tdp(doc):
+    """Extracts GPU power consumption in watts."""
+    if not doc: return 0
+    for field in ['tdp', 'power_consumption', 'max_power', 'tgp']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return val
+    # Heuristic from VRAM and name
+    vram = infer_gpu_vram(doc)
+    name = normalize(doc.get('name', ''))
+    if 'RTX 4090' in name: return 450
+    if 'RTX 4080' in name: return 320
+    if 'RTX 4070' in name: return 200
+    if 'RTX 3080' in name: return 320
+    if any(x in name for x in ['RTX', 'RTX 4']): return max(min(vram * 20, 400), 100)
+    return 0
+
+def infer_ram_voltage(doc):
+    """Extracts RAM operating voltage."""
+    if not doc: return None
+    for field in ['voltage', 'operating_voltage', 'vram', 'default_voltage']:
+        val = doc.get(field)
+        if val:
+            val_str = str(val).strip()
+            if 'V' in val_str.upper():
+                try:
+                    return float(val_str.replace('V', '').strip())
+                except: pass
+    # Standard fallbacks
+    ram_type = infer_ram_generation(doc, is_mobo=False)
+    if ram_type == 'DDR5': return 1.25
+    if ram_type == 'DDR4': return 1.20
+    if ram_type == 'DDR3': return 1.50
+    return None
+
+def infer_ram_speed(doc):
+    """Extracts RAM speed in MHz."""
+    if not doc: return 0
+    for field in ['speed', 'frequency', 'mhz', 'clock_speed']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return val
+    # Parse from name patterns like "DDR5-6000"
+    name = normalize(doc.get('name', ''))
+    for pattern in ['DDR5-', 'DDR4-', 'DDR3-']:
+        if pattern in name:
+            idx = name.index(pattern) + len(pattern)
+            speed = extract_numeric_value(name[idx:idx+5])
+            if speed > 0: return speed
+    return 0
+
+def infer_ram_timing(doc):
+    """Extracts RAM CAS latency timing (CL value)."""
+    if not doc: return 0
+    for field in ['cas_latency', 'cl', 'latency', 'timing']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return int(val)
+    # Parse "CL20" or "20-26-26-46" patterns from name
+    name = str(doc.get('name', '')).upper()
+    if 'CL' in name:
+        cl_idx = name.index('CL') + 2
+        val = extract_numeric_value(name[cl_idx:cl_idx+3])
+        if val > 0: return int(val)
+    # Parse timing string like "20-26-26-46"
+    import re
+    timing_match = re.search(r'(\d+)-(\d+)-(\d+)-(\d+)', name)
+    if timing_match:
+        return int(timing_match.group(1))
+    return 0
+
+def infer_mobo_vrm_phases(doc):
+    """Estimates motherboard VRM phase count."""
+    if not doc: return 0
+    for field in ['vrm_phases', 'phases', 'power_phases', 'vrm']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return int(val)
+    # Heuristic from chipset/form factor
+    chipset = normalize(doc.get('chipset', ''))
+    name = normalize(doc.get('name', ''))
+    ff = infer_mobo_form_factor(doc)
+    
+    if 'X870' in chipset or 'X870' in name: return 18
+    if 'X870-E' in name: return 24
+    if 'X870-F' in name: return 20
+    if 'X670' in chipset or 'X670' in name:
+        return 16 if 'E' in name else 14
+    if 'B650' in chipset or 'B650' in name: return 12
+    if ff == 'Mini ITX': return 8
+    return 10
+
+def infer_mobo_pcie_lanes(doc):
+    """Estimates available PCIe lanes."""
+    if not doc: return 0
+    for field in ['pcie_lanes', 'lanes', 'pcie_gen4_lanes']:
+        val = extract_numeric_value(doc.get(field))
+        if val > 0: return int(val)
+    # Heuristic from chipset
+    chipset = normalize(doc.get('chipset', ''))
+    if 'AM5' in infer_mobo_socket(doc):
+        if 'X870' in chipset: return 24
+        if 'X670' in chipset: return 20
+        if 'B650' in chipset: return 18
+        return 16
+    if 'LGA1700' in infer_mobo_socket(doc):
+        if 'Z890' in chipset: return 28
+        if 'Z790' in chipset: return 28
+        return 20
+    return 16
+
+def infer_storage_interface(doc):
+    """Determines storage interface type."""
+    if not doc: return 'UNKNOWN'
+    val = normalize(doc.get('interface') or doc.get('type') or doc.get('name'))
+    if 'NVME' in val or 'M.2' in val: return 'NVMe'
+    if 'SATA' in val or 'SSD' in val: return 'SATA'
+    if 'HDD' in val: return 'HDD'
+    return 'UNKNOWN'
+
+def infer_storage_protocol(doc):
+    """Determines NVMe protocol (PCIe Gen, AHCI)."""
+    if not doc: return None
+    val = normalize(doc.get('protocol') or doc.get('interface') or doc.get('name'))
+    if 'PCIE 5' in val or 'PCIE5' in val or 'GEN5' in val: return 'NVMe PCIe 5.0'
+    if 'PCIE 4' in val or 'PCIE4' in val or 'GEN4' in val: return 'NVMe PCIe 4.0'
+    if 'PCIE 3' in val or 'PCIE3' in val or 'GEN3' in val: return 'NVMe PCIe 3.0'
+    if 'NVME' in val: return 'NVMe'
+    if 'SATA' in val: return 'SATA'
+    return None
+
+def infer_storage_raid_support(doc):
+    """Checks if storage device supports RAID configurations."""
+    if not doc: return False
+    val = normalize(doc.get('name') or doc.get('specs') or '')
+    interface = infer_storage_interface(doc)
+    # RAID primarily relevant for SATA
+    return 'ENTERPRISE' in val or 'RAID' in val or interface == 'HDD'
+
+def infer_psu_efficiency_rating(doc):
+    """Extracts PSU efficiency rating (80+, Gold, Platinum, etc)."""
+    if not doc: return '80+'
+    val = normalize(doc.get('efficiency') or doc.get('rating') or doc.get('name'))
+    if 'TITANIUM' in val: return 'Titanium'
+    if 'PLATINUM' in val: return 'Platinum'
+    if 'GOLD' in val: return 'Gold'
+    if 'SILVER' in val: return 'Silver'
+    return '80+'
+
+def infer_psu_modularity(doc):
+    """Determines PSU cable modularity."""
+    if not doc: return 'Non-Modular'
+    val = normalize(doc.get('modularity') or doc.get('type') or doc.get('name'))
+    if 'FULLY MODULAR' in val or 'FULL MODULAR' in val: return 'Fully Modular'
+    if 'SEMI MODULAR' in val: return 'Semi-Modular'
+    return 'Non-Modular'
+
+def infer_psu_connector_support(doc):
+    """Checks for PCIE 12V-2x6 (Gen5) support."""
+    if not doc: return 'ATX 3.0 Ready'
+    val = normalize(doc.get('pcie_connector') or doc.get('connectors') or doc.get('name'))
+    if '12V-2X6' in val or '12VHPWR' in val or 'ATX 3.0' in val:
+        return 'ATX 3.0 Ready (12V-2x6)'
+    return '12VAUX'
+
+def infer_case_airflow_design(doc):
+    """Determines case cooling design (ITX, ATX, Open, etc)."""
+    if not doc: return 'Standard'
+    val = normalize(doc.get('design') or doc.get('type') or doc.get('name'))
+    if 'OPEN' in val or 'OPEN-AIR' in val or 'BENCH' in val: return 'Open-Frame'
+    if 'OPTIMIZED' in val or 'FLOW' in val: return 'Optimized Flow'
+    return 'Standard'
+
+def extract_usb_ports(doc):
+    """Parses USB port configuration from motherboard."""
+    if not doc: return {'usb2': 0, 'usb3': 0, 'usb3_1': 0, 'usb3_2': 0, 'type_c': 0}
+    
+    ports = {'usb2': 0, 'usb3': 0, 'usb3_1': 0, 'usb3_2': 0, 'type_c': 0}
+    name = normalize(doc.get('name', ''))
+    specs = normalize(doc.get('specs', ''))
+    
+    # Try to extract counts from specs or structured fields
+    for usb_type in ['USB 3.2', 'USB 3.1', 'USB 3.0', 'USB 2.0']:
+        key = usb_type.lower().replace('.','_')
+        count = extract_numeric_value(doc.get(key + '_count'))
+        if count > 0:
+            ports[key] = int(count)
+    
+    # Fallback name parsing
+    import re
+    if re.search(r'4x.*USB.*3', name): ports['usb3'] = 4
+    if re.search(r'6x.*USB', name): ports['usb3'] = 6
+    if re.search(r'2x.*TYPE.*C', name): ports['type_c'] = 2
+    
+    # Typical defaults if nothing found
+    if sum(ports.values()) == 0:
+        ports['usb3'] = 4
+        ports['usb2'] = 2
+    
+    return ports
+
+def infer_audio_codec(doc):
+    """Extracts supported audio codec."""
+    if not doc: return 'Standard'
+    val = normalize(doc.get('audio_codec') or doc.get('audio') or doc.get('name'))
+    if 'ALC1220' in val or 'ALC1150' in val or 'SUPREME' in val: return 'High-End'
+    if 'REALTEK' in val or 'ALC' in val: return 'Realtek Standard'
+    return 'Standard'
+
+def infer_os_compatibility(cpu_doc, mobo_doc, ram_doc):
+    """Determines OS compatibility."""
+    issues = []
+    
+    if not cpu_doc or not mobo_doc: return issues
+    
+    cpu_name = normalize(cpu_doc.get('name', ''))
+    mobo_socket = infer_mobo_socket(mobo_doc)
+    
+    # Very old systems warn for Windows 11/12
+    if 'AM1' in mobo_socket or 'FM2' in mobo_socket or 'LGA1156' in mobo_socket:
+        issues.append("OS Compat: Very old socket; Windows 11/12 support uncertain.")
+    
+    # Ryzen with AM4 socket has Windows 11 support issues on older BIOSes
+    if 'RYZEN' in cpu_name and 'AM4' in mobo_socket:
+        issues.append("OS Compat: AM4 Ryzen may need BIOS update for Win11 TPM support.")
+    
+    return issues
+
 def run_validation_logic(data):
     try:
         if db is None:
@@ -2826,6 +3456,173 @@ def run_validation_logic(data):
                         messages.append("Assembly Note: High-performance thermal paste recommended.")
                 except: pass
         
+        # ===== ADVANCED COMPATIBILITY CHECKS =====
+        
+        # Initialize advanced metrics
+        cpu_tdp = infer_cpu_tdp(cpu) if cpu else 0
+        cpu_voltage = infer_cpu_voltage(cpu) if cpu else None
+        cpu_cores = infer_cpu_core_count(cpu) if cpu else 0
+        cpu_base_clock = infer_cpu_base_clock(cpu) if cpu else 0
+        cpu_boost_clock = infer_cpu_boost_clock(cpu) if cpu else 0
+        
+        gpu_vram = infer_gpu_vram(gpu) if gpu else 0
+        gpu_tdp = infer_gpu_tdp(gpu) if gpu else 0
+        gpu_bus_width = infer_gpu_bus_width(gpu) if gpu else 0
+        
+        mobo_vrm = infer_mobo_vrm_phases(mobo) if mobo else 0
+        mobo_pcie_lanes = infer_mobo_pcie_lanes(mobo) if mobo else 0
+        
+        # 11. CPU-Specific Advanced Checks
+        if cpu:
+            # TDP and VRM Power Delivery
+            if mobo and cpu_tdp > 120:
+                if mobo_vrm < 14:
+                    if status == "Compatible": status = "Borderline"
+                    messages.append(f"VRM Warning: {mobo_vrm}-phase VRM may be marginal for {cpu_tdp}W TDP CPU. Consider higher-end boards for stability.")
+            
+            # CPU Voltage compatibility check
+            if cpu_voltage and mobo:
+                mobo_name = normalize(mobo.get('name', ''))
+                if cpu_voltage > 1.35 and any(x in mobo_name for x in ['BUDGET', 'PRO', 'PRIME']):
+                    messages.append(f"CPU Voltage: This CPU may require {cpu_voltage}V; verify motherboard supports this voltage range.")
+            
+            # Boost clock advisory
+            if cpu_boost_clock > 6.0:
+                messages.append(f"High Clock Advisory: {cpu_boost_clock:.1f}GHz boost detected; ensure adequate cooling and power delivery.")
+        
+        # 12. GPU-Specific Advanced Checks
+        if gpu:
+            # VRAM Generation Compatibility
+            if gpu_vram > 0 and mobo:
+                m_ff = infer_mobo_form_factor(mobo)
+                if m_ff == 'Mini ITX' and gpu_vram > 12:
+                    messages.append(f"GPU VRAM Note: {int(gpu_vram)}GB GPU on Mini-ITX may have thermal/power challenges.")
+            
+            # GPU Memory Bus and Bandwidth
+            if gpu_bus_width > 0 and gpu_bus_width < 192:
+                messages.append(f"GPU Memory Bus: {int(gpu_bus_width)}-bit bus may limit memory bandwidth (consider 256-bit or wider).")
+            
+            # External power connectors
+            if gpu_tdp > 300 and psu:
+                psu_rating = extract_numeric_value(psu.get('wattage') or psu.get('power'))
+                if psu_rating > 0 and psu_rating < gpu_tdp * 1.6:
+                    if status == "Compatible": status = "Borderline"
+                    messages.append(f"GPU Power Alert: {int(gpu_tdp)}W GPU with {int(psu_rating)}W PSU is tight; recommend higher capacity.")
+        
+        # 13. RAM-Specific Advanced Checks
+        if ram:
+            ram_voltage = infer_ram_voltage(ram)
+            ram_speed = infer_ram_speed(ram)
+            ram_timing = infer_ram_timing(ram)
+            ram_gen = infer_ram_generation(ram, is_mobo=False)
+            
+            # RAM Voltage Stability
+            if ram_voltage and ram_voltage > 1.25:
+                messages.append(f"RAM Voltage: {ram_voltage}V operation detected; ensure motherboard supports XMP/DOCP stability.")
+            
+            # RAM Speed with Motherboard
+            if mobo and ram_speed > 0:
+                mobo_gen = infer_ram_generation(mobo, is_mobo=True)
+                if ram_gen and mobo_gen and ram_gen == mobo_gen:
+                    if ram_speed > 6000 and ram_gen == 'DDR5':
+                        messages.append(f"DDR5 Speed: {int(ram_speed)}MHz requires manual BIOS tuning; default profiles may be lower.")
+                    if ram_speed > 4000 and ram_gen == 'DDR4':
+                        messages.append(f"DDR4 Speed: {int(ram_speed)}MHz typically requires XMP profile in BIOS.")
+            
+            # CAS Latency Advisory
+            if ram_timing > 20 and ram_gen == 'DDR5':
+                messages.append(f"DDR5 Timing: CL{int(ram_timing)} is average; tighter timings improve performance.")
+        
+        # 14. Motherboard Advanced Checks
+        if mobo:
+            mobo_usb = extract_usb_ports(mobo)
+            mobo_audio = infer_audio_codec(mobo)
+            
+            # PCIe Lane Allocation
+            if gpu and mobo_pcie_lanes > 0:
+                if mobo_pcie_lanes < 16 and gpu_vram and gpu_vram > 8:
+                    messages.append(f"PCIe Lanes: Only {int(mobo_pcie_lanes)} lanes detected; high-VRAM GPU may experience x8 mode performance impact.")
+            
+            # USB Port Count
+            if mobo_usb['usb3'] < 4 and mobo_usb['type_c'] == 0:
+                messages.append(f"USB Ports: Limited USB 3.x ports ({mobo_usb['usb3']} + {mobo_usb['type_c']} Type-C); many peripherals may require hubs.")
+            
+            # Audio Quality  
+            audio_quality = infer_audio_codec(mobo)
+            if audio_quality == 'Standard':
+                messages.append(f"Audio Codec: Standard codec; if using high-end headphones/speakers, consider dedicated DAC.")
+        
+        # 15. Storage Advanced Checks
+        if storage:
+            storage_interface = infer_storage_interface(storage)
+            storage_protocol = infer_storage_protocol(storage)
+            raid_support = infer_storage_raid_support(storage)
+            
+            # NVMe Gen Mismatch
+            if mobo and storage_protocol:
+                if 'PCIe 5' in storage_protocol and mobo_pcie_lanes < 20:
+                    messages.append(f"Storage Gen: PCIe 5.0 NVMe on platform with limited lanes; PCIe 4.0 may be more practical.")
+            
+            # RAID Configuration hint
+            if raid_support and mobo:
+                messages.append(f"Storage Note: Drive supports RAID; motherboard has {infer_mobo_storage_slots(mobo)['sata']} SATA ports for RAID setup.")
+        
+        # 16. Power Supply Advanced Checks
+        if psu and (cpu or gpu):
+            psu_efficiency = infer_psu_efficiency_rating(psu)
+            psu_modularity = infer_psu_modularity(psu)
+            psu_connectors = infer_psu_connector_support(psu)
+            psu_wattage = extract_numeric_value(psu.get('wattage') or psu.get('power'))
+            
+            # Efficiency and heat
+            if psu_efficiency in ['80+', 'Silver'] and psu_wattage > 750:
+                messages.append(f"PSU Efficiency: {psu_efficiency} rated; higher efficiency (Gold/Platinum) reduces heat/noise in high-wattage systems.")
+            
+            # ATX 3.0 Connector Support (for modern high-end GPUs)
+            if gpu and gpu_tdp > 300:
+                mobo_audio_check = infer_audio_codec(mobo) if mobo else 'Standard'
+                if 'ATX 3.0' not in psu_connectors and 'High-End' not in mobo_audio_check:
+                    messages.append(f"ATX 3.0 Readiness: {psu_connectors}; newer GPUs prefer 12V-2x6 (ATX 3.0) connectors for stability.")
+            
+            # Cable Capacity vs System
+            total_draw = extract_numeric_value(psu.get('total_base_wattage') or 0)
+            if psu_wattage > 0 and psu_modularity == 'Fully Modular' and case:
+                messages.append(f"Cable Management: Fully modular PSU ({int(psu_wattage)}W) allows clean builds; ideal for visibility and airflow.")
+        
+        # 17. Thermal Management Analysis
+        if cpu and cooler and case:
+            case_airflow = infer_case_airflow_design(case)
+            cooler_height = parse_dimension_mm(cooler, ['height', 'cooler_height'])
+            case_cooler_max = parse_dimension_mm(case, ['max_cpucooler_height', 'cooler_clearance'])
+            
+            if cooler_height > 0 and case_cooler_max > 0:
+                clearance_pct = ((case_cooler_max - cooler_height) / case_cooler_max) * 100
+                if clearance_pct < 20:
+                    messages.append(f"Thermal Clearance: Only {clearance_pct:.0f}% headroom for cooler; consider downsizing cooler for safety.")
+            
+            # Case airflow design
+            if ('ITX' in normalize(case.get('name')) or case_airflow == 'Open-Frame') and cpu_tdp and cpu_tdp > 100:
+                messages.append(f"Airflow Design: {case_airflow} case with {cpu_tdp}W CPU may struggle; ensure adequate intake fans.")
+        
+        # 18. Peripheral & Connectivity Checks
+        if mobo:
+            mobo_usb = extract_usb_ports(mobo)
+            usb_deficiency = []
+            
+            if mobo_usb['type_c'] == 0:
+                usb_deficiency.append("no USB Type-C ports")
+            if mobo_usb['usb3'] < 2:
+                usb_deficiency.append(f"only {mobo_usb['usb3']} USB 3.x ports")
+            
+            if usb_deficiency:
+                messages.append(f"Connectivity: Motherboard has {', '.join(usb_deficiency)}; many modern peripherals require these.")
+        
+        # 19. OS Compatibility Warnings
+        os_compat_issues = infer_os_compatibility(cpu, mobo, ram)
+        for issue in os_compat_issues:
+            messages.append(issue)
+        
+        # 20. Final Summary Check
         if not messages and status == "Compatible":
             messages.append("Systems check: All selected components are compatible!")
 
