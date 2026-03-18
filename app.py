@@ -1672,6 +1672,24 @@ def api_fix_compatibility():
                         'reason': f'Fits your selected {mobo.get("name")} ({mobo_sock}).',
                         'options': [{'id': c['id'], 'name': c['name']} for c in cpu_matches[:3]]
                     })
+            
+            if ram_gen_mismatch:
+                # Suggest RAM matching the motherboard's generation
+                all_ram = list(db.components.find({'category': 'ram'}).limit(300))
+                ram_matches = []
+                for r in all_ram:
+                    r_gen = infer_ram_generation(r, is_mobo=False)
+                    if r_gen == mobo_ram_gen:
+                        ram_matches.append({'id': str(r['_id']), 'name': r.get('name'), 'dist': abs(get_comp_tier(r) - system_tier)})
+                
+                if ram_matches:
+                    ram_matches.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'ram',
+                        'title': f'Compatible {mobo_ram_gen} RAM',
+                        'reason': f'Your motherboard requires {mobo_ram_gen} memory. Current RAM is {ram_gen}.',
+                        'options': [{'id': r['id'], 'name': r['name']} for r in ram_matches[:3]]
+                    })
 
         if ff_mismatch:
             all_cases = list(db.components.find({'category': 'case'}).limit(300))
