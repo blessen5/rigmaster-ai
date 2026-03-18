@@ -97,7 +97,7 @@ class AIEngine:
         backoff_mins = 0
         
         # Detect Quota / Rate Limit (429)
-        is_quota = any(x in err_msg.lower() for x in ["429", "rate limit", "quota exceeded", "reach its limit", "insufficient_quota"])
+        is_quota = any(x in err_msg.lower() for x in ["429", "402", "payment required", "rate limit", "quota exceeded", "reach its limit", "insufficient_quota"])
         is_auth = any(x in err_msg.lower() for x in ["401", "403", "invalid_api_key", "invalid key"])
         
         if is_quota:
@@ -384,6 +384,12 @@ Respond ONLY in JSON with this schema: {json.dumps(schema)}"""
         user_prompt = "Build Components:\n" + "\n".join([f"- {c.get('category')}: {c.get('name')} (Status: {c.get('status')})" for c in component_data])
         
         providers = self._get_prioritized_providers()
+        
+        # Priority for Groq as requested
+        if 'groq' in providers:
+            providers.remove('groq')
+            providers.insert(0, 'groq')
+            
         for provider in providers:
             try:
                 response = self._call_provider(provider, system_prompt, user_prompt, json_mode=True)

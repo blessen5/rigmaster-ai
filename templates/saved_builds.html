@@ -309,16 +309,13 @@
                         style="background: rgba(124, 58, 237, 0.1); border: 1px solid var(--accent); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <span
-                                style="display: block; font-size: 0.8rem; color: var(--primary-light); text-transform: uppercase; font-weight: 700;">Total
-                                System Resale Value</span>
-                            <span id="total-resale-value"
-                                style="font-size: 2.5rem; font-weight: 700; color: white;">$0</span>
+                                style="display: block; font-size: 0.8rem; color: var(--primary-light); text-transform: uppercase; font-weight: 700;">System Market Evaluation</span>
+                            <span style="font-size: 1.2rem; font-weight: 600; color: white;">Analysis Complete</span>
                         </div>
                         <div
                             style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
                             <span class="fork-badge pulse-badge"
-                                style="background: rgba(34, 211, 238, 0.1); color: var(--accent-cyan);">AI Market
-                                Estimate</span>
+                                style="background: rgba(34, 211, 238, 0.1); color: var(--accent-cyan);">Market Expert View</span>
                             <span id="ai-provider-tag" class="fork-badge"
                                 style="background: rgba(124, 58, 237, 0.1); color: var(--primary-light); display: none; font-size: 0.65rem;"></span>
                         </div>
@@ -514,12 +511,12 @@
                     const p = data.prediction;
 
                     // Root level safety
-                    totalVal.textContent = p.total_system_value || '0.00';
+                    if (totalVal) totalVal.textContent = p.total_system_value || '0.00';
 
                     try {
-                        adviceEl.innerHTML = p.market_advice ? marked.parse(p.market_advice) : 'Analyzing market conditions...';
+                        if (adviceEl) adviceEl.innerHTML = p.market_advice ? marked.parse(p.market_advice) : 'Analyzing market conditions...';
                     } catch (me) {
-                        adviceEl.textContent = p.market_advice || 'Market analysis unavailable.';
+                        if (adviceEl) adviceEl.textContent = p.market_advice || 'Market analysis unavailable.';
                     }
 
                     // Show AI Provider
@@ -534,17 +531,13 @@
                             if (!c) return '';
                             const isOld = (c.status || '').toLowerCase() !== 'active';
                             return `
-                                <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); transition: 0.3s; margin-bottom: 0.5rem;">
+                                <div class="glass-card" style="padding: 1.2rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); transition: 0.3s; margin-bottom: 0.5rem;">
                                     <div>
                                         <span style="display: block; font-size: 0.7rem; color: var(--primary-light); text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 4px;">${c.category || 'Hardware'}</span>
                                         <span style="color: var(--text-main); font-weight: 600; font-family: 'Outfit', sans-serif;">${c.name || 'Component'}</span>
                                         <div style="margin-top: 6px;">
                                              <span style="font-size: 0.65rem; padding: 3px 8px; border-radius: 12px; background: ${isOld ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color: ${isOld ? '#fbbf24' : '#34d399'}; border: 1px solid ${isOld ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)'}; font-weight: 700;">${c.status || 'Active'}</span>
                                         </div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-cyan); font-family: 'Outfit', sans-serif;">${c.estimated_resale || '0.00'}</div>
-                                        <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Est. Value</div>
                                     </div>
                                 </div>
                             `;
