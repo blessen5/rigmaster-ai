@@ -3320,13 +3320,14 @@ def run_validation_logic(data):
                         messages.append(f"PCIe Advisory: GPU appears to support PCIe {g_pcie} but motherboard is PCIe {m_pcie}. This is backward-compatible but may limit peak bandwidth.")
             except Exception:
                 pass
-                
-                c_name = normalize(case.get('name'))
-                if any(x in c_name for x in ['MINI', 'ITX', 'SMALL', 'SFF']):
-                    p_name = normalize(psu.get('name'))
-                    if 'MODULAR' not in p_name and 'SEMI' not in p_name:
-                        messages.append("Cable Management: Non-modular PSU in small case.")
-                        if status == "Compatible": status = "Borderline"
+            
+            # Cable management check (outside of PCIe exception block)
+            c_name = normalize(case.get('name'))
+            if any(x in c_name for x in ['MINI', 'ITX', 'SMALL', 'SFF']):
+                p_name = normalize(psu.get('name')) if psu else ''
+                if 'MODULAR' not in p_name and 'SEMI' not in p_name:
+                    messages.append("Cable Management: Non-modular PSU in small case.")
+                    if status == "Compatible": status = "Borderline"
 
             if fans_doc:
                 f_slots = infer_case_fan_slots(case)
@@ -7362,7 +7363,7 @@ def api_component_prices():
             'peripherals': data.get('peripherals_id'),
             'keyboard': data.get('keyboard_id'),
             'mouse': data.get('mouse_id'),
-                        'headset': data.get('headset_id'),
+            'headset': data.get('headset_id'),
             'webcam': data.get('webcam_id'),
             'fans': data.get('fans_id'),
             'thermal_paste': data.get('thermal_paste_id'),
