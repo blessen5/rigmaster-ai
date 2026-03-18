@@ -388,7 +388,7 @@ Respond ONLY in JSON with this schema: {json.dumps(schema)}"""
             try:
                 response = self._call_provider(provider, system_prompt, user_prompt, json_mode=True)
                 if response:
-                    return json.loads(response)
+                    return self._safe_json_parse(response)
             except Exception as e:
                 logger.warning(f"Resale prediction failed with {provider}: {e}")
                 continue
@@ -989,40 +989,55 @@ Use Case: {use_case}"""
         prompt += "\n\nReturn your recommendation as JSON with component selections and compatibility reasoning."
         return prompt
     
-    def _parse_recommendation_response(self, response: str, component_pool: Optional[Dict] = None) -> Optional[Dict]:
-        """Parse and validate AI recommendation response."""
+    def _safe_json_parse(self, response: str) -> Optional[Dict]:
+        """Parse JSON with markdown stripping."""
         try:
-            # Strip markdown code fences if the model wrapped JSON in ```
             clean = response.strip()
             if clean.startswith('```'):
+                # Handle cases like ```json ... ``` or just ``` ... ```
+                if clean.startswith('```json'):
+                    clean = clean[7:]
+                else:
+                    clean = clean[3:]
+                
+                if clean.endswith('```'):
+                    clean = clean[:-3]
+                
+                # Also handle internal markdown lines if any
                 lines = clean.split('\n')
                 lines = [l for l in lines if not l.strip().startswith('```')]
                 clean = '\n'.join(lines).strip()
 
-            data = json.loads(clean)
-
-            # Accept any response that has at least one recognised component key
-            component_keys = [
-                'cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu',
-                'case', 'cooler', 'monitor', 'os', 'fans',
-                'keyboard', 'mouse', 'headset', 'webcam', 'peripherals',
-                'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'
-            ]
-            found = [k for k in component_keys if k in data]
-            if not found:
-                logger.warning("AI response has no recognisable component keys")
-                return None
-
-            # Remove any price-related fields that might have been hallucinated
-            data.pop('estimated_total', None)
-            data.pop('calculated_total', None)
-            data.pop('price_accuracy', None)
-            data.pop('estimated_total_usd', None)
-
-            return data
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse AI response as JSON: {e}\nRaw: {response[:300]}")
+            return json.loads(clean)
+        except Exception as e:
+            logger.error(f"JSON Parse Error: {e}")
             return None
+
+    def _parse_recommendation_response(self, response: str, component_pool: Optional[Dict] = None) -> Optional[Dict]:
+        """Parse and validate AI recommendation response."""
+        data = self._safe_json_parse(response)
+        if not data:
+            return None
+
+        # Accept any response that has at least one recognised component key
+        component_keys = [
+            'cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu',
+            'case', 'cooler', 'monitor', 'os', 'fans',
+            'keyboard', 'mouse', 'headset', 'webcam', 'peripherals',
+            'thermal_paste', 'wifi', 'speakers', 'microphone', 'ups', 'tools'
+        ]
+        found = [k for k in component_keys if k in data]
+        if not found:
+            logger.warning("AI response has no recognisable component keys")
+            return None
+
+        # Remove any price-related fields that might have been hallucinated
+        data.pop('estimated_total', None)
+        data.pop('calculated_total', None)
+        data.pop('price_accuracy', None)
+        data.pop('estimated_total_usd', None)
+
+        return data
     
     def _calculate_actual_total(self, recommendation: Dict, component_pool: Optional[Dict]) -> float:
         """Calculate actual total cost from AI's component selections."""

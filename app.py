@@ -4887,6 +4887,7 @@ def api_get_vault_data(build_id):
 @app.route('/api/predict-resale/<build_id>')
 @login_required
 def api_predict_resale(build_id):
+    prediction_data = None
     try:
         if db is None:
             return jsonify({'status': 'error', 'message': 'Database not connected'}), 500
@@ -4955,12 +4956,13 @@ def api_predict_resale(build_id):
             "Provide a total system value that captures the synergy of the build. "
             "Provide elite, aggressive market advice on selling strategies, cleaning, and descriptions. "
             "Include your AI reasoning for the valuation in the market_advice."
+            "CRITICAL: If a component is very new (e.g. RTX 4090/4080 super), ensure its resale is close to MSRP but discounted (85-90%). If it is old (e.g. GTX 1080), account for heavy depreciation."
             f"Respond ONLY in JSON with this exact schema: {json.dumps(schema)}"
         )
         user_content = "Build Components:\n" + "\n".join([f"- {c['category']}: {c['name']} (Status: {c['status']})" for c in component_data])
 
-        # 1. Check Cache (v9 for final stability)
-        cache_key = f"resale_v9_{build_id}"
+        # 1. Check Cache (v11 for refined accuracy & currency fix)
+        cache_key = f"resale_v11_{build_id}"
         cached = db.ai_cache.find_one({'cache_key': cache_key})
         if cached:
             return jsonify({'status': 'success', 'prediction': cached.get('prediction'), 'cached': True})
@@ -4971,24 +4973,68 @@ def api_predict_resale(build_id):
             results = []
             for c in comps:
                 name = (c.get('name') or 'Unknown Component').upper()
-                val = 12.0 # Minimum symbolic floor
+                val = 15.0 # Minimum symbolic floor
                 
-                # Intelligent Hardware Tiers
-                if '4090' in name or '4080' in name: val = 950
-                elif '3080' in name or '3090' in name: val = 420
-                elif '7900' in name or '7800' in name: val = 350
-                elif '3070' in name or '4070' in name: val = 300
-                elif '3060' in name or '4060' in name: val = 180
-                elif 'RYZEN 9' in name or 'CORE I9' in name: val = 280
-                elif 'RYZEN 7' in name or 'CORE I7' in name: val = 160
-                elif 'RYZEN 5' in name or 'CORE I5' in name: val = 90
-                elif 'RYZEN 3' in name or 'CORE I3' in name: val = 45
-                elif '880G' in name or 'GXH' in name: val = 35 
-                elif '7850K' in name or 'A10-' in name: val = 22
-                elif 'AD2U' in name or 'DDR2' in name: val = 4
-                elif 'XPG' in name or 'CRUISER' in name: val = 40
-                elif 'SSD' in name or 'ADATA' in name: val = 15
-                elif 'ALPINE' in name or 'COOLER' in name: val = 10
+                # Intelligent Hardware Tiers - Realistic Used Market (USD)
+                # GPUs
+                if '4090' in name: val = 1550
+                elif '4080' in name: val = 840
+                elif '7900 XTX' in name: val = 720
+                elif '4070 TI' in name: val = 620
+                elif '7900 XT' in name: val = 580
+                elif '4070 SUPER' in name: val = 510
+                elif '4070' in name or '7800 XT' in name: val = 440
+                elif '3090 TI' in name: val = 780
+                elif '3090' in name: val = 680
+                elif '3080 TI' in name: val = 480
+                elif '3080' in name: val = 390
+                elif '4060 TI' in name: val = 330
+                elif '4060' in name: val = 240
+                elif '3070' in name or '3070 TI' in name: val = 280
+                elif '3060 TI' in name: val = 220
+                elif '3060' in name: val = 200
+                elif '6800 XT' in name: val = 350
+                elif '6700 XT' in name: val = 230
+                
+                # CPUs
+                elif '7950X3D' in name: val = 480
+                elif '7800X3D' in name: val = 340
+                elif '14900' in name or '13900' in name: val = 420
+                elif '14700' in name or '13700' in name: val = 290
+                elif 'RYZEN 9' in name: val = 310
+                elif 'RYZEN 7' in name: val = 180
+                elif 'CORE I9' in name: val = 330
+                elif 'CORE I7' in name: val = 210
+                elif 'RYZEN 5' in name: val = 110
+                elif 'CORE I5' in name: val = 140
+                elif 'RYZEN 3' in name: val = 55
+                elif 'CORE I3' in name: val = 75
+                
+                # Legacy / Low End
+                elif '1080 TI' in name: val = 160
+                elif '1070' in name or '1660' in name: val = 95
+                elif '880G' in name or 'GXH' in name: val = 25 
+                elif '7850K' in name or 'A10-' in name: val = 18
+                elif 'AD2U' in name or 'DDR2' in name: val = 3
+                
+                # Others
+                elif 'XPG' in name or 'CRUISER' in name or 'RAM' in name:
+                    if '64GB' in name: val = 120
+                    elif '32GB' in name: val = 75
+                    elif '16GB' in name: val = 35
+                    else: val = 45
+                elif 'SSD' in name or 'ADATA' in name or 'STORAGE' in name:
+                    if '4TB' in name: val = 210
+                    elif '2TB' in name: val = 110
+                    elif '1TB' in name: val = 60
+                    else: val = 25
+                elif 'PSU' in name:
+                    if '1000W' in name: val = 140
+                    elif '850W' in name: val = 110
+                    elif '750W' in name: val = 85
+                    else: val = 55
+                elif '360MM' in name or 'LIQUID' in name: val = 65
+                elif 'ALPINE' in name or 'COOLER' in name: val = 12
                 
                 total_val += val
                 results.append({
@@ -4998,14 +5044,14 @@ def api_predict_resale(build_id):
                     "estimated_resale": format_price(val)
                 })
             
-            # Add System synergy premium (15%)
-            final_total = total_val * 1.15
+            # Add System synergy premium (10% for assembly/testing)
+            final_total = total_val * 1.10
             
             return {
                 "total_system_value": format_price(final_total),
-                "market_advice": "### System Appraisal: RigMaster Expert Engine\nLive AI appraisal nodes are currently under heavy load. This valuation was generated using our **Local Market Heuristic Engine**, which analyzes components against verified hardware price index tiers.\n\n*   **Selling Strategy:** Focus on listing this as a 'Complete Ready-to-Work/Play' system for local cash buyers.\n*   **Platform Tip:** Facebook Marketplace or local enthusiast forums will yield the best margins for this specific hardware tier.",
+                "market_advice": "### System Appraisal: RigMaster Expert Engine\nLive AI appraisal nodes are currently under heavy load. This valuation was generated using our **Local Market Heuristic Engine v2.5**, which analyzes components against verified hardware price index tiers (2024-2025).\n\n*   **Selling Strategy:** Focus on listing this as a 'Complete Ready-to-Work/Play' system for local cash buyers.\n*   **Platform Tip:** Facebook Marketplace or local enthusiast forums will yield the best margins for this specific hardware tier.",
                 "components": results,
-                "provider": "RigMaster Heuristic 2.0"
+                "provider": "RigMaster Heuristic 2.5"
             }
 
 
@@ -5014,30 +5060,37 @@ def api_predict_resale(build_id):
         p_data = ai_engine.get_resale_prediction(component_data)
         
         if p_data and p_data.get('total_system_value') and p_data.get('total_system_value') != 'N/A':
-            # Convert AI results from USD to local
+            # Always attempt to clean and format AI results for consistency
             user_currency = session.get('currency', 'USD')
-            if user_currency != 'USD':
-                rate = EXCHANGE_RATES.get(user_currency, 1.0)
-                
-                # Convert total
+            
+            # Helper to clean and re-format value
+            def safe_format_ai_price(val_str):
                 try:
-                    total_v = float(p_data['total_system_value'].replace('$', '').replace(',', '').replace('USD', '').strip())
-                    p_data['total_system_value'] = format_price(total_v)
-                except: pass
+                    # Clean the AI output ($1,500 USD -> 1500)
+                    numeric_v = float(re.sub(r'[^0-9.]', '', val_str))
+                    # format_price handles the actual conversion to session currency
+                    return format_price(numeric_v)
+                except:
+                    return val_str # Fallback to original AI string
+            
+            # Re-format total
+            p_data['total_system_value'] = safe_format_ai_price(p_data['total_system_value'])
                 
-                # Convert components
-                for c in p_data.get('components', []):
-                    try:
-                        cv = float(c['estimated_resale'].replace('$', '').replace(',', '').replace('USD', '').strip())
-                        c['estimated_resale'] = format_price(cv)
-                    except: pass
+            # Re-format individual components
+            for c in p_data.get('components', []):
+                c['estimated_resale'] = safe_format_ai_price(c.get('estimated_resale', '0.00'))
 
             prediction_data = p_data
-            prediction_data['provider'] = 'RigMaster AI'
+            prediction_data['provider'] = f'RigMaster AI ({p_data.get("provider", "Nexus")})'
+            
+            # Log AI success
+            log_ai_request('resale_predictor', p_data.get('provider_used', 'unknown'), cached=False)
 
         # FINAL FAILSAFE: Always work
         if not prediction_data:
             prediction_data = get_heuristic_prediction(component_data)
+            # Log AI failure/fallback
+            log_ai_request('resale_predictor', 'heuristic_fallback', cached=False)
 
         # Verbose Logging
         with open('resale_final_log.json', 'w') as f:
