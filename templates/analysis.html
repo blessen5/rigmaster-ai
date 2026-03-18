@@ -279,151 +279,8 @@
                 </div>
             </div>
 
-            <div id="dashboard-row"
-                style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <!-- Cards removed: Power Profile and Upgrade Readiness -->
 
-                <!-- Column 1: Power Profile -->
-                <div id="power-analysis-panel" style="background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
-                           border: 1px solid var(--border); padding: 2rem; border-radius: 20px; display: none;">
-
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h2 style="font-size: 1.4rem; margin: 0; display: flex; align-items: center; gap: 0.8rem;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="var(--accent)" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            Power Profile
-                        </h2>
-                        <div id="psu-adequacy-badge"
-                            style="padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 700; font-size: 0.95rem; background: var(--bg-card); border: 1px solid var(--border);">
-                            ...
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 2rem;">
-                        <div
-                            style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Consumption
-                            </div>
-                            <div id="val-total-power" style="font-size: 1.8rem; font-weight: 700;">0 W</div>
-                        </div>
-                        <div
-                            style="background: rgba(124, 58, 237, 0.12); border: 1px solid rgba(124, 58, 237, 0.25); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                            <div style="color: var(--accent); font-size: 0.9rem; margin-bottom: 0.5rem;">Recommended PSU
-                            </div>
-                            <div id="val-rec-psu" style="font-size: 1.8rem; font-weight: 700; color: var(--accent);">0 W
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="power-breakdown-grid"
-                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 1rem;">
-                        <div id="bd-cpu"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>CPU</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                        <div id="bd-gpu"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>GPU</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                        <div id="bd-ram"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>RAM</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                        <div id="bd-storage"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>Drive</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                        <div id="bd-cooler"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>Cooling</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                        <div id="bd-fans"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>Fans</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                        <div id="bd-other"
-                            style="display: flex; justify-content: space-between; padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                            <span>Other</span> <span class="val" style="font-weight: 600;">0 W</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 2: Upgrade Readiness -->
-                <div id="upgrade-readiness-panel" style="background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
-                           border: 1px solid var(--border); padding: 2rem; border-radius: 20px; display: none;">
-
-                    <h2
-                        style="font-size: 1.4rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.8rem;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                                stroke="var(--accent)" stroke-width="2" />
-                            <path d="M12 6V12L16 14" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" />
-                        </svg>
-                        Upgrade Goals
-                    </h2>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
-                        <div id="up-ram"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                RAM</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                        <div id="up-storage"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                Storage</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                        <div id="up-gpu"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                GPU</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                        <div id="up-cpu"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                CPU</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                        <div id="up-cooling"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                Cooler</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                        <div id="up-psu"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                PSU</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                        <div id="up-case"
-                            style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.2rem; border: 1px solid var(--border); transition: transform 0.2s;">
-                            <div
-                                style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem;">
-                                Case</div>
-                            <div class="status" style="font-weight: 700; font-size: 1.25rem;">...</div>
-                        </div>
-                    </div>
-
-                    <div id="upgrade-details"
-                        style="margin-top: 2rem; font-size: 1rem; color: var(--text-muted); height: 3.2em; line-height: 1.4; overflow: hidden; border-top: 1px solid var(--border); padding-top: 1rem;">
-                        Hover for details.
-                    </div>
-                </div>
-            </div>
 
             <!-- ENERGY EFFICIENCY & RUNNING COSTS (New Feature) -->
             <div id="energy-efficiency-lab" style="margin-bottom: 2rem; display: none;">
@@ -1614,10 +1471,8 @@
                 statusEl.style.color = 'red';
             }
 
-            // --- 2. Power Analysis Check ---
-            const powerPanel = document.getElementById('power-analysis-panel');
+            // --- 2. Power Analysis Context (Background) ---
             try {
-                powerPanel.style.display = 'block';
                 const pResponse = await fetch('/api/analyze_power', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1626,80 +1481,12 @@
                 const pResult = await pResponse.json();
 
                 if (pResult.status === 'success') {
-                    document.getElementById('val-total-power').textContent = pResult.total_base_wattage + ' W';
-                    document.getElementById('val-rec-psu').textContent = pResult.recommended_wattage + ' W';
-
-                    const bd = pResult.breakdown;
-                    if (bd) {
-                        const slots = ['cpu', 'gpu', 'ram', 'storage', 'cooler', 'fans', 'peripherals', 'other'];
-                        slots.forEach(s => {
-                            const el = document.querySelector(`#bd-${s} .val`);
-                            if (el && bd[s] !== undefined) el.textContent = bd[s] + ' W';
-                        });
-                    }
-
-                    const badge = document.getElementById('psu-adequacy-badge');
-                    const status = pResult.adequacy_status;
-                    badge.textContent = status;
-
-                    if (status === 'Safe') {
-                        badge.style.color = '#4ade80';
-                        badge.style.borderColor = '#4ade80';
-                    } else if (status === 'Borderline') {
-                        badge.style.color = '#fbbf24';
-                        badge.style.borderColor = '#fbbf24';
-                    } else if (status === 'Insufficient') {
-                        badge.style.color = '#f87171';
-                        badge.style.borderColor = '#f87171';
-                    }
-                    // NEW: Store for ecological calculations later
+                    // Store for ecological calculations later (section 6)
                     result.pResult = pResult;
                 }
             } catch (error) { console.error('Power analysis failed:', error); }
 
-            // --- 3. Upgrade Readiness Check ---
-            const upgradePanel = document.getElementById('upgrade-readiness-panel');
-            try {
-                upgradePanel.style.display = 'block';
-                const uResponse = await fetch('/api/analyze_upgrade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const uResult = await uResponse.json();
-
-                if (uResult.status !== 'error') {
-                    const categories = ['ram', 'storage', 'gpu', 'cpu', 'psu', 'case', 'cooling'];
-                    const detailsEl = document.getElementById('upgrade-details');
-
-                    categories.forEach(cat => {
-                        const card = document.getElementById(`up-${cat}`);
-                        const info = uResult[cat];
-                        if (!card || !info) return; // safety guard
-                        card.querySelector('.status').textContent = info.status;
-
-                        card.onmouseover = () => {
-                            detailsEl.textContent = info.message;
-                            detailsEl.style.color = 'var(--text-main)';
-                        };
-                        card.onmouseout = () => {
-                            detailsEl.textContent = 'Hover for details.';
-                            detailsEl.style.color = 'var(--text-muted)';
-                        };
-
-                        if (info.status === 'Ready') {
-                            card.querySelector('.status').style.color = '#4ade80';
-                            card.style.borderColor = 'rgba(74, 222, 128, 0.4)';
-                        } else if (info.status === 'Limited') {
-                            card.querySelector('.status').style.color = '#fbbf24';
-                            card.style.borderColor = 'rgba(251, 191, 36, 0.4)';
-                        } else if (info.status === 'Not Recommended') {
-                            card.querySelector('.status').style.color = '#f87171';
-                            card.style.borderColor = 'rgba(248, 113, 113, 0.4)';
-                        }
-                    });
-                }
-            } catch (error) { console.error('Upgrade analysis failed:', error); }
+            // --- 3. Upgrade Readiness Check removed ---
 
 
 
