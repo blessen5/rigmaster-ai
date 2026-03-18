@@ -446,6 +446,19 @@ def get_site_setting(key, default=None):
     except:
         return default
 
+def log_ai_request(request_type, provider, cached=False):
+    """Logs an AI request to the ai_cache collection for analytics."""
+    if db is None: return
+    try:
+        db.ai_cache.insert_one({
+            'created_at': datetime.now(timezone.utc),
+            'type': request_type,
+            'provider': provider or 'Unknown',
+            'cached': cached
+        })
+    except Exception as e:
+        app.logger.error(f"Failed to log AI request: {e}")
+
 def get_preferred_ai_provider():
     return get_site_setting('preferred_ai_provider', DEFAULT_AI_PROVIDER)
 
@@ -2711,6 +2724,20 @@ def api_ai_engine_recommend():
         budget = data.get('budget', '$1000')
         use_case = data.get('use_case', 'General Use')
         preferences = data.get('preferences', {})
+        user_currency = session.get('currency', 'USD')
+
+        # AI Cache Check
+        cache_key = f"rec_{budget}_{use_case}_{str(preferences)}_{user_currency}"
+        if 'ai_cache' in db.list_collection_names():
+            cached_res = db.ai_cache.find_one({'cache_key': cache_key})
+            if cached_res:
+                log_ai_request('recommendation', cached_res.get('provider'), cached=True)
+                return jsonify({
+                    'status': 'success',
+                    'recommendation': cached_res.get('recommendation'),
+                    'matched_components': cached_res.get('matched_components'),
+                    'cached': True
+                })
         
         # RAG Strategy: Get available components from database components table
         component_pool = {}
@@ -2764,6 +2791,9 @@ def api_ai_engine_recommend():
             component_pool=component_pool,
             user_currency=user_currency
         )
+        
+        # Log request
+        log_ai_request('recommendation', recommendation.get('provider_used') if recommendation else 'failed')
         
         # Try to match AI recommendations to actual database components
         matched_components = {}
@@ -2848,6 +2878,21 @@ def api_ai_engine_recommend():
 
         
         
+        # Save to AI cache for metrics and performance
+        try:
+            db.ai_cache.update_one(
+                {'cache_key': cache_key},
+                {'$set': {
+                    'recommendation': recommendation,
+                    'matched_components': matched_components,
+                    'provider': recommendation.get('provider_used'),
+                    'created_at': datetime.now(timezone.utc)
+                }},
+                upsert=True
+            )
+        except Exception:
+            pass
+
         return jsonify({
             'status': 'success',
             'recommendation': recommendation,
@@ -2934,6 +2979,9 @@ def api_ai_engine_compatibility():
             other_components=other_components
         )
         
+        # Log request
+        log_ai_request('compatibility', analysis.get('provider_used') if analysis else 'failed')
+        
         return jsonify({
             'status': 'success',
             'analysis': analysis
@@ -2984,6 +3032,9 @@ def api_ai_engine_performance():
             ram_name=ram_name,
             games=games
         )
+        
+        # Log request
+        log_ai_request('performance', performance.get('provider_used') if performance else 'failed')
         
         return jsonify({
             'status': 'success',
@@ -5313,9 +5364,13 @@ def admin_ai_engine_console():
     """View AI usage analytics and management console"""
     try:
         # AI cache stats
+        total_requests = db.ai_cache.count_documents({}) if 'ai_cache' in db.list_collection_names() else 0
+        cached_hits = db.ai_cache.count_documents({'cached': True}) if 'ai_cache' in db.list_collection_names() else 0
+        
         ai_stats = {
-            'total_requests': db.ai_cache.count_documents({}) if 'ai_cache' in db.list_collection_names() else 0,
-            'cached_hits': db.ai_cache.count_documents({'cached': True}) if 'ai_cache' in db.list_collection_names() else 0
+            'total_requests': total_requests,
+            'cached_hits': cached_hits,
+            'cost_saved': round(cached_hits * 0.005, 3) # Roughly $0.005 per request saved
         }
         
         # Recent AI requests
