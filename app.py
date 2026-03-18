@@ -2593,6 +2593,102 @@ def run_validation_logic(data):
                 if p_len > 0 and c_p_max > 0 and p_len > c_p_max:
                     messages.append(f"Advisory: {psu.get('name')} ({int(p_len)}mm) exceeds recommended PSU length for this case.")
                     if status == "Compatible": status = "Borderline"
+
+            # 2.2 RAM capacity and slot checks
+            try:
+                # motherboard max RAM (in GB)
+                mobo_max_ram = None
+                if mobo:
+                    mobo_max_ram = parse_ram_capacity(mobo) or mobo.get('max_memory') or mobo.get('max_ram')
+                ram_capacity = None
+                if ram:
+                    ram_capacity = parse_ram_capacity(ram)
+
+                # If motherboard exposes max RAM and RAM per-stick capacity, check totals
+                if mobo_max_ram and ram_capacity:
+                    import re
+                    sticks = 1
+                    rname = str(ram.get('name') or '')
+                    m = re.search(r"(\d+)\s*[xX]", rname)
+                    if m:
+                        sticks = int(m.group(1))
+                    total_ram = ram_capacity * sticks
+                    # try to get motherboard slot count
+                    mobo_slots = None
+                    try:
+                        mobo_slots = int(mobo.get('memory_slots') or mobo.get('ram_slots') or 0)
+                    except:
+                        mobo_slots = None
+                    if mobo_slots and sticks > mobo_slots:
+                        status = "Not Compatible"
+                        messages.append(f"RAM Slots: Selected RAM uses {sticks} sticks but the motherboard only has {mobo_slots} slots.")
+                    try:
+                        if isinstance(float(mobo_max_ram), float) and total_ram > float(mobo_max_ram):
+                            status = "Not Compatible"
+                            messages.append(f"RAM Capacity: Selected RAM total ({int(total_ram)}GB) exceeds motherboard maximum ({int(mobo_max_ram)}GB).")
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+            # 2.3 Storage: M.2 / SATA port availability
+            try:
+                # count NVMe/M.2 drives selected
+                m2_needed = 0
+                sname = ''
+                if storage:
+                    sname = str(storage.get('name') or '').lower()
+                    if 'nvme' in sname or 'm.2' in sname or 'm2' in sname:
+                        m2_needed = 1
+                # motherboard M.2 slot count
+                mobo_m2 = 0
+                try:
+                    mobo_m2 = int(mobo.get('m2_slots') or mobo.get('m.2_slots') or mobo.get('m2_count') or 0)
+                except:
+                    mobo_m2 = 0
+                if m2_needed > 0 and m2_needed > mobo_m2:
+                    status = "Not Compatible"
+                    messages.append(f"Storage: Selected NVMe drive requires {m2_needed} M.2 slot(s) but motherboard has {mobo_m2}.")
+
+                # SATA ports check for SATA drives
+                sata_needed = 0
+                if storage and ('ssd' in sname or 'hdd' in sname) and 'nvme' not in sname:
+                    sata_needed = 1
+                mobo_sata = 0
+                try:
+                    mobo_sata = int(mobo.get('sata_ports') or mobo.get('sata_count') or 0)
+                except:
+                    mobo_sata = 0
+                if sata_needed > mobo_sata:
+                    status = "Not Compatible"
+                    messages.append(f"Storage: Selected SATA drive requires {sata_needed} SATA port(s) but motherboard has {mobo_sata}.")
+            except Exception:
+                pass
+
+            # 2.4 PCIe version and lane advisory
+            try:
+                if gpu and mobo:
+                    # warn if motherboard PCIe version is older than GPU's advertised PCIe
+                    def detect_pcie(doc):
+                        if not doc: return 0
+                        for key in ['pcie_version','pcie','pcie_slot','pcie_rev']:
+                            if key in doc and doc.get(key):
+                                try:
+                                    v = int(str(doc.get(key)).strip().lower().replace('pcie','').replace('pci-e','').replace('v',''))
+                                    return v
+                                except:
+                                    pass
+                        s = str(doc.get('name') or '').lower()
+                        if 'pcie5' in s or 'pcie 5' in s or 'pci express 5' in s: return 5
+                        if 'pcie4' in s or 'pcie 4' in s or 'pci express 4' in s: return 4
+                        if 'pcie3' in s or 'pcie 3' in s or 'pci express 3' in s: return 3
+                        return 0
+                    g_pcie = detect_pcie(gpu)
+                    m_pcie = detect_pcie(mobo)
+                    if g_pcie and m_pcie and g_pcie > m_pcie:
+                        messages.append(f"PCIe Advisory: GPU appears to support PCIe {g_pcie} but motherboard is PCIe {m_pcie}. This is backward-compatible but may limit peak bandwidth.")
+            except Exception:
+                pass
                 
                 c_name = normalize(case.get('name'))
                 if any(x in c_name for x in ['MINI', 'ITX', 'SMALL', 'SFF']):
