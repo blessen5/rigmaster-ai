@@ -1634,8 +1634,8 @@ def api_fix_compatibility():
         # --- 2. Motherboard / Case / RAM Generation Fixes ---
         if socket_mismatch or ram_gen_mismatch or ff_mismatch:
             # Suggest Motherboard swap that fixes multiple issues
-            all_mobos = list(db.components.find({'category': 'motherboard'}).limit(500))
-            matches = []
+            all_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
+            mobo_matches = []
             for m in all_mobos:
                 ms = infer_mobo_socket(m)
                 mf = infer_mobo_form_factor(m)
@@ -1644,71 +1644,69 @@ def api_fix_compatibility():
                 # Must match CPU socket AND Case size AND RAM generation
                 if ms and cpu_sock in [s.strip() for s in ms.split('/')]:
                     if (not case_ffs or mf in case_ffs) and (not ram_gen or mrg == ram_gen):
-                        matches.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                        mobo_matches.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
             
-            if matches:
-                matches.sort(key=lambda x: x['dist'])
+            if mobo_matches:
+                mobo_matches.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'motherboard',
                     'title': f'Compatible {cpu_sock} Motherboard',
-                    'reason': 'A motherboard swap resolves the identified socket, form factor, or memory generation mismatches.',
-                    'options': [{'id': m['id'], 'name': m['name']} for m in matches[:3]]
+                    'reason': 'Resolves identified socket, form factor, or memory generation mismatches.',
+                    'options': [{'id': m['id'], 'name': m['name']} for m in mobo_matches[:3]]
                 })
 
+            if socket_mismatch:
+                all_cpus = list(db.components.find({'category': 'cpu'}).limit(200))
+                cpu_matches = []
+                for c in all_cpus:
+                    cs = infer_cpu_socket(c)
+                    if cs and mobo_sock and cs in [s.strip() for s in mobo_sock.split('/')]:
+                        cpu_matches.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                
+                if cpu_matches:
+                    cpu_matches.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'cpu',
+                        'title': f'Compatible {mobo_sock} CPU',
+                        'reason': f'Fits your selected {mobo.get("name")} ({mobo_sock}).',
+                        'options': [{'id': c['id'], 'name': c['name']} for c in cpu_matches[:3]]
+                    })
+
         if ff_mismatch:
-            # Suggest Larger Case
-            all_cases = list(db.components.find({'category': 'case'}).limit(500))
+            all_cases = list(db.components.find({'category': 'case'}).limit(300))
             roomy_cases = []
             for c in all_cases:
                 if mobo_ff in infer_case_supported_form_factors(c):
                     roomy_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
-            
             if roomy_cases:
                 roomy_cases.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'case',
                     'title': f'Case supporting {mobo_ff}',
-                    'reason': f'Selected case is too small for your {mobo_ff} motherboard.',
+                    'reason': f'Your motherboard requires a case with {mobo_ff} support.',
                     'options': [{'id': c['id'], 'name': c['name']} for c in roomy_cases[:3]]
                 })
 
-        if ram_gen_mismatch:
-            # Suggest Correct RAM
-            rams = list(db.components.find({'category': {'$in': ['ram', 'memory']}}).limit(500))
-            fitting_rams = []
-            for r in rams:
-                if infer_ram_generation(r) == mobo_ram_gen:
-                    fitting_rams.append({'id': str(r['_id']), 'name': r.get('name'), 'dist': abs(get_comp_tier(r) - system_tier)})
-            
-            if fitting_rams:
-                fitting_rams.sort(key=lambda x: x['dist'])
-                suggestions.append({
-                    'category': 'ram',
-                    'title': f'Compatible {mobo_ram_gen} Memory',
-                    'reason': f'Your motherboard specifically requires {mobo_ram_gen} modules.',
-                    'options': [{'id': r['id'], 'name': r['name']} for r in fitting_rams[:3]]
-                })
-
-        # --- 3. Physical Clearances (GPU / Cooler) ---
+        # --- 3. Physical Clearances (GPU / Cooler / PSU) ---
         if case:
             c_g_max = parse_dimension_mm(case, ['max_video_card_length', 'gpu_clearance'])
             c_c_max = parse_dimension_mm(case, ['max_cpucooler_height', 'cooler_clearance'])
+            c_p_max = parse_dimension_mm(case, ['max_psu_length', 'psu_clearance'])
             
             if gpu:
                 g_len = parse_dimension_mm(gpu, ['length', 'gpu_length'])
                 if g_len > 0 and c_g_max > 0 and g_len > c_g_max:
                     fitting_cases = []
-                    all_c = list(db.components.find({'category': 'case'}).limit(500))
+                    all_c = list(db.components.find({'category': 'case'}).limit(300))
                     for c in all_c:
                         if parse_dimension_mm(c, ['max_video_card_length', 'gpu_clearance']) >= g_len:
                             fitting_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
-                    
                     if fitting_cases:
                         fitting_cases.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'case',
                             'title': 'Case with Better GPU Clearance',
-                            'reason': f'Current GPU ({int(g_len)}mm) exceeds case limit ({int(c_g_max)}mm).',
+                            'reason': f'The {gpu.get("name")} ({int(g_len)}mm) is too long for the current case.',
                             'options': [{'id': c['id'], 'name': c['name']} for c in fitting_cases[:3]]
                         })
 
@@ -1716,72 +1714,66 @@ def api_fix_compatibility():
                 c_h = parse_dimension_mm(cooler, ['height', 'cooler_height'])
                 if c_h > 0 and c_c_max > 0 and c_h > c_c_max:
                     fitting_coolers = []
-                    all_l = list(db.components.find({'category': 'cooler'}).limit(500))
+                    all_l = list(db.components.find({'category': 'cooler'}).limit(300))
                     for co in all_l:
-                        if 0 < parse_dimension_mm(co, ['height']) <= c_c_max:
+                        h = parse_dimension_mm(co, ['height'])
+                        if 0 < h <= c_c_max:
                             fitting_coolers.append({'id': str(co['_id']), 'name': co.get('name'), 'dist': abs(get_comp_tier(co) - system_tier)})
-                    
                     if fitting_coolers:
                         fitting_coolers.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'cooler',
-                            'title': 'Shorter CPU Cooler',
-                            'reason': f'Cooler ({int(c_h)}mm) is too tall for case clearance ({int(c_c_max)}mm).',
+                            'title': 'Lower Profile Cooler',
+                            'reason': f'Cooler ({int(c_h)}mm) exceeds case height limit ({int(c_c_max)}mm).',
                             'options': [{'id': c['id'], 'name': c['name']} for c in fitting_coolers[:3]]
                         })
 
-        # --- 4. PSU & Radiator Support ---
+            if psu:
+                p_len = parse_dimension_mm(psu, ['length', 'psu_length'])
+                if p_len > 0 and c_p_max > 0 and p_len > c_p_max:
+                    # Suggest cases with better PSU clearance
+                    fitting_p_cases = []
+                    all_c = list(db.components.find({'category': 'case'}).limit(300))
+                    for c in all_c:
+                        if parse_dimension_mm(c, ['max_psu_length', 'psu_clearance']) >= p_len:
+                            fitting_p_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                    if fitting_p_cases:
+                        fitting_p_cases.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'case',
+                            'title': 'Case with Better PSU Room',
+                            'reason': f'The selected PSU ({int(p_len)}mm) is too long for this case.',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in fitting_p_cases[:3]]
+                        })
+
+        # --- 4. PSU Wattage & Radiator Support ---
         power_analysis = run_power_analysis(data)
         if power_analysis.get('adequacy_status') == 'Insufficient':
             target_w = power_analysis.get('recommended_wattage', 600) + 100
             c_name = normalize(case.get('name')) if case else ""
             needs_sfx = any(x in c_name for x in ['SFX', 'MINI', 'ITX'])
-            
-            psus = list(db.components.find({'category': 'psu'}).limit(500))
+            psus = list(db.components.find({'category': 'psu'}).limit(300))
             beefy_psus = []
             for p in psus:
                 w = int(re.findall(r'\d+', str(p.get('wattage') or '0'))[0] or 0)
                 if w >= target_w:
                     if not needs_sfx or 'SFX' in normalize(p.get('name')):
                         beefy_psus.append({'id': str(p['_id']), 'name': p.get('name'), 'dist': abs(get_comp_tier(p) - system_tier)})
-            
             if beefy_psus:
                 beefy_psus.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'psu',
                     'title': f'High-Wattage PSU ({target_w}W+)',
-                    'reason': f'Projected draw ({power_analysis.get("total_base_wattage")}W) exceeds current capacity.',
+                    'reason': f'System requires at least {power_analysis.get("recommended_wattage")}W.',
                     'options': [{'id': p['id'], 'name': p['name']} for p in beefy_psus[:3]]
                 })
 
-        if cooler and case:
-            cn = normalize(cooler.get('name'))
-            if 'LIQUID' in cn or 'AIO' in cn:
-                r_match = re.search(r'(240|280|360|420)', cn)
-                if r_match:
-                    r_size = int(r_match.group(1))
-                    ca_n = normalize(case.get('name'))
-                    if r_size > 240 and any(x in ca_n for x in ['MINI', 'ITX']):
-                        rad_cases = []
-                        all_c = list(db.components.find({'category': 'case'}).limit(500))
-                        for rc in all_c:
-                            if not any(x in normalize(rc.get('name')) for x in ['MINI', 'ITX']):
-                                rad_cases.append({'id': str(rc['_id']), 'name': rc.get('name'), 'dist': abs(get_comp_tier(rc) - system_tier)})
-                        if rad_cases:
-                            rad_cases.sort(key=lambda x: x['dist'])
-                            suggestions.append({
-                                'category': 'case',
-                                'title': 'Case with Radiator Support',
-                                'reason': f'Your {r_size}mm AIO requires a larger case for proper mounting.',
-                                'options': [{'id': c['id'], 'name': c['name']} for c in rad_cases[:3]]
-                            })
-
-        # --- 5. Memory Slots & WiFi Redundancy ---
+        # --- 5. Memory Slots & Capacity ---
         if ram and mobo:
             sticks = parse_ram_stick_count(ram)
             slots = infer_mobo_ram_slots(mobo)
             if sticks > slots:
-                all_mobos = list(db.components.find({'category': 'motherboard'}).limit(500))
+                all_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
                 slot_mobos = []
                 for m in all_mobos:
                     if infer_mobo_ram_slots(m) >= sticks and (not cpu_sock or cpu_sock in [s.strip() for s in infer_mobo_socket(m).split('/')]):
@@ -1791,94 +1783,151 @@ def api_fix_compatibility():
                     suggestions.append({
                         'category': 'motherboard',
                         'title': f'{sticks}-Slot Motherboard',
-                        'reason': f'Selected RAM kit needs {sticks} slots, but current board only has {slots}.',
+                        'reason': f'Selected RAM kit ({sticks} sticks) requires more slots than available ({slots}).',
                         'options': [{'id': m['id'], 'name': m['name']} for m in slot_mobos[:3]]
                     })
 
-        if mobo and data.get('wifi_id') and data.get('wifi_id') != "None Selected":
-            if 'WIFI' in normalize(mobo.get('name')):
-                suggestions.append({
-                    'category': 'wifi',
-                    'title': 'Remove Separate WiFi',
-                    'reason': 'Your motherboard has built-in WiFi. This adapter is redundant.',
-                    'options': [{'id': 'None Selected', 'name': 'Remove Component (Save Cost)'}]
-                })
+            ram_cap = parse_ram_capacity(ram)
+            mobo_max_ram_f = mobo.get('max_ram') or mobo.get('max_memory')
+            if ram_cap and mobo_max_ram_f:
+                m_v = int(re.findall(r'\d+', str(mobo_max_ram_f))[0] if re.findall(r'\d+', str(mobo_max_ram_f)) else 0)
+                if m_v > 0 and ram_cap > m_v:
+                    all_mobos_cap = list(db.components.find({'category': 'motherboard'}).limit(300))
+                    fitting_cap_mobos = []
+                    for m in all_mobos_cap:
+                        m_cap = int(re.findall(r'\d+', str(m.get('max_ram') or m.get('max_memory') or '0'))[0] or 0)
+                        if m_cap >= ram_cap and (not cpu_sock or cpu_sock in [s.strip() for s in infer_mobo_socket(m).split('/')]):
+                            fitting_cap_mobos.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                    if fitting_cap_mobos:
+                        fitting_cap_mobos.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'motherboard',
+                            'title': f'Motherboard supporting {int(ram_cap)}GB',
+                            'reason': f'RAM ({int(ram_cap)}GB) exceeds motherboard limit ({m_v}GB).',
+                            'options': [{'id': m['id'], 'name': m['name']} for m in fitting_cap_mobos[:3]]
+                        })
 
-        # --- 6. Missing Components & Essentials ---
+        # --- 6. Storage & M.2 Support ---
+        if storage and mobo:
+            s_t = normalize(storage.get('type') or storage.get('form_factor') or "")
+            is_m2 = 'M.2' in s_t or 'NVME' in s_t
+            m_slots = infer_mobo_storage_slots(mobo)
+            if is_m2 and m_slots['m2'] == 0:
+                # Suggest mobo with M.2
+                all_mobos_m2 = list(db.components.find({'category': 'motherboard'}).limit(300))
+                m2_mobos = []
+                for m in all_mobos_m2:
+                    if infer_mobo_storage_slots(m)['m2'] > 0 and (not cpu_sock or cpu_sock in [s.strip() for s in infer_mobo_socket(m).split('/')]):
+                        m2_mobos.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                if m2_mobos:
+                    m2_mobos.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'motherboard',
+                        'title': 'Motherboard with M.2 Support',
+                        'reason': 'Selected M.2 storage is not supported by current board.',
+                        'options': [{'id': m['id'], 'name': m['name']} for m in m2_mobos[:3]]
+                    })
+                # Or suggest SATA storage
+                all_sata = list(db.components.find({'category': 'storage'}).limit(300))
+                sata_options = []
+                for s in all_sata:
+                    if 'M.2' not in normalize(s.get('type') or '') and 'NVME' not in normalize(s.get('type') or ''):
+                        sata_options.append({'id': str(s['_id']), 'name': s.get('name'), 'dist': abs(get_comp_tier(s) - system_tier)})
+                if sata_options:
+                    sata_options.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'storage',
+                        'title': 'SATA SSD Alternative',
+                        'reason': 'Current board lacks M.2 slots; suggest switching to a standard SATA drive.',
+                        'options': [{'id': s['id'], 'name': s['name']} for s in sata_options[:3]]
+                    })
+
+        # --- 7. Cooler Socket & TDP Fix ---
+        if cpu:
+            tdp_v = int(re.findall(r'\d+', str(cpu.get('tdp', '0')))[0] or 0)
+            if cooler and cooler != "None Selected":
+                c_supp = infer_cooler_socket_support(cooler)
+                if cpu_sock and c_supp and cpu_sock not in c_supp:
+                    all_coolers = list(db.components.find({'category': 'cooler'}).limit(300))
+                    fitting_coolers = []
+                    for c in all_coolers:
+                        if cpu_sock in infer_cooler_socket_support(c):
+                            fitting_coolers.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                    if fitting_coolers:
+                        fitting_coolers.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'cooler',
+                            'title': f'Cooler supporting {cpu_sock}',
+                            'reason': f'Selected cooler does not officially support the {cpu_sock} socket.',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in fitting_coolers[:3]]
+                        })
+            elif tdp_v > 105:
+                # Suggest a cooler for high TDP
+                all_at = list(db.components.find({'category': 'cooler'}).limit(300))
+                high_coolers = []
+                for c in all_at:
+                    if cpu_sock and cpu_sock in infer_cooler_socket_support(c):
+                        high_coolers.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                if high_coolers:
+                    high_coolers.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'cooler',
+                        'title': 'High-Performance Cooling',
+                        'reason': 'High-TDP processor requires substantial thermal solution.',
+                        'options': [{'id': c['id'], 'name': c['name']} for c in high_coolers[:3]]
+                    })
+
+        # --- 8. Missing Components ---
         critical = {'cpu_id': 'cpu', 'motherboard_id': 'motherboard', 'ram_id': 'ram', 'psu_id': 'psu', 'case_id': 'case', 'storage_id': 'storage'}
         for key, cat in critical.items():
             if not data.get(key) or data.get(key) == "None Selected":
-                if cat == 'gpu':
-                    # Skip if CPU has iGPU
-                    if cpu:
-                        cn = normalize(cpu.get('name'))
-                        if 'INTEL' in cn and '-F' not in cn: continue
-                        if 'RYZEN' in cn and ('G' in cn or '7000' in cn or '9000' in cn): continue
-                    
-                    # If we need a GPU, suggest ones that fit the power budget
-                    items = list(db.components.find({'category': 'gpu'}).limit(200))
-                    p_res = run_power_analysis(data)
-                    available_w = (psu.get('wattage') or 600) if psu else 600
-                    if isinstance(available_w, str):
-                        try: available_w = int(re.findall(r'\d+', available_w)[0])
-                        except: available_w = 600
-                    
-                    matches = []
-                    for i in items:
-                        # Estimate GPU draw
-                        g_tdp = i.get('tdp') or i.get('power') or 200
-                        if isinstance(g_tdp, str):
-                            try: g_tdp = int(re.findall(r'\d+', g_tdp)[0])
-                            except: g_tdp = 200
-                        
-                        # Total draw with this GPU
-                        total_est = p_res.get('total_base_wattage', 0) - p_res.get('gpu_wattage', 0) + g_tdp
-                        if total_est * 1.25 <= available_w:
-                            matches.append({'id': str(i['_id']), 'name': i.get('name'), 'dist': abs(get_comp_tier(i) - system_tier)})
-                
-                else:
-                    query = {'category': cat}
-                    if cat == 'ram': query['category'] = {'$in': ['ram', 'memory']}
-                    items = list(db.components.find(query).limit(500))
-                    matches = [{'id': str(i['_id']), 'name': i.get('name'), 'dist': abs(get_comp_tier(i) - system_tier)} for i in items]
-                
+                items = list(db.components.find({'category': cat if cat != 'ram' else {'$in': ['ram', 'memory']}}).limit(300))
+                matches = [{'id': str(i['_id']), 'name': i.get('name'), 'dist': abs(get_comp_tier(i) - system_tier)} for i in items]
                 if matches:
                     matches.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': cat,
-                        'title': f'Recommended {cat.upper()}',
-                        'reason': f'Missing essential {cat} for your build configuration.',
+                        'title': f'Essential {cat.upper()}',
+                        'reason': f'Your build is missing a {cat}.',
                         'options': [{'id': m['id'], 'name': m['name']} for m in matches[:3]]
                     })
 
-        # Thermal Paste & Tools (Essentials)
+        # Discrete GPU Necessity
+        has_igpu = False
+        if cpu:
+            cn = normalize(cpu.get('name'))
+            if 'INTEL' in cn and '-F' not in cn: has_igpu = True
+            elif 'RYZEN' in cn and ('G' in cn or '7000' in cn or '9000' in cn): has_igpu = True
+        
+        if not has_igpu and (not data.get('gpu_id') or data.get('gpu_id') == "None Selected"):
+            gpus = list(db.components.find({'category': 'gpu'}).limit(200))
+            gpu_matches = [{'id': str(i['_id']), 'name': i.get('name'), 'dist': abs(get_comp_tier(i) - system_tier)} for i in gpus]
+            if gpu_matches:
+                gpu_matches.sort(key=lambda x: x['dist'])
+                suggestions.append({
+                    'category': 'gpu',
+                    'title': 'Discrete GPU Required',
+                    'reason': 'Your CPU lacks integrated graphics; a dedicated GPU is necessary for display output.',
+                    'options': [{'id': g['id'], 'name': g['name']} for g in gpu_matches[:3]]
+                })
+
+        # --- 9. Thermal Paste & Essentials ---
         if cpu and (not data.get('thermal_paste_id') or data.get('thermal_paste_id') == "None Selected"):
-            tdp = int(re.findall(r'\d+', str(cpu.get('tdp', '0')))[0] or 0)
-            if tdp > 120:
+            tdp_val = int(re.findall(r'\d+', str(cpu.get('tdp', '0')))[0] or 0)
+            if tdp_val > 100:
                 pastes = list(db.components.find({'category': 'thermal_paste'}).limit(10))
                 if pastes:
                     suggestions.append({
                         'category': 'thermal_paste',
-                        'title': 'Quality Thermal Paste',
-                        'reason': 'Recommended for stable thermals on high-TDP processors.',
+                        'title': 'Performance Thermal Paste',
+                        'reason': 'Recommended for stable thermals on high-output CPUs.',
                         'options': [{'id': str(p['_id']), 'name': p.get('name')} for p in pastes[:3]]
                     })
-
-        if system_tier >= 4 and (not data.get('tool_id') or data.get('tool_id') == "None Selected"):
-            tools = list(db.components.find({'category': 'tools'}).limit(10))
-            if tools:
-                suggestions.append({
-                    'category': 'tools',
-                    'title': 'Pro Tool Kit',
-                    'reason': 'Recommended for precision assembly of high-end components.',
-                    'options': [{'id': str(t['_id']), 'name': t.get('name')} for t in tools[:3]]
-                })
 
         return jsonify({'status': 'success', 'suggestions': suggestions})
     except Exception as e:
         app.logger.error(f"Fix Error: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
-
 
 @app.route('/api/simulate-upgrade', methods=['POST'])
 @login_required
@@ -2124,74 +2173,91 @@ def normalize(s):
     return str(s).strip().upper() if s else ""
 
 def infer_cpu_socket(doc):
-    import re
-    # 1. Check explicit fields
-    s = normalize(doc.get('socket') or doc.get('socket_cpu') or doc.get('socket_type'))
-    if s: return s
-    
-    # 2. Infer from Microarchitecture
-    micro = normalize(doc.get('microarchitecture'))
-    if micro:
-        if 'ZEN 5' in micro or 'ZEN 4' in micro: return 'AM5'
-        if 'ZEN' in micro: return 'AM4'
-        if 'BULLDOZER' in micro or 'PILEDRIVER' in micro or 'STEAMROLLER' in micro: return 'AM3+'
-        if 'EXCAVATOR' in micro: return 'FM2+'
-        if 'K10' in micro or 'STARS' in micro or 'K8' in micro: return 'AM3'
+        # 1. Check explicit fields
+        s = normalize(doc.get('socket') or doc.get('socket_cpu') or doc.get('socket_type'))
+        if s: return s
         
-        # Intel Micros
-        if 'METEOR' in micro or 'ARROW' in micro or 'LUNAR' in micro: return 'LGA1851'
-        if 'RAPTOR' in micro or 'ALDER' in micro: return 'LGA1700'
-        if 'ROCKET' in micro or 'COMET' in micro: return 'LGA1200'
-    
-    # 3. Name Heuristics
-    name = normalize(doc.get('name'))
-    
-    # AMD Heuristics
-    if 'RYZEN' in name:
-        if any(x in name for x in ['7600', '7700', '7800', '7900', '7950', '9600', '9700', '9800', '9900', '9950']): return 'AM5'
-        if 'THREADRIPPER' in name:
-            if any(x in name for x in ['79', '78']): return 'STR5'
-            if any(x in name for x in ['39', '29']): return 'STRX4'
-            return 'TR4'
-        return 'AM4'
-    
-    if 'ATHLON' in name or 'SEMPRON' in name:
-        if any(x in name for x in ['5350', '5150', '3850', '2650']): return 'AM1'
-        if 'X4' in name:
-            if any(x in name for x in ['950', '970']): return 'AM4'
-            if any(x in name for x in ['845', '860K', '870K', '880K']): return 'FM2+'
-        if 'II' in name: return 'AM3'
-        return 'AM1' if 'AM1' in name else None
+        # 2. Infer from Microarchitecture
+        micro = normalize(doc.get('microarchitecture'))
+        if micro:
+            if 'ZEN 5' in micro or 'ZEN 4' in micro: return 'AM5'
+            if 'ZEN' in micro: return 'AM4'
+            if 'BULLDOZER' in micro or 'PILEDRIVER' in micro or 'STEAMROLLER' in micro: return 'AM3+'
+            if 'EXCAVATOR' in micro: return 'FM2+'
+            if 'K10' in micro or 'STARS' in micro or 'K8' in micro: return 'AM3'
+            
+            # Intel Micros
+            if 'METEOR' in micro or 'ARROW' in micro or 'LUNAR' in micro: return 'LGA1851'
+            if 'RAPTOR' in micro or 'ALDER' in micro: return 'LGA1700'
+            if 'ROCKET' in micro or 'COMET' in micro: return 'LGA1200'
+            if 'LAKE' in micro: # Fallback for other Lake archs
+                if 'COFFEE' in micro or 'KABY' in micro or 'SKY' in micro: return 'LGA1151'
+                if 'BROADWELL' in micro or 'HASWELL' in micro: return 'LGA1150'
+                if 'IVY' in micro or 'SANDY' in micro: return 'LGA1155'
+        
+        # 3. Name Heuristics
+        name = normalize(doc.get('name'))
+        
+        # AMD Heuristics
+        if 'RYZEN' in name:
+            if any(x in name for x in ['7600', '7700', '7800', '7900', '7950', '9600', '9700', '9800', '9900', '9950']): return 'AM5'
+            if 'THREADRIPPER' in name:
+                if any(x in name for x in ['79', '78']): return 'STR5'
+                if any(x in name for x in ['39', '29']): return 'STRX4'
+                return 'TR4'
+            return 'AM4'
+        
+        if 'ATHLON' in name or 'SEMPRON' in name:
+            if any(x in name for x in ['5350', '5150', '3850', '2650']): return 'AM1'
+            if 'X4' in name:
+                if any(x in name for x in ['950', '970']): return 'AM4'
+                if any(x in name for x in ['845', '860K', '870K', '880K']): return 'FM2+'
+            if 'II' in name: return 'AM3'
+            return 'AM1' if 'AM1' in name else None
 
-    if 'FX-' in name: return 'AM3+'
-    if 'A10-' in name or 'A8-' in name or 'A6-' in name or 'A4-' in name:
-        if any(x in name for x in ['7', '6', '5']): return 'FM2+'
-        return 'FM2'
+        if 'FX-' in name: return 'AM3+'
+        if 'A10-' in name or 'A8-' in name or 'A6-' in name or 'A4-' in name:
+            if any(x in name for x in ['7', '6', '5']): return 'FM2+'
+            return 'FM2'
 
-    # Intel Heuristics
-    if 'CORE ULTRA' in name:
-        return 'LGA1851'
-    if any(x in name for x in ['I9-', 'I7-', 'I5-', 'I3-', 'PENTIUM', 'CELERON']):
-        # Search for 4-5 digit model numbers
-        num_match = re.search(r'(\d{4,5})', name)
-        if num_match:
-            model = int(num_match.group(1))
-            if model >= 12000: return 'LGA1700'
-            if model >= 10000: return 'LGA1200'
-            if model >= 8000: return 'LGA1151' # 8th/9th Gen
-            if model >= 6000: return 'LGA1151' # 6th/7th Gen
-            if model >= 4000: return 'LGA1150'
-            if model >= 2000: return 'LGA1155'
-        
-        # Generation specific tags
-        if '-14' in name or '-13' in name or '-12' in name: return 'LGA1700'
-        if '-11' in name or '-10' in name: return 'LGA1200'
-        if '-9' in name or '-8' in name: return 'LGA1151'
-        if '-7' in name or '-6' in name: return 'LGA1151'
-        if '-4' in name: return 'LGA1150'
-        if '-3' in name or '-2' in name: return 'LGA1155'
-        
-    return None
+        # Intel Heuristics
+        if 'CORE ULTRA' in name:
+            return 'LGA1851'
+        if any(x in name for x in ['I9-', 'I7-', 'I5-', 'I3-', 'PENTIUM', 'CELERON']):
+            # A. Pentium/Celeron G-series specific (overrides general numbering)
+            g_match = re.search(r'[GC](\d{3,5})', name)
+            if g_match:
+                model = int(g_match.group(1))
+                if model >= 7000: return 'LGA1700'
+                if model >= 6000: return 'LGA1200'
+                if model >= 5000: return 'LGA1151' # Coffee Lake
+                if model >= 4400: return 'LGA1151' # Kaby Lake/Skylake (mostly)
+                if model >= 3000: return 'LGA1150' # Haswell
+                if model >= 2000: return 'LGA1155' # Ivy Bridge
+                if model >= 1800: return 'LGA1150' # Haswell Celeron
+                if model >= 1600: return 'LGA1155' # Ivy Bridge Celeron
+                if model >= 500: return 'LGA1155'  # Sandy Bridge Pentiums (G600-G800)
+
+            # B. Search for 4-5 digit model numbers (Core iX)
+            num_match = re.search(r'(\d{4,5})', name)
+            if num_match:
+                model = int(num_match.group(1))
+                if model >= 12000: return 'LGA1700'
+                if model >= 10000: return 'LGA1200'
+                if model >= 8000: return 'LGA1151' # 8th/9th Gen
+                if model >= 6000: return 'LGA1151' # 6th/7th Gen
+                if model >= 4000: return 'LGA1150'
+                if model >= 2000: return 'LGA1155'
+            
+            # C. Generation specific tags
+            if '-14' in name or '-13' in name or '-12' in name: return 'LGA1700'
+            if '-11' in name or '-10' in name: return 'LGA1200'
+            if '-9' in name or '-8' in name: return 'LGA1151'
+            if '-7' in name or '-6' in name: return 'LGA1151'
+            if '-4' in name: return 'LGA1150'
+            if '-3' in name or '-2' in name: return 'LGA1155'
+            
+        return None
 
 
 def infer_mobo_socket(doc):
@@ -2208,7 +2274,7 @@ def infer_mobo_socket(doc):
     
     # 2. Heuristic from Chipset/Name
     name = normalize(doc.get('name'))
-    chipset = normalize(doc.get('chipset'))
+    chipset = normalize(doc.get('chipset') or doc.get('specs', ''))
     combined = name + " " + chipset
     
     # AMD
@@ -2222,7 +2288,13 @@ def infer_mobo_socket(doc):
     if any(x in combined for x in ['Z790', 'B760', 'H770', 'Z690', 'B660', 'H610']): return 'LGA1700'
     if any(x in combined for x in ['Z590', 'B560', 'H510', 'Z490', 'B460', 'H410']): return 'LGA1200'
     if any(x in combined for x in ['Z390', 'Z370', 'B365', 'B360', 'H370', 'H310', 'Z270', 'Z170', 'B250', 'B150']): return 'LGA1151'
-    if any(x in combined for x in ['Z97', 'H97', 'Z87', 'H87', 'B85']): return 'LGA1150'
+    if any(x in combined for x in ['Z97', 'H97', 'Z87', 'H87', 'B85', 'H81']): return 'LGA1150'
+    if any(x in combined for x in ['Z77', 'H77', 'B75', 'Z68', 'P67', 'H67', 'H61']): return 'LGA1155'
+    if any(x in combined for x in ['P55', 'H55']): return 'LGA1156'
+    if 'X58' in combined: return 'LGA1366'
+    if 'X79' in combined: return 'LGA2011'
+    if 'X99' in combined: return 'LGA2011-3'
+    if 'X299' in combined: return 'LGA2066'
     
     return None
 
@@ -2475,6 +2547,7 @@ def run_validation_logic(data):
         psu = get_doc(data.get('psu_id'))
         case = get_doc(data.get('case_id'))
         cooler = get_doc(data.get('cooler_id'))
+        fans_doc = get_doc(data.get('fans_id'))
 
         messages = []
         status = "Compatible"
@@ -2485,14 +2558,12 @@ def run_validation_logic(data):
         # 2. CPU Socket & BIOS advisory
         cpu_sock = infer_cpu_socket(cpu)
         mobo_sock = infer_mobo_socket(mobo)
-        
         if cpu_sock and mobo_sock:
             mobo_sockets = [s.strip() for s in mobo_sock.split('/')]
             if cpu_sock not in mobo_sockets:
                 status = "Not Compatible"
                 messages.append(f"Socket Mismatch: {cpu.get('name')} ({cpu_sock}) does not fit {mobo.get('name')} ({mobo_sock}).")
             else:
-                # BIOS Update Advisory (PCPartPicker style)
                 m_name = normalize(mobo.get('name'))
                 c_name = normalize(cpu.get('name'))
                 if 'B450' in m_name and '5000' in c_name:
@@ -2502,7 +2573,6 @@ def run_validation_logic(data):
         
         # 2.1 Physical Clearances
         if case:
-            # GPU Length
             if gpu:
                 g_len = parse_dimension_mm(gpu, ['length', 'video_card_length', 'gpu_length'])
                 c_g_max = parse_dimension_mm(case, ['max_video_card_length', 'video_card_max_length', 'gpu_clearance'])
@@ -2510,7 +2580,6 @@ def run_validation_logic(data):
                     status = "Not Compatible"
                     messages.append(f"Physical Clearance: {gpu.get('name')} ({int(g_len)}mm) is too long for the selected case (Max: {int(c_g_max)}mm).")
             
-            # Cooler Height
             if cooler and cooler != "None Selected":
                 c_height = parse_dimension_mm(cooler, ['height', 'cooler_height'])
                 c_c_max = parse_dimension_mm(case, ['max_cpucooler_height', 'cpu_cooler_clearance', 'cooler_clearance'])
@@ -2518,7 +2587,6 @@ def run_validation_logic(data):
                     status = "Not Compatible"
                     messages.append(f"Physical Clearance: {cooler.get('name')} ({int(c_height)}mm) is too tall for the selected case (Max: {int(c_c_max)}mm).")
             
-            # PSU Length
             if psu:
                 p_len = parse_dimension_mm(psu, ['length', 'psu_length'])
                 c_p_max = parse_dimension_mm(case, ['max_psu_length', 'psu_clearance'])
@@ -2526,13 +2594,19 @@ def run_validation_logic(data):
                     messages.append(f"Advisory: {psu.get('name')} ({int(p_len)}mm) exceeds recommended PSU length for this case.")
                     if status == "Compatible": status = "Borderline"
                 
-                # Modularity Check (PCPartPicker style for small cases)
                 c_name = normalize(case.get('name'))
                 if any(x in c_name for x in ['MINI', 'ITX', 'SMALL', 'SFF']):
                     p_name = normalize(psu.get('name'))
                     if 'MODULAR' not in p_name and 'SEMI' not in p_name:
-                        messages.append("Assembly Note: Using a non-modular PSU in a small form factor case may make cable management extremely difficult.")
+                        messages.append("Cable Management: Non-modular PSU in small case.")
                         if status == "Compatible": status = "Borderline"
+
+            if fans_doc:
+                f_slots = infer_case_fan_slots(case)
+                f_count = parse_ram_stick_count(fans_doc)
+                if f_count > f_slots:
+                    messages.append(f"Fan Configuration: Selected {f_count} fans, but case only has approx {f_slots} slots.")
+                    if status == "Compatible": status = "Borderline"
 
         # 3. RAM Generation, Capacity, & Slot Check
         cpu_ram_gen = infer_ram_generation(ram, is_mobo=False)
@@ -2542,25 +2616,22 @@ def run_validation_logic(data):
             status = "Not Compatible"
             messages.append(f"RAM Type Mismatch: Motherboard requires {mobo_ram_gen} but selected RAM is {cpu_ram_gen}.")
         
-        # RAM Slot Check
         if ram and mobo:
             sticks = parse_ram_stick_count(ram)
             slots = infer_mobo_ram_slots(mobo)
             if sticks > slots:
                 status = "Not Compatible"
-                messages.append(f"Memory Slot Conflict: Selected kit has {sticks} sticks, but motherboard only has {slots} slots.")
+                messages.append(f"Memory Slot Conflict: {sticks} sticks vs {slots} slots.")
 
-        # RAM Capacity Check
         ram_cap = parse_ram_capacity(ram)
         mobo_max_ram = mobo.get('max_ram') or mobo.get('max_memory')
         if ram_cap and mobo_max_ram:
-            # Parse max_ram (e.g. "128GB" or 128)
             import re
             m = re.search(r'(\d+)', str(mobo_max_ram))
             max_gb = float(m.group(1)) if m else 0
             if max_gb and ram_cap > max_gb:
                 status = "Not Compatible"
-                messages.append(f"Memory Overload: Motherboard supports max {int(max_gb)}GB, but selected RAM is {int(ram_cap)}GB.")
+                messages.append(f"Memory Overload: Max {int(max_gb)}GB supported.")
 
         # 4. Form Factor Check (Mobo vs Case)
         if mobo and case:
@@ -2568,43 +2639,32 @@ def run_validation_logic(data):
             c_ffs = infer_case_supported_form_factors(case)
             if m_ff and c_ffs and m_ff not in c_ffs:
                 status = "Not Compatible"
-                messages.append(f"Physical Incompatibility: {mobo.get('name')} ({m_ff}) is too large for {case.get('name')} (Supports: {', '.join(c_ffs)}).")
+                messages.append(f"Physical Incompatibility: {m_ff} is too large for case.")
 
-        # 5. PSU Adequacy (Integrated Power Analysis)
+        # 5. PSU Adequacy
         if cpu or gpu:
             p_res = run_power_analysis(data)
             if p_res.get('status') == 'success':
                 psu_status = p_res.get('adequacy_status')
                 rec_w = p_res.get('recommended_wattage')
                 sel_w = p_res.get('selected_psu_wattage')
-                
                 if psu_status == "Insufficient":
                     status = "Not Compatible"
-                    messages.append(f"Power Deficit: Estimated draw requires {rec_w}W, but selected PSU provides only {sel_w}W.")
+                    messages.append(f"Power Deficit: {rec_w}W required, but only {sel_w}W selected.")
                 elif psu_status == "Borderline":
                     if status == "Compatible": status = "Borderline"
-                    messages.append(f"Power Alert: {sel_w}W PSU is near the limit for this build. {rec_w}W+ recommended for safety.")
-                elif psu_status == "No PSU Selected" and (gpu or (cpu and cpu.get('tdp', 0) > 100)):
-                    if status == "Compatible": status = "Borderline"
-                    messages.append(f"Missing Component: A PSU with at least {rec_w}W is recommended for this configuration.")
+                    messages.append(f"Power Alert: {sel_w}W PSU is near the limit.")
 
         # 6. Storage & Resource Sharing
         if storage and mobo:
             s_type = normalize(storage.get('type') or storage.get('form_factor') or storage.get('interface'))
             is_m2 = 'M.2' in s_type or 'NVME' in s_type
             mobo_slots = infer_mobo_storage_slots(mobo)
-            
             if is_m2 and mobo_slots['m2'] == 0:
                 status = "Not Compatible"
-                messages.append("Storage Mismatch: Selected M.2 drive, but motherboard has no M.2 slots.")
-            
-            # Resource Sharing Advisory (PCPartPicker style)
-            m_name = normalize(mobo.get('name'))
-            if is_m2 and any(x in m_name for x in ['B450', 'B550', 'H610', 'H410']):
-                messages.append("Resource Advisory: Using the M.2 slot may disable one or more SATA 6.0 Gb/s ports on this chipset.")
-                if status == "Compatible": status = "Borderline"
+                messages.append("Storage Mismatch: No M.2 slots available.")
 
-        # 7. Cooler Compatibility & TDP Check
+        # 7. Cooler Compatibility & TDP
         if cpu:
             tdp = cpu.get('tdp', 0)
             if isinstance(tdp, str):
@@ -2616,93 +2676,60 @@ def run_validation_logic(data):
                 c_sock_support = infer_cooler_socket_support(cooler)
                 if cpu_sock and c_sock_support and cpu_sock not in c_sock_support:
                     status = "Not Compatible"
-                    messages.append(f"Cooling Mismatch: {cooler.get('name')} does not officially support {cpu_sock} sockets.")
-                
-                c_name = normalize(cooler.get('name'))
-                c_type = normalize(cooler.get('type'))
-                if 'LIQUID' not in c_name and 'AIO' not in c_name and 'LIQUID' not in c_type:
-                    if tdp > 180:
-                        messages.append("Thermal Warning: High-power CPU detected. Air cooling may struggle; a 240mm+ AIO is recommended.")
-                        if status == "Compatible": status = "Borderline"
-                
-            # Radiator Support Check (AIO Only)
-            if cooler and cooler != "None Selected" and case:
-                c_name = normalize(cooler.get('name'))
-                ca_name = normalize(case.get('name'))
-                rad_match = re.search(r'(120|140|240|280|360|420)\s*(?:mm)?', c_name)
-                if rad_match and ('LIQUID' in c_name or 'AIO' in c_name):
-                    rad_size = int(rad_match.group(1))
-                    # Check if case supports this size
-                    if rad_size > 280 and any(x in ca_name for x in ['MINI', 'ITX', 'H210']):
-                         messages.append(f"Radiator Alert: Cases like {case.get('name')} may not support {rad_size}mm radiators. Verify mounting points.")
-                         if status == "Compatible": status = "Borderline"
-                    elif rad_size > 360:
-                         messages.append(f"Radiator Alert: {rad_size}mm rads require large enthusiast cases. Verify compatibility.")
-                         if status == "Compatible": status = "Borderline"
+                    messages.append(f"Cooling Mismatch: {cooler.get('name')} does not support {cpu_sock}.")
             elif tdp > 105 and (not cooler or cooler == "None Selected"):
                 status = "Not Compatible"
-                messages.append("Cooling Missing: High-TDP processor selects requires aftermarket cooling for operation.")
+                messages.append("Cooling Missing: High-TDP processor requires aftermarket cooling.")
 
-        # 8. Component Completion Check (Expanded for all 22 slots)
+        # 8. Component Completion Check
         critical_slots = ['cpu_id', 'motherboard_id', 'ram_id', 'psu_id', 'case_id', 'storage_id']
         missing_crit = [s.replace('_id','').upper() for s in critical_slots if not data.get(s) or data.get(s) == "None Selected"]
         
-        # Check if integrated graphics exist, else GPU is critical
         has_igpu = False
         if cpu:
             c_name = normalize(cpu.get('name'))
-            # Intel F-series and AMD non-G series (or specific chips) lack iGPU
             if 'INTEL' in c_name and '-F' in c_name: has_igpu = False
-            elif 'RYZEN' in c_name and 'G' not in c_name and '7000' not in c_name and '9000' not in c_name: has_igpu = False # Zen 4+ has iGPU usually
+            elif 'RYZEN' in c_name and 'G' not in c_name and '7000' not in c_name and '9000' not in c_name: has_igpu = False
             else: has_igpu = True
             
         if not has_igpu and (not data.get('gpu_id') or data.get('gpu_id') == "None Selected"):
-            missing_crit.append("GPU (Required for Display)")
+            missing_crit.append("GPU")
 
         if missing_crit:
-             messages.append(f"Incomplete Build: Missing {', '.join(missing_crit)}. System cannot be assembled or booted without these.")
+             messages.append(f"Incomplete Build: Missing {', '.join(missing_crit)}.")
              if status == "Compatible": status = "Borderline"
 
-        # 9. Eco & Utility Advisories
+        # 9. Eco & Utility
         wifi_id = data.get('wifi_id')
         if wifi_id and wifi_id != "None Selected" and mobo:
             m_name = normalize(mobo.get('name'))
             if 'WIFI' in m_name:
-                messages.append(f"Advisory: {mobo.get('name')} already has built-in WiFi. The selected WiFi adapter may be redundant.")
+                messages.append(f"Advisory: {mobo.get('name')} already has built-in WiFi.")
         
         ups_id = data.get('ups_id')
         if ups_id and ups_id != "None Selected":
-             # Basic UPS wattage check if data available
-             ups = get_component_by_id(ups_id)
+             ups = get_doc(ups_id)
              if ups:
                 ups_w = ups.get('wattage') or ups.get('power') or 0
                 if isinstance(ups_w, str):
                     try: ups_w = int(re.findall(r'\d+', ups_w)[0])
                     except: ups_w = 0
-                
                 p_res = run_power_analysis(data)
                 draw = p_res.get('total_base_wattage', 0)
                 if ups_w > 0 and ups_w < draw:
-                    messages.append(f"UPS Alert: UPS capacity ({ups_w}W) is lower than your system draw ({draw}W).")
+                    messages.append(f"UPS Alert: UPS capacity too low ({ups_w}W vs {draw}W).")
                     if status == "Compatible": status = "Borderline"
 
-        # 10. Assembly Prep
+        # 10. Assembly Preparation
         if not data.get('thermal_paste_id') or data.get('thermal_paste_id') == "None Selected":
             if cpu and cpu.get('tdp', 0):
                 try:
                     import re as _re
-                    tdp_nums = _re.findall(r'\d+', str(cpu.get('tdp', 0)))
-                    tdp_val = int(tdp_nums[0]) if tdp_nums else 0
-                    if tdp_val > 100:
-                        messages.append("Assembly Note: High-performance thermal paste recommended for this CPU.")
-                except:
-                    pass
+                    tdp_v = int(_re.findall(r'\d+', str(cpu.get('tdp', 0)))[0]) if _re.findall(r'\d+', str(cpu.get('tdp', 0))) else 0
+                    if tdp_v > 100:
+                        messages.append("Assembly Note: High-performance thermal paste recommended.")
+                except: pass
         
-        if not data.get('tool_id') or data.get('tool_id') == "None Selected":
-            diff = calculate_build_difficulty(data)
-            if diff['level'] == 'Advanced':
-                messages.append("Advisory: This is an advanced build. Ensure you have the necessary precision tools.")
-
         if not messages and status == "Compatible":
             messages.append("Systems check: All selected components are compatible!")
 
@@ -2711,6 +2738,15 @@ def run_validation_logic(data):
     except Exception as e:
         app.logger.error(f"Validation internal error: {e}")
         return {'status': 'Error', 'messages': [str(e)]}
+
+def infer_case_fan_slots(doc):
+    """Infers the number of fan mounting positions in a case."""
+    if not doc: return 3
+    val = normalize(doc.get('name') or doc.get('specs') or doc.get('type') or "")
+    if 'MINI' in val or 'ITX' in val: return 2
+    if 'MICRO' in val or 'MINI TOWER' in val: return 4
+    if 'FULL' in val or 'XL' in val: return 8
+    return 6
 
 # ============================================================================
 # NEW AI ENGINE ENDPOINTS (Multi-Provider: Groq, Mistral, Gemini, Ollama)
@@ -6259,12 +6295,6 @@ def api_build_optimizer():
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
-
-
-
-
 
 # --- Forgot Password Logic ---
 
