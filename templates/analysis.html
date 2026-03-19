@@ -1292,6 +1292,11 @@
                         });
                         const warningDiv = document.getElementById('sim-lifecycle-warning');
                         if (warningDiv) warningDiv.style.display = hasDeprecated ? 'block' : 'none';
+
+                        // 3. Automatic Re-check after component change
+                        if (runSimBtn && !runSimBtn.disabled) {
+                            runSimBtn.click();
+                        }
                     };
                 });
             }
@@ -1758,15 +1763,21 @@
                 });
                 const result = await response.json();
 
-                if (result.status === 'success' && result.suggestions.length > 0) {
+                if (result.status !== 'Incomplete Selection' && result.suggestions.length > 0) {
                     if (statusTag) { statusTag.textContent = `${result.suggestions.length} suggestion${result.suggestions.length !== 1 ? 's' : ''} found`; }
 
                     container.innerHTML = result.suggestions.map(s => {
                         const catLabel = (s.category || '').replace(/_/g, ' ').toUpperCase();
+                        const isFix = s.type === 'fix';
+                        const accentColor = isFix ? '#f87171' : '#fbbf24';
+                        const bgColor = isFix ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)';
+                        const btnText = isFix ? 'Apply Fix' : 'Optimize Build';
+
                         return `
-                        <div class="step-card" style="text-align: left; padding: 1.5rem; background: rgba(0,0,0,0.25); border-left: 4px solid #f87171; border-radius: 12px;">
-                            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;">
-                                <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">${catLabel}</span>
+                        <div class="step-card" style="text-align: left; padding: 1.5rem; background: rgba(0,0,0,0.25); border-left: 4px solid ${accentColor}; border-radius: 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+                                <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; background: ${bgColor}; color: ${accentColor}; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">${catLabel}</span>
+                                <span style="font-size: 0.65rem; color: ${accentColor}; font-weight: 700; text-transform: uppercase;">${isFix ? 'Critical Fix' : 'Recommendation'}</span>
                             </div>
                             <h4 style="color: white; font-size: 1rem; margin-bottom: 0.4rem; line-height: 1.3;">${s.title}</h4>
                             <p style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 1.2rem; line-height: 1.5;">${s.reason}</p>
@@ -1776,7 +1787,7 @@
                                             style="font-size: 0.82rem; text-align: left; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-color: rgba(255,255,255,0.08); border-radius: 10px; gap: 0.5rem;" 
                                             onclick="applyFix('${s.category === 'tools' ? 'tool' : s.category}_id', '${opt.id}')">
                                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${opt.name}</span>
-                                        <span style="color: #4ade80; font-weight: 700; flex-shrink: 0; font-size: 0.78rem;">✓ Apply Fix</span>
+                                        <span style="color: #4ade80; font-weight: 700; flex-shrink: 0; font-size: 0.78rem;">✓ ${btnText}</span>
                                     </button>
                                 `).join('')}
                             </div>
@@ -1789,9 +1800,14 @@
                         <a href="{{ url_for('builder') }}" class="btn btn-primary" style="display: inline-block; padding: 0.7rem 1.5rem; font-size: 0.9rem;">Go to Builder</a>
                     </div>`;
                 } else {
-                    if (statusTag) { statusTag.textContent = 'All clear'; statusTag.style.background = 'rgba(74,222,128,0.15)'; statusTag.style.color = '#4ade80'; }
+                    const isBorderline = result.status === 'Borderline';
+                    if (statusTag) { 
+                        statusTag.textContent = isBorderline ? 'Optimization needed' : 'All clear'; 
+                        statusTag.style.background = isBorderline ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.15)'; 
+                        statusTag.style.color = isBorderline ? '#fbbf24' : '#4ade80'; 
+                    }
                     container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2.5rem;">
-                        <p style="margin-bottom: 1rem; font-size: 0.95rem;">✅ No automatic fixes are needed. Your build is already well-configured.</p>
+                        <p style="margin-bottom: 1rem; font-size: 0.95rem;">${isBorderline ? '⚠️ Your build is functional but has potential bottlenecks or suboptimal parts.' : '✅ No automatic fixes are needed. Your build is already well-configured.'}</p>
                         <p style="font-size: 0.85rem;">For manual customization, visit the <a href="{{ url_for('builder') }}" style="color: var(--accent);">Builder</a>.</p>
                     </div>`;
                 }
@@ -1803,74 +1819,56 @@
         }
 
         async function applyFix(key, value) {
+            const statusEl = document.getElementById('compat-status');
+            const originalStatus = statusEl.textContent;
+            
+            // UX: provide immediate feedback
+            statusEl.textContent = "Updating Build...";
+            statusEl.style.color = "var(--primary-light)";
+            
+            const statusTag = document.getElementById('fix-panel-status-tag');
+            if (statusTag) statusTag.textContent = 'Applying...';
+
+            // 1. Update Global State (source of truth)
+            buildData[key] = value;
+            
+            // 2. Update URL parameters without reloading for page consistency
             const urlParams = new URLSearchParams(window.location.search);
-            const buildId = urlParams.get('build_id');
-
-            // Set the new value for the fix
             urlParams.set(key, value);
+            const newUrl = window.location.pathname + '?' + urlParams.toString();
+            window.history.replaceState({ path: newUrl }, '', newUrl);
 
-            // If there's no buildId, we can't save. Just reload with the new part.
-            if (!buildId) {
-                window.location.search = urlParams.toString();
-                return;
-            }
-
-            // We have a buildId, so let's save the changes.
-            const buildData = {
-                build_id: buildId,
-                cpu_id: urlParams.get('cpu_id'),
-                gpu_id: urlParams.get('gpu_id'),
-                motherboard_id: urlParams.get('motherboard_id'),
-                ram_id: urlParams.get('ram_id'),
-                storage_id: urlParams.get('storage_id'),
-                psu_id: urlParams.get('psu_id'),
-                case_id: urlParams.get('case_id'),
-                cooler_id: urlParams.get('cooler_id'),
-                monitor_id: urlParams.get('monitor_id'),
-                os_id: urlParams.get('os_id'),
-                peripherals_id: urlParams.get('peripherals_id'),
-                keyboard_id: urlParams.get('keyboard_id'),
-                mouse_id: urlParams.get('mouse_id'),
-                headset_id: urlParams.get('headset_id'),
-                webcam_id: urlParams.get('webcam_id'),
-                fans_id: urlParams.get('fans_id'),
-                thermal_paste_id: urlParams.get('thermal_paste_id'),
-                wifi_id: urlParams.get('wifi_id'),
-                speakers_id: urlParams.get('speakers_id'),
-                microphone_id: urlParams.get('microphone_id'),
-                ups_id: urlParams.get('ups_id'),
-                tool_id: urlParams.get('tool_id'),
-            };
-
-            // Get the build name to preserve it
-            try {
-                const response = await fetch(`/api/get_build/${buildId}`);
-                const data = await response.json();
-                if (data.status === 'success' && data.build.name) {
-                    buildData.name = data.build.name;
+            // 3. Persist to Database if build_id is present
+            const buildId = urlParams.get('build_id');
+            if (buildId) {
+                try {
+                    // Critical: Use the full global buildData to preserve all components 
+                    const savePayload = {
+                        build_id: buildId,
+                        ...buildData
+                    };
+                    
+                    const saveResponse = await fetch('/api/save_build', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(savePayload)
+                    });
+                    
+                    const saveResult = await saveResponse.json();
+                    if (saveResult.status !== 'success') {
+                        console.error('Save failed:', saveResult.message);
+                    }
+                } catch (e) {
+                    console.error('Persistence error:', e);
                 }
-            } catch (e) {
-                console.error("Could not fetch build name, it may be reset.", e);
             }
 
-
-            try {
-                const saveResponse = await fetch('/api/save_build', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(buildData)
-                });
-                const saveResult = await saveResponse.json();
-                if (saveResult.status === 'success') {
-                    // Now reload the page with the updated URL.
-                    window.location.search = urlParams.toString();
-                } else {
-                    alert('Error saving build fix: ' + saveResult.message);
-                }
-            } catch (error) {
-                console.error('Failed to save build fix:', error);
-                alert('Connection error while saving the fix.');
-            }
+            // 4. Re-evaluate Compatibility IMMEDIATELY
+            // This updates the status bar, messages, price tracker, and energy labs
+            await validateBuild(buildData);
+            
+            // Scroll to the top of results to show the updated status
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     </script>
     {% if session.get('user_id') %}

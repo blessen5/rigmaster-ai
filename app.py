@@ -1585,6 +1585,25 @@ def api_validate_build():
     data = request.json
     return jsonify(run_validation_logic(data))
 
+def rigmaster_detect_pcie(doc):
+    if not doc: return 0
+    # Try common fields
+    for key in ['pcie_version','pcie','pcie_slot','pcie_rev']:
+        if key in doc and doc.get(key):
+            try:
+                # Remove non-numeric chars
+                import re
+                v_str = re.sub(r'[^0-9.]', '', str(doc.get(key)))
+                if v_str: return int(float(v_str))
+            except: pass
+    
+    # Try name parsing
+    s = str(doc.get('name') or '').lower()
+    if 'pcie5' in s or 'pcie 5' in s or 'pci express 5' in s: return 5
+    if 'pcie4' in s or 'pcie 4' in s or 'pci express 4' in s: return 4
+    if 'pcie3' in s or 'pcie 3' in s or 'pci express 3' in s: return 3
+    return 0
+
 @app.route('/api/fix-compatibility', methods=['POST'])
 @login_required
 def api_fix_compatibility():
@@ -1651,6 +1670,7 @@ def api_fix_compatibility():
                 mobo_matches.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'motherboard',
+                    'type': 'fix',
                     'title': f'Compatible {cpu_sock} Motherboard',
                     'reason': 'Resolves identified socket, form factor, or memory generation mismatches.',
                     'options': [{'id': m['id'], 'name': m['name']} for m in mobo_matches[:3]]
@@ -1668,6 +1688,7 @@ def api_fix_compatibility():
                     cpu_matches.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': 'cpu',
+                        'type': 'fix',
                         'title': f'Compatible {mobo_sock} CPU',
                         'reason': f'Fits your selected {mobo.get("name")} ({mobo_sock}).',
                         'options': [{'id': c['id'], 'name': c['name']} for c in cpu_matches[:3]]
@@ -1686,6 +1707,7 @@ def api_fix_compatibility():
                     ram_matches.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': 'ram',
+                        'type': 'fix',
                         'title': f'Compatible {mobo_ram_gen} RAM',
                         'reason': f'Your motherboard requires {mobo_ram_gen} memory. Current RAM is {ram_gen}.',
                         'options': [{'id': r['id'], 'name': r['name']} for r in ram_matches[:3]]
@@ -1701,6 +1723,7 @@ def api_fix_compatibility():
                 roomy_cases.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'case',
+                    'type': 'fix',
                     'title': f'Case supporting {mobo_ff}',
                     'reason': f'Your motherboard requires a case with {mobo_ff} support.',
                     'options': [{'id': c['id'], 'name': c['name']} for c in roomy_cases[:3]]
@@ -1724,6 +1747,7 @@ def api_fix_compatibility():
                         fitting_cases.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'case',
+                            'type': 'fix',
                             'title': 'Case with Better GPU Clearance',
                             'reason': f'The {gpu.get("name")} ({int(g_len)}mm) is too long for the current case.',
                             'options': [{'id': c['id'], 'name': c['name']} for c in fitting_cases[:3]]
@@ -1742,6 +1766,7 @@ def api_fix_compatibility():
                         fitting_coolers.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'cooler',
+                            'type': 'fix',
                             'title': 'Lower Profile Cooler',
                             'reason': f'Cooler ({int(c_h)}mm) exceeds case height limit ({int(c_c_max)}mm).',
                             'options': [{'id': c['id'], 'name': c['name']} for c in fitting_coolers[:3]]
@@ -1760,6 +1785,7 @@ def api_fix_compatibility():
                         fitting_p_cases.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'case',
+                            'type': 'fix',
                             'title': 'Case with Better PSU Room',
                             'reason': f'The selected PSU ({int(p_len)}mm) is too long for this case.',
                             'options': [{'id': c['id'], 'name': c['name']} for c in fitting_p_cases[:3]]
@@ -1782,6 +1808,7 @@ def api_fix_compatibility():
                 beefy_psus.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'psu',
+                    'type': 'fix',
                     'title': f'High-Wattage PSU ({target_w}W+)',
                     'reason': f'System requires at least {power_analysis.get("recommended_wattage")}W.',
                     'options': [{'id': p['id'], 'name': p['name']} for p in beefy_psus[:3]]
@@ -1801,8 +1828,9 @@ def api_fix_compatibility():
                     slot_mobos.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': 'motherboard',
-                        'title': f'{sticks}-Slot Motherboard',
-                        'reason': f'Selected RAM kit ({sticks} sticks) requires more slots than available ({slots}).',
+                        'type': 'fix',
+                        'title': f'Motherboard with {sticks} RAM Slots',
+                        'reason': f'Your RAM kit has {sticks} sticks; current board only has {slots} slots.',
                         'options': [{'id': m['id'], 'name': m['name']} for m in slot_mobos[:3]]
                     })
 
@@ -1821,6 +1849,7 @@ def api_fix_compatibility():
                         fitting_cap_mobos.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'motherboard',
+                            'type': 'fix',
                             'title': f'Motherboard supporting {int(ram_cap)}GB',
                             'reason': f'RAM ({int(ram_cap)}GB) exceeds motherboard limit ({m_v}GB).',
                             'options': [{'id': m['id'], 'name': m['name']} for m in fitting_cap_mobos[:3]]
@@ -1842,6 +1871,7 @@ def api_fix_compatibility():
                     m2_mobos.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': 'motherboard',
+                        'type': 'fix',
                         'title': 'Motherboard with M.2 Support',
                         'reason': 'Selected M.2 storage is not supported by current board.',
                         'options': [{'id': m['id'], 'name': m['name']} for m in m2_mobos[:3]]
@@ -1856,6 +1886,7 @@ def api_fix_compatibility():
                     sata_options.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': 'storage',
+                        'type': 'fix',
                         'title': 'SATA SSD Alternative',
                         'reason': 'Current board lacks M.2 slots; suggest switching to a standard SATA drive.',
                         'options': [{'id': s['id'], 'name': s['name']} for s in sata_options[:3]]
@@ -1876,6 +1907,7 @@ def api_fix_compatibility():
                         fitting_coolers.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'cooler',
+                            'type': 'fix',
                             'title': f'Cooler supporting {cpu_sock}',
                             'reason': f'Selected cooler does not officially support the {cpu_sock} socket.',
                             'options': [{'id': c['id'], 'name': c['name']} for c in fitting_coolers[:3]]
@@ -1891,6 +1923,7 @@ def api_fix_compatibility():
                     high_coolers.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': 'cooler',
+                        'type': 'improvement',
                         'title': 'High-Performance Cooling',
                         'reason': 'High-TDP processor requires substantial thermal solution.',
                         'options': [{'id': c['id'], 'name': c['name']} for c in high_coolers[:3]]
@@ -1906,6 +1939,7 @@ def api_fix_compatibility():
                     matches.sort(key=lambda x: x['dist'])
                     suggestions.append({
                         'category': cat,
+                        'type': 'fix',
                         'title': f'Essential {cat.upper()}',
                         'reason': f'Your build is missing a {cat}.',
                         'options': [{'id': m['id'], 'name': m['name']} for m in matches[:3]]
@@ -1925,6 +1959,7 @@ def api_fix_compatibility():
                 gpu_matches.sort(key=lambda x: x['dist'])
                 suggestions.append({
                     'category': 'gpu',
+                    'type': 'fix',
                     'title': 'Discrete GPU Required',
                     'reason': 'Your CPU lacks integrated graphics; a dedicated GPU is necessary for display output.',
                     'options': [{'id': g['id'], 'name': g['name']} for g in gpu_matches[:3]]
@@ -1938,6 +1973,7 @@ def api_fix_compatibility():
                 if pastes:
                     suggestions.append({
                         'category': 'thermal_paste',
+                        'type': 'improvement',
                         'title': 'Performance Thermal Paste',
                         'reason': 'Recommended for stable thermals on high-output CPUs.',
                         'options': [{'id': str(p['_id']), 'name': p.get('name')} for p in pastes[:3]]
@@ -2252,7 +2288,120 @@ def api_fix_compatibility():
                 except Exception:
                     pass
 
-        return jsonify({'status': 'success', 'suggestions': suggestions})
+        # --- 19. BIOS Update Mismatch (Borderline Enhancement) ---
+        if mobo and cpu:
+            m_name = normalize(mobo.get('name', ''))
+            c_name = normalize(cpu.get('name', ''))
+            if ('B450' in m_name and '5000' in c_name) or ('A320' in m_name and '3000' in c_name):
+                # Suggest a board with native support (B550 or X570 for AM4)
+                native_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
+                better_mobos = []
+                for m in native_mobos:
+                    nm = normalize(m.get('name', ''))
+                    if any(x in nm for x in ['B550', 'X570']):
+                        better_mobos.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                if better_mobos:
+                    better_mobos.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'motherboard',
+                        'type': 'improvement',
+                        'title': 'Motherboard with Native OS/BIOS Support',
+                        'reason': f'The {m_name} may require a BIOS update for the {c_name}; newer boards support it natively.',
+                        'options': [{'id': m['id'], 'name': m['name']} for m in better_mobos[:3]]
+                    })
+
+        # --- 20. PCIe Gen Mismatch (Borderline Enhancement) ---
+        if gpu and mobo:
+            g_pcie = rigmaster_detect_pcie(gpu)
+            m_pcie = rigmaster_detect_pcie(mobo)
+            if g_pcie and m_pcie and g_pcie > m_pcie:
+                pcie_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
+                matching_mobos = []
+                for m in pcie_mobos:
+                    if rigmaster_detect_pcie(m) >= g_pcie and infer_mobo_socket(m) == infer_mobo_socket(mobo):
+                        matching_mobos.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                if matching_mobos:
+                    matching_mobos.sort(key=lambda x: x['dist'])
+                    suggestions.append({
+                        'category': 'motherboard',
+                        'type': 'improvement',
+                        'title': f'PCIe {g_pcie} Motherboard Upgrade',
+                        'reason': f'Your GPU supports PCIe {g_pcie}; current board is limited to {m_pcie}. Upgrade for full bandwidth.',
+                        'options': [{'id': m['id'], 'name': m['name']} for m in matching_mobos[:3]]
+                    })
+
+        # --- 21. Bottleneck Remediation (Borderline Enhancement) ---
+        if cpu and gpu:
+            c_p = get_comp_price_usd(cpu)
+            g_p = get_comp_price_usd(gpu)
+            if c_p > 0 and g_p > 0:
+                ratio = g_p / c_p
+                if ratio > 3.0:
+                    # CPU is too weak. Suggest better CPU.
+                    better_cpus = list(db.components.find({'category': 'cpu'}).limit(200))
+                    matching_cpus = []
+                    target_tier = get_comp_tier(gpu)
+                    for c in better_cpus:
+                        if get_comp_tier(c) >= target_tier and infer_cpu_socket(c) == infer_cpu_socket(cpu):
+                            matching_cpus.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - target_tier)})
+                    if matching_cpus:
+                        matching_cpus.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'cpu',
+                            'type': 'improvement',
+                            'title': 'Higher Performance CPU (Balance)',
+                            'reason': f'To better match your {gpu.get("name")}, a more powerful CPU is recommended to avoid bottlenecks.',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in matching_cpus[:3]]
+                        })
+                elif ratio < 0.8:
+                    # GPU is too weak. Suggest better GPU.
+                    better_gpus = list(db.components.find({'category': 'gpu'}).limit(200))
+                    matching_gpus = []
+                    target_tier = get_comp_tier(cpu)
+                    for g in better_gpus:
+                        if get_comp_tier(g) >= target_tier:
+                            matching_gpus.append({'id': str(g['_id']), 'name': g.get('name'), 'dist': abs(get_comp_tier(g) - target_tier)})
+                    if matching_gpus:
+                        matching_gpus.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'gpu',
+                            'type': 'improvement',
+                            'title': 'Higher Tier GPU (Balance)',
+                            'reason': f'Your {cpu.get("name")} can handle a much more powerful GPU. This upgrade will significantly boost performance.',
+                            'options': [{'id': g['id'], 'name': g['name']} for g in matching_gpus[:3]]
+                        })
+
+        # --- 22. Non-Modular PSU in small case (Borderline Enhancement) ---
+        if case and psu:
+            c_name = normalize(case.get('name'))
+            if any(x in c_name for x in ['MINI', 'ITX', 'SMALL', 'SFF']):
+                p_name = normalize(psu.get('name'))
+                if 'MODULAR' not in p_name and 'SEMI' not in p_name:
+                    modular_psus = list(db.components.find({'category': 'psu'}).limit(200))
+                    best_matches = []
+                    for p in modular_psus:
+                        pn = normalize(p.get('name'))
+                        if ('MODULAR' in pn or 'SEMI' in pn) and extract_numeric_value(p.get('wattage')) >= extract_numeric_value(psu.get('wattage')):
+                            best_matches.append({'id': str(p['_id']), 'name': p.get('name'), 'dist': abs(get_comp_tier(p) - system_tier)})
+                    if best_matches:
+                        best_matches.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'psu',
+                            'type': 'improvement',
+                            'title': 'Modular PSU for Small Form Factor',
+                            'reason': 'Modular PSUs simplify cable management in small cases, improving airflow and ease of assembly.',
+                            'options': [{'id': p['id'], 'name': p['name']} for p in best_matches[:3]]
+                        })
+
+        # Final return
+        # Determine overall status for this result
+        final_status = "Compatible"
+        if any(s.get('type') == 'fix' for s in suggestions):
+            final_status = "Not Compatible"
+        elif any(s.get('type') == 'improvement' for s in suggestions):
+            final_status = "Borderline"
+
+        return jsonify({'status': final_status, 'suggestions': suggestions})
     except Exception as e:
         app.logger.error(f"Fix Error: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
@@ -3217,8 +3366,10 @@ def run_validation_logic(data):
                 c_name = normalize(cpu.get('name'))
                 if 'B450' in m_name and '5000' in c_name:
                     messages.append("BIOS Advisory: Ryzen 5000 CPUs may require a BIOS update on B450 motherboards.")
+                    if status == "Compatible": status = "Borderline"
                 if 'A320' in m_name and '3000' in c_name:
                     messages.append("BIOS Advisory: Ryzen 3000 CPUs may require a BIOS update on A320 motherboards.")
+                    if status == "Compatible": status = "Borderline"
         
         # 2.1 Physical Clearances
         if case:
@@ -3318,24 +3469,11 @@ def run_validation_logic(data):
             try:
                 if gpu and mobo:
                     # warn if motherboard PCIe version is older than GPU's advertised PCIe
-                    def detect_pcie(doc):
-                        if not doc: return 0
-                        for key in ['pcie_version','pcie','pcie_slot','pcie_rev']:
-                            if key in doc and doc.get(key):
-                                try:
-                                    v = int(str(doc.get(key)).strip().lower().replace('pcie','').replace('pci-e','').replace('v',''))
-                                    return v
-                                except:
-                                    pass
-                        s = str(doc.get('name') or '').lower()
-                        if 'pcie5' in s or 'pcie 5' in s or 'pci express 5' in s: return 5
-                        if 'pcie4' in s or 'pcie 4' in s or 'pci express 4' in s: return 4
-                        if 'pcie3' in s or 'pcie 3' in s or 'pci express 3' in s: return 3
-                        return 0
-                    g_pcie = detect_pcie(gpu)
-                    m_pcie = detect_pcie(mobo)
+                    g_pcie = rigmaster_detect_pcie(gpu)
+                    m_pcie = rigmaster_detect_pcie(mobo)
                     if g_pcie and m_pcie and g_pcie > m_pcie:
                         messages.append(f"PCIe Advisory: GPU appears to support PCIe {g_pcie} but motherboard is PCIe {m_pcie}. This is backward-compatible but may limit peak bandwidth.")
+                        if status == "Compatible": status = "Borderline"
             except Exception:
                 pass
             
@@ -3346,6 +3484,23 @@ def run_validation_logic(data):
                 if 'MODULAR' not in p_name and 'SEMI' not in p_name:
                     messages.append("Cable Management: Non-modular PSU in small case.")
                     if status == "Compatible": status = "Borderline"
+
+
+            # 2.5 Bottleneck Check (Simple Price-Based Heuristic)
+            try:
+                if cpu and gpu:
+                    cpu_p = get_comp_price_usd(cpu)
+                    gpu_p = get_comp_price_usd(gpu)
+                    if cpu_p > 0 and gpu_p > 0:
+                        ratio = gpu_p / cpu_p
+                        if ratio > 3.0:
+                            messages.append(f"Performance: Potential CPU bottleneck. High-end GPU ({gpu.get('name')}) may be restricted by mid-tier CPU.")
+                            if status == "Compatible": status = "Borderline"
+                        elif ratio < 0.8:
+                            messages.append(f"Performance: Potential GPU bottleneck. High-end CPU ({cpu.get('name')}) exceeds GPU performance tier.")
+                            if status == "Compatible": status = "Borderline"
+            except Exception:
+                pass
 
             if fans_doc:
                 f_slots = infer_case_fan_slots(case)
