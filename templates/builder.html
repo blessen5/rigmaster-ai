@@ -50,11 +50,11 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin: 1.5rem 0 0.8rem;
-            padding-bottom: 0.5rem;
+            margin: 1.2rem 0 0.6rem;
+            padding-bottom: 0.4rem;
             border-bottom: 1px solid var(--border);
             color: var(--primary-light);
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -114,22 +114,22 @@
 <body>
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
-    <div class="container section" style="margin-top: 80px; display: flex; justify-content: center;">
-        <div class="step-card" style="max-width: 1200px; width: 100%; text-align: left; padding: 2.5rem;">
-            <div style="text-align: center; margin-bottom: 2.5rem;">
-                <h1 class="text-gradient" style="font-size: 3.5rem; margin-bottom: 0.75rem;">Intelligent PC Builder</h1>
-                <p style="font-size: 1.15rem; color: var(--text-muted); max-width: 600px; margin: 0 auto;">
+    <div class="container section" style="margin-top: 60px; display: flex; justify-content: center;">
+        <div class="step-card" style="max-width: 1200px; width: 100%; text-align: left; padding: 1.5rem 2rem;">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 0.4rem;">Intelligent PC Builder</h1>
+                <p style="font-size: 1rem; color: var(--text-muted); max-width: 600px; margin: 0 auto;">
                     Select your hardware from our verified database.
                 </p>
             </div>
 
             <form id="builder-form">
-                <div class="form-group" style="margin-bottom: 2rem;">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label class="form-label"
-                        style="display: block; margin-bottom: 0.8rem; color: var(--primary-light); font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Build
+                        style="display: block; margin-bottom: 0.4rem; color: var(--primary-light); font-weight: 700; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase;">Build
                         Assignment Name</label>
                     <input type="text" id="build-name" name="config_name" placeholder="E.g. Gaming Rig 2024..."
-                        style="width: 100%; padding: 1.25rem 1.75rem; background: rgba(0,0,0,0.2); border: 2px solid var(--border); border-radius: 12px; color: white; font-size: 1.1rem; transition: border-color 0.2s;"
+                        style="width: 100%; padding: 0.8rem 1.2rem; background: rgba(0,0,0,0.2); border: 2px solid var(--border); border-radius: 10px; color: white; font-size: 1rem; transition: border-color 0.2s;"
                         onfocus="this.style.borderColor='var(--primary)'"
                         onblur="this.style.borderColor='var(--border)'">
                 </div>
@@ -145,7 +145,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Processor
                             (CPU)</label>
                         <select id="cpu-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading CPUs...</option>
                         </select>
                     </div>
@@ -155,7 +155,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Graphics
                             Card (GPU)</label>
                         <select id="gpu-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading GPUs...</option>
                         </select>
                     </div>
@@ -164,7 +164,7 @@
                         <label class="form-label"
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Motherboard</label>
                         <select id="mobo-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading Motherboards...</option>
                         </select>
                     </div>
@@ -179,7 +179,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Memory
                             (RAM)</label>
                         <select id="ram-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading RAM...</option>
                         </select>
                     </div>
@@ -189,7 +189,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Primary
                             Storage</label>
                         <select id="storage-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading Storage...</option>
                         </select>
                     </div>
@@ -199,7 +199,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">CPU
                             Cooler</label>
                         <select id="cooler-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading Coolers...</option>
                         </select>
                     </div>
@@ -214,7 +214,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Power
                             Supply (PSU)</label>
                         <select id="psu-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading PSUs...</option>
                         </select>
                     </div>
@@ -224,7 +224,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Chassis
                             (Case)</label>
                         <select id="case-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading Cases...</option>
                         </select>
                     </div>
@@ -234,7 +234,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Cooling
                             Fans</label>
                         <select id="fans-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading Fans...</option>
                         </select>
                     </div>
@@ -248,7 +248,7 @@
                         <label class="form-label"
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Monitor</label>
                         <select id="monitor-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading Monitors...</option>
                         </select>
                     </div>
@@ -258,7 +258,7 @@
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Operating
                             System</label>
                         <select id="os-select" class="form-select"
-                            style="width: 100%; padding: 1.15rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                            style="width: 100%; padding: 0.85rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: white; border-radius: 8px;">
                             <option value="">Loading OS...</option>
                         </select>
                     </div>
@@ -267,9 +267,9 @@
                         <label class="form-label"
                             style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Peripherals</label>
                         <button type="button" onclick="togglePeripherals()" id="periph-btn"
-                            style="width: 100%; padding: 1.15rem 1.25rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.95rem; transition: all 0.3s;">
+                            style="width: 100%; padding: 0.85rem 1.15rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; transition: all 0.3s;">
                             <span>Manage Add-ons</span>
-                            <span id="periph-icon" style="font-size: 1.2rem; transition: transform 0.3s;">+</span>
+                            <span id="periph-icon" style="font-size: 1.1rem; transition: transform 0.3s;">+</span>
                         </button>
                     </div>
 
@@ -622,7 +622,7 @@
                         if (b.mouse_id) document.getElementById('mouse-select').value = b.mouse_id;
                         if (b.headset_id) document.getElementById('headset-select').value = b.headset_id;
                         if (b.webcam_id) document.getElementById('webcam-select').value = b.webcam_id;
-                                                if (b.thermal_paste_id) document.getElementById('thermal_paste-select').value = b.thermal_paste_id;
+                        if (b.thermal_paste_id) document.getElementById('thermal_paste-select').value = b.thermal_paste_id;
                         if (b.wifi_id) document.getElementById('wifi-select').value = b.wifi_id;
                         if (b.speakers_id) document.getElementById('speakers-select').value = b.speakers_id;
                         if (b.microphone_id) document.getElementById('microphone-select').value = b.microphone_id;
@@ -687,7 +687,7 @@
                 keyboard: 'keyboard-select',
                 mouse: 'mouse-select',
                 headset: 'headset-select',
-                                webcam: 'webcam-select',
+                webcam: 'webcam-select',
                 thermal_paste: 'thermal_paste-select',
                 wifi: 'wifi-select',
                 speakers: 'speakers-select',
@@ -728,7 +728,7 @@
                 keyboard_id: document.getElementById('keyboard-select').value,
                 mouse_id: document.getElementById('mouse-select').value,
                 headset_id: document.getElementById('headset-select').value,
-                                webcam_id: document.getElementById('webcam-select').value,
+                webcam_id: document.getElementById('webcam-select').value,
                 fans_id: document.getElementById('fans-select').value,
                 thermal_paste_id: document.getElementById('thermal_paste-select').value,
                 wifi_id: document.getElementById('wifi-select').value,
@@ -809,7 +809,7 @@
 
                             let displayTitle = listing.title || 'Unknown';
                             if (displayTitle.startsWith('Search: ')) displayTitle = displayTitle.replace('Search: ', '');
-                            
+
                             // Only "Market Search" required
                             let displaySource = 'Market Search';
 
