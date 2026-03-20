@@ -251,6 +251,40 @@ def get_comp_price_usd(comp, id_key=None, est_cat=None):
         fallback_cat = _PRICE_CAT_MAP.get(id_key, id_key)
         
     return get_estimated_price(comp.get('name', ''), fallback_cat or 'peripherals')
+    
+def get_comp_tier(comp, cat):
+    """Returns a numeric tier (1-5) for a component based on name and price."""
+    if not comp: return 0
+    name = str(comp.get('name', '')).upper()
+    price = get_comp_price_usd(comp)
+    
+    if cat in ['cpu', 'cpus']:
+        if any(x in name for x in ['9900', '9950', 'THREADRIPPER', 'EPYC']): return 5
+        if 'RYZEN 9' in name or 'CORE I9' in name: return 5
+        if 'RYZEN 7' in name or 'CORE I7' in name: return 4
+        if 'RYZEN 5' in name or 'CORE I5' in name: return 3
+        return 2
+    if cat in ['gpu', 'gpus']:
+        if '4090' in name or '4080' in name or '7900 XTX' in name: return 5
+        if '4070' in name or '7900' in name or '7800' in name: return 4
+        if '3080' in name or '3090' in name or '6900' in name: return 4
+        if '4060' in name or '7700' in name or '7600' in name: return 3
+        return 2
+    if cat in ['motherboard', 'motherboards']:
+        if any(x in name for x in ['X670', 'Z790', 'X870', 'Z890']): return 4
+        if any(x in name for x in ['B650', 'B760', 'H770']): return 3
+        return 2
+    if cat in ['psu']:
+        if price > 180 or 'TITANIUM' in name or 'PLATINUM' in name: return 5
+        if price > 130 or 'GOLD' in name: return 4
+        if price > 80: return 3
+        return 2
+        
+    # Generic price-based tiering for others
+    if price > 200: return 4
+    if price > 100: return 3
+    if price > 40: return 2
+    return 1
 
 def get_component_by_id(comp_id):
     if db is None or not comp_id: return None
@@ -1633,8 +1667,19 @@ def api_fix_compatibility():
         case = get_comp(data.get('case_id'))
         cooler = get_comp(data.get('cooler_id'))
         storage = get_comp(data.get('storage_id'))
+        fans = get_comp(data.get('fans_id'))
+        os_cfg = get_comp(data.get('os_id'))
         monitor = get_comp(data.get('monitor_id'))
+        keyboard = get_comp(data.get('keyboard_id'))
+        mouse = get_comp(data.get('mouse_id'))
+        headset = get_comp(data.get('headset_id'))
+        webcam = get_comp(data.get('webcam_id'))
+        speakers = get_comp(data.get('speakers_id'))
+        microphone = get_comp(data.get('microphone_id'))
+        paste = get_comp(data.get('thermal_paste_id'))
+        network = get_comp(data.get('wifi_id'))
         ups = get_comp(data.get('ups_id'))
+        tools = get_comp(data.get('tool_id'))
 
         if not cpu or not mobo or not ram:
             return jsonify({'suggestions': [], 'status': 'Incomplete Selection'})
@@ -1651,8 +1696,19 @@ def api_fix_compatibility():
             "case": transform_component_for_engine(case, "case"),
             "cooler": transform_component_for_engine(cooler, "cooler"),
             "storage": transform_component_for_engine(storage, "storage"),
-            "monitors": transform_component_for_engine(monitor, "monitors"),
-            "ups": transform_component_for_engine(ups, "ups")
+            "fans": transform_component_for_engine(fans, "case_fan"),
+            "os": transform_component_for_engine(os_cfg, "os"),
+            "monitors": transform_component_for_engine(monitor, "monitor"),
+            "keyboard": transform_component_for_engine(keyboard, "keyboard"),
+            "mouse": transform_component_for_engine(mouse, "mouse"),
+            "headset": transform_component_for_engine(headset, "headset"),
+            "webcam": transform_component_for_engine(webcam, "webcam"),
+            "speakers": transform_component_for_engine(speakers, "speakers"),
+            "microphone": transform_component_for_engine(microphone, "microphone"),
+            "thermal_paste": transform_component_for_engine(paste, "thermal_paste"),
+            "network": transform_component_for_engine(network, "network_adapter"),
+            "ups": transform_component_for_engine(ups, "ups"),
+            "tools": transform_component_for_engine(tools, "assembly_tools")
         }
         
         try:
@@ -1667,7 +1723,7 @@ def api_fix_compatibility():
                     h_query = conflict.get('healing_query')
                     if h_query:
                         cat = h_query['category']
-                        if cat in suggested_cats: continue # Skip if already suggesting for this slot
+                        if cat in suggested_cats: continue # Skip duplicate slot suggestions
                         
                         price_range = h_query['price_range']
                         exclude = h_query['exclude_id']
@@ -1675,6 +1731,13 @@ def api_fix_compatibility():
                         # Category mapping for DB strings
                         db_cat = cat
                         if cat == 'monitors': db_cat = 'monitor'
+                        if cat == 'fans': db_cat = 'case-fan'
+                        if cat == 'network': db_cat = 'network-adapter'
+                        if cat == 'tools': db_cat = 'assembly-tools'
+                        if cat == 'os': db_cat = 'os'
+                        if cat == 'thermal_paste': db_cat = 'thermal-paste'
+                        if cat == 'case_fan': db_cat = 'case-fan'
+                        if cat == 'network_adapter': db_cat = 'network-adapter'
                         
                         # Build Suggestion Pool
                         query = {
@@ -1682,11 +1745,21 @@ def api_fix_compatibility():
                             '_id': {'$ne': ObjectId(exclude)}
                         }
                         
-                        candidates = list(db.components.find(query).limit(50))
+                        candidates = list(db.components.find(query).limit(100))
+                        
+                        # Sort candidates: prioritize higher tier for "Fixes"
+                        # and similar/higher tier for "Improvements"
+                        candidates.sort(key=lambda x: get_comp_tier(x, cat), reverse=True)
+                        
                         matches = []
                         for c in candidates:
                             p = get_comp_price_usd(c)
-                            if price_range[0] <= p <= price_range[1]:
+                            # Allow a slightly broader price range for fixes (0.8 to 1.5)
+                            # to ensure we actually find something better if needed.
+                            p_min = price_range[0] * 0.88 # slightly more margin
+                            p_max = price_range[1] * 1.5 if conflict['severity'] == "INCOMPATIBLE" else price_range[1] * 1.15
+                            
+                            if p_min <= p <= p_max:
                                 # Constraints
                                 if cat == 'motherboard' and cpu:
                                     cms = (infer_mobo_socket(c) or "")
@@ -1696,12 +1769,36 @@ def api_fix_compatibility():
                                     mcs = (infer_mobo_socket(mobo) or "")
                                     cs = (infer_cpu_socket(c) or "")
                                     if cs not in [s.strip() for s in mcs.split('/')]: continue
-                                
+                                    
                                 matches.append({
                                     'id': str(c['_id']),
-                                    'name': c.get('name')
+                                    'name': c.get('name'),
+                                    'tier': get_comp_tier(c, cat)
                                 })
-                                if len(matches) >= 3: break
+                                if len(matches) >= 5: break
+                        
+                        # If no matches found in price range, try broader search (especially for WARNING/SUBOPTIMAL)
+                        if not matches and conflict['severity'] in ["WARNING", "SUBOPTIMAL"]:
+                            # Try without price constraint
+                            fallback_candidates = candidates[:10]  # Get top 10 by tier
+                            for c in fallback_candidates:
+                                if c.get('_id') != exclude:
+                                    # Apply compatibility constraints for cpu/motherboard
+                                    if cat == 'motherboard' and cpu:
+                                        cms = (infer_mobo_socket(c) or "")
+                                        cs = (infer_cpu_socket(cpu) or "")
+                                        if cs not in [s.strip() for s in cms.split('/')]: continue
+                                    if cat == 'cpu' and mobo:
+                                        mcs = (infer_mobo_socket(mobo) or "")
+                                        cs = (infer_cpu_socket(c) or "")
+                                        if cs not in [s.strip() for s in mcs.split('/')]: continue
+                                    
+                                    matches.append({
+                                        'id': str(c['_id']),
+                                        'name': c.get('name'),
+                                        'tier': get_comp_tier(c, cat)
+                                    })
+                                    if len(matches) >= 3: break
                         
                         if matches:
                             suggestions.append({
@@ -1716,25 +1813,67 @@ def api_fix_compatibility():
         except Exception as arc_e:
             app.logger.error(f"Healer Engine Error: {arc_e}")
 
-        # --- 3. FINAL AGGREGATION ---
-        final_status = "Compatible"
-        if any(s['type'] == 'fix' for s in suggestions):
-            final_status = "Not Compatible"
-        elif any(s['type'] == 'improvement' for s in suggestions):
-            final_status = "Borderline"
-            
-        return jsonify({
-            'status': final_status,
-            'suggestions': suggestions,
-            'architectural_coverage': True
-        })
+        # --- 2.2 Special Handling for OS Compatibility Issues (Windows 11 TPM 2.0) ---
+        # Check if any conflict is about Windows 11 TPM/Secure Boot for legacy architectures
+        for conflict in conflicts:
+            if conflict['severity'] == "INCOMPATIBLE" and 'os' in conflict.get('target', '').lower():
+                msg = conflict.get('message', '')
+                if 'Windows 11' in msg and 'TPM' in msg:
+                    # Option 1: Suggest Windows 10 as an alternative
+                    win10_options = list(db.components.find({'category': 'os', 'name': {'$regex': 'Windows 10', '$options': 'i'}}).limit(5))
+                    if win10_options and 'os' not in suggested_cats:
+                        win10_matches = [{'id': str(w['_id']), 'name': w.get('name')} for w in win10_options]
+                        if win10_matches:
+                            suggestions.append({
+                                'category': 'os',
+                                'type': 'fix',
+                                'title': 'Switch to Windows 10',
+                                'reason': 'Your CPU/Motherboard architecture lacks TPM 2.0 support required by Windows 11. Windows 10 has no such requirement.',
+                                'options': win10_matches
+                            })
+                            suggested_cats.add('os')
+                    
+                    # Option 2: Suggest compatible CPU/Motherboard combos for Windows 11
+                    cpu_name = normalize(cpu.get('name', '')) if cpu else ""
+                    if cpu and 'INTEL' in cpu_name:
+                        # Suggest Intel 8th Gen or newer CPUs
+                        newer_cpus = list(db.components.find({
+                            'category': 'cpu',
+                            'name': {'$regex': 'i[357]-(8|9|10|11|12|13|14|15)[0-9]{3}|Core (i[357]) (8|9|10|11|12|13|14|15)th', '$options': 'i'}
+                        }).limit(5))
+                        if newer_cpus and 'cpu' not in suggested_cats:
+                            cpu_matches = [{'id': str(c['_id']), 'name': c.get('name')} for c in newer_cpus]
+                            if cpu_matches:
+                                suggestions.append({
+                                    'category': 'cpu',
+                                    'type': 'fix',
+                                    'title': 'Upgrade to Windows 11 Compatible CPU',
+                                    'reason': 'Windows 11 requires Intel 8th Gen Core (Coffee Lake) or newer for TPM 2.0 and Secure Boot support.',
+                                    'options': cpu_matches
+                                })
+                                suggested_cats.add('cpu')
+                    elif cpu and 'RYZEN' in cpu_name:
+                        # Suggest Ryzen 2000-series or newer - look for 2nd gen and above
+                        newer_cpus = list(db.components.find({
+                            'category': 'cpu',
+                            'name': {'$regex': 'Ryzen [357] [245789]|Ryzen [579][0-9]{3}|[245789]00[GX]?', '$options': 'i'}
+                        }).limit(5))
+                        if newer_cpus and 'cpu' not in suggested_cats:
+                            cpu_matches = [{'id': str(c['_id']), 'name': c.get('name')} for c in newer_cpus]
+                            if cpu_matches:
+                                suggestions.append({
+                                    'category': 'cpu',
+                                    'type': 'fix',
+                                    'title': 'Upgrade to Windows 11 Compatible CPU',
+                                    'reason': 'Windows 11 requires AMD Ryzen 2000-series or newer for TPM 2.0 and Secure Boot support.',
+                                    'options': cpu_matches
+                                })
+                                suggested_cats.add('cpu')
 
-    except Exception as e:
-        app.logger.error(f"Fix Error: {e}")
-        return jsonify({'status': 'error', 'message': str(e), 'suggestions': []})
-
-
-
+        # --- 2.5 Component Logic Context ---
+        system_tier = get_comp_tier(cpu)
+        cpu_sock = infer_cpu_socket(cpu) if cpu else None
+        
         # --- 3. Physical Clearances (GPU / Cooler / PSU) ---
         if case:
             c_g_max = parse_dimension_mm(case, ['max_video_card_length', 'gpu_clearance'])
@@ -2398,6 +2537,40 @@ def api_fix_compatibility():
                             'reason': 'Modular PSUs simplify cable management in small cases, improving airflow and ease of assembly.',
                             'options': [{'id': p['id'], 'name': p['name']} for p in best_matches[:3]]
                         })
+
+        # --- FINAL AGGREGATION ---
+        final_status = "Compatible"
+        has_fix_suggestions = any(s.get('type') == 'fix' for s in suggestions)
+        has_improvement_suggestions = any(s.get('type') == 'improvement' for s in suggestions)
+        has_architectural_warnings = any(c.get('severity') in ["WARNING", "SUBOPTIMAL"] for c in conflicts)
+        
+        if has_fix_suggestions:
+            final_status = "Not Compatible"
+        elif has_improvement_suggestions or has_architectural_warnings:
+            final_status = "Borderline"
+            
+            # If Borderline but no suggestions found, add a generic improvement suggestion
+            if not suggestions and has_architectural_warnings:
+                # Create an informational improvement suggestion based on conflicts
+                warning_messages = [c.get('message', '') for c in conflicts if c.get('severity') in ["WARNING", "SUBOPTIMAL"]]
+                if warning_messages:
+                    suggestions.append({
+                        'category': 'info',
+                        'type': 'improvement',
+                        'title': 'Build Optimization Recommended',
+                        'reason': ' '.join(warning_messages[:2]),  # Show first 2 warnings
+                        'options': []  # No specific replacement options, just informational
+                    })
+            
+        return jsonify({
+            'status': final_status,
+            'suggestions': suggestions,
+            'architectural_coverage': True
+        })
+
+    except Exception as e:
+        app.logger.error(f"Fix Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e), 'suggestions': []})
 
 
 
@@ -3562,7 +3735,7 @@ def run_validation_logic(data):
             "storage": transform_component_for_engine(storage, "storage"),
             "fans": transform_component_for_engine(fans_doc, "case_fan"),
             "os": transform_component_for_engine(get_doc(data.get('os_id')), "os"),
-            "monitors": transform_component_for_engine(get_doc(data.get('monitors_id')), "monitor"),
+            "monitors": transform_component_for_engine(get_doc(data.get('monitor_id')), "monitor"),
             "keyboard": transform_component_for_engine(get_doc(data.get('keyboard_id')), "keyboard"),
             "mouse": transform_component_for_engine(get_doc(data.get('mouse_id')), "mouse"),
             "headset": transform_component_for_engine(get_doc(data.get('headset_id')), "headset"),
@@ -3570,9 +3743,9 @@ def run_validation_logic(data):
             "speakers": transform_component_for_engine(get_doc(data.get('speakers_id')), "speakers"),
             "microphone": transform_component_for_engine(get_doc(data.get('microphone_id')), "microphone"),
             "thermal_paste": transform_component_for_engine(get_doc(data.get('thermal_paste_id')), "thermal_paste"),
-            "network": transform_component_for_engine(get_doc(data.get('network_adapter_id')), "network_adapter"),
+            "network": transform_component_for_engine(get_doc(data.get('wifi_id')), "network_adapter"),
             "ups": transform_component_for_engine(get_doc(data.get('ups_id')), "ups"),
-            "tools": transform_component_for_engine(get_doc(data.get('tools_id')), "assembly_tools")
+            "tools": transform_component_for_engine(get_doc(data.get('tool_id')), "assembly_tools")
         }
         
         try:

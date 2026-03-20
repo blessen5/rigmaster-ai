@@ -166,19 +166,64 @@
 
                     <div id="status-container"
                         style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-                        <div
-                            style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.03); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid var(--border);">
-                            <span
-                                style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">System
-                                Health:</span>
+                        <div id="health-status-badge"
+                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.03); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--border); transition: all 0.3s ease;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg id="health-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" style="transition: stroke 0.3s ease;">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                                </svg>
+                                <span
+                                    style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">System
+                                    Health:</span>
+                            </div>
                             <span id="compat-status"
-                                style="font-weight: 700; font-size: 1.1rem; color: var(--accent-cyan);">Checking...</span>
+                                style="font-weight: 800; font-size: 1.2rem; color: var(--accent-cyan); letter-spacing: 0.5px;">Checking...</span>
                         </div>
                         <button id="btn-fix-compatibility" class="btn btn-primary"
-                            style="display: none; padding: 0.6rem 1.2rem; font-size: 0.85rem; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);">
-                            Resolve Issues
+                            style="display: none; padding: 0.7rem 1.4rem; font-size: 0.9rem; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); font-weight: 600;">
+                            🔧 Resolve Issues
                         </button>
                     </div>
+
+                    <style>
+                        #health-status-badge[data-status="compatible"] {
+                            background: rgba(34, 197, 94, 0.08);
+                            border-color: rgba(34, 197, 94, 0.3);
+                        }
+                        #health-status-badge[data-status="not-compatible"] {
+                            background: rgba(239, 68, 68, 0.1);
+                            border-color: rgba(239, 68, 68, 0.4);
+                            box-shadow: 0 0 16px rgba(239, 68, 68, 0.15);
+                        }
+                        #health-status-badge[data-status="borderline"] {
+                            background: rgba(251, 191, 36, 0.08);
+                            border-color: rgba(251, 191, 36, 0.3);
+                        }
+                        #compat-status[data-status="compatible"] {
+                            color: #4ade80;
+                        }
+                        #compat-status[data-status="not-compatible"] {
+                            color: #f87171;
+                            text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+                        }
+                        #compat-status[data-status="borderline"] {
+                            color: #fbbf24;
+                        }
+                        #health-icon[data-status="compatible"] {
+                            stroke: #4ade80;
+                        }
+                        #health-icon[data-status="not-compatible"] {
+                            stroke: #f87171;
+                            animation: pulse-red 2s infinite;
+                        }
+                        #health-icon[data-status="borderline"] {
+                            stroke: #fbbf24;
+                        }
+                        @keyframes pulse-red {
+                            0%, 100% { opacity: 1; }
+                            50% { opacity: 0.6; }
+                        }
+                    </style>
                 </div>
 
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;">
@@ -1439,8 +1484,14 @@
                 const validationResult = await response.json();
 
                 statusEl.textContent = validationResult.status;
+                const badge = document.getElementById('health-status-badge');
+                const icon = document.getElementById('health-icon');
+                
                 if (validationResult.status === 'Compatible') {
                     statusEl.style.color = '#4ade80';
+                    statusEl.setAttribute('data-status', 'compatible');
+                    if (badge) badge.setAttribute('data-status', 'compatible');
+                    if (icon) icon.setAttribute('data-status', 'compatible');
                     const fixBtnCompat = document.getElementById('btn-fix-compatibility');
                     if (fixBtnCompat) fixBtnCompat.style.display = 'none';
                     // Hide fix suggestions panel for compatible builds
@@ -1448,26 +1499,49 @@
                     if (fixPanel) fixPanel.style.display = 'none';
                 } else if (validationResult.status === 'Not Compatible') {
                     statusEl.style.color = '#f87171';
+                    statusEl.setAttribute('data-status', 'not-compatible');
+                    if (badge) badge.setAttribute('data-status', 'not-compatible');
+                    if (icon) icon.setAttribute('data-status', 'not-compatible');
                     const fixBtn = document.getElementById('btn-fix-compatibility');
                     if (fixBtn) {
                         fixBtn.style.display = 'block';
+                        fixBtn.style.cursor = 'pointer';
                         fixBtn.textContent = '🔧 Get Fix Suggestions';
-                        fixBtn.onclick = () => showFixSuggestions(data);
+                        // Attach click handler with better error handling
+                        fixBtn.onclick = async function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Fix button clicked');
+                            await showFixSuggestions(data);
+                        };
                     }
                     // Automatically show fix suggestions for incompatible builds
                     await showFixSuggestions(data);
                 } else if (validationResult.status === 'Borderline') {
                     statusEl.style.color = '#fbbf24';
+                    statusEl.setAttribute('data-status', 'borderline');
+                    if (badge) badge.setAttribute('data-status', 'borderline');
+                    if (icon) icon.setAttribute('data-status', 'borderline');
                     const fixBtn = document.getElementById('btn-fix-compatibility');
                     if (fixBtn) {
                         fixBtn.style.display = 'block';
+                        fixBtn.style.cursor = 'pointer';
                         fixBtn.textContent = '⚠️ View Improvement Suggestions';
-                        fixBtn.onclick = () => showFixSuggestions(data);
+                        // Attach click handler with better error handling
+                        fixBtn.onclick = async function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Fix button clicked');
+                            await showFixSuggestions(data);
+                        };
                     }
                     // Automatically show fix suggestions for borderline builds
                     await showFixSuggestions(data);
                 } else {
                     statusEl.style.color = '#fbbf24';
+                    statusEl.setAttribute('data-status', 'borderline');
+                    if (badge) badge.setAttribute('data-status', 'borderline');
+                    if (icon) icon.setAttribute('data-status', 'borderline');
                     const fixBtnOther = document.getElementById('btn-fix-compatibility');
                     if (fixBtnOther) fixBtnOther.style.display = 'none';
                     // Hide fix suggestions panel for unknown status
@@ -1742,16 +1816,21 @@
             }
         }
 
-        async function showFixSuggestions(buildData) {
+        async function showFixSuggestions(buildDataParam) {
             const panel = document.getElementById('fix-suggestions-panel');
             const container = document.getElementById('fix-options-container');
             const statusTag = document.getElementById('fix-panel-status-tag');
+            
+            // Use global buildData if parameter is empty
+            const dataToSend = buildDataParam && Object.values(buildDataParam).some(v => v) ? buildDataParam : buildData;
+
+            console.log('showFixSuggestions called with:', dataToSend);
 
             panel.style.display = 'block';
             if (statusTag) { statusTag.textContent = 'Scanning...'; }
             container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem;">
                 <div class="typing-indicator" style="justify-content: center; margin-bottom: 1rem;"><span></span><span></span><span></span></div>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Scanning database for the best compatible replacements...</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Scanning database for improvement suggestions...</p>
             </div>`;
             panel.scrollIntoView({ behavior: 'smooth' });
 
@@ -1759,101 +1838,119 @@
                 const response = await fetch('/api/fix-compatibility', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(buildData)
+                    body: JSON.stringify(dataToSend)
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`API returned status ${response.status}`);
+                }
+                
                 const result = await response.json();
+                console.log('Fix compatibility result:', result);
 
-                if (result.status !== 'Incomplete Selection' && result.suggestions.length > 0) {
+                // Check if we have any suggestions to display
+                if (result.suggestions && result.suggestions.length > 0) {
                     if (statusTag) { statusTag.textContent = `${result.suggestions.length} suggestion${result.suggestions.length !== 1 ? 's' : ''} found`; }
 
                     container.innerHTML = result.suggestions.map(s => {
                         const catLabel = (s.category || '').replace(/_/g, ' ').toUpperCase();
                         const isFix = s.type === 'fix';
-                        const accentColor = isFix ? '#f87171' : '#fbbf24';
-                        const bgColor = isFix ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)';
-                        const btnText = isFix ? 'Apply Fix' : 'Optimize Build';
+                        const isImprovement = s.type === 'improvement';
+                        const accentColor = isFix ? '#f87171' : isImprovement ? '#fbbf24' : '#4ade80';
+                        const bgColor = isFix ? 'rgba(239,68,68,0.15)' : isImprovement ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.15)';
+                        const btnText = isFix ? 'Apply Fix' : isImprovement ? 'Apply Upgrade' : 'Apply';
+                        const badgeText = isFix ? 'Critical Fix' : isImprovement ? 'Recommendation' : 'Suggestion';
 
                         return `
                         <div class="step-card" style="text-align: left; padding: 1.5rem; background: rgba(0,0,0,0.25); border-left: 4px solid ${accentColor}; border-radius: 12px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
                                 <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; background: ${bgColor}; color: ${accentColor}; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">${catLabel}</span>
-                                <span style="font-size: 0.65rem; color: ${accentColor}; font-weight: 700; text-transform: uppercase;">${isFix ? 'Critical Fix' : 'Recommendation'}</span>
+                                <span style="font-size: 0.65rem; color: ${accentColor}; font-weight: 700; text-transform: uppercase;">${badgeText}</span>
                             </div>
                             <h4 style="color: white; font-size: 1rem; margin-bottom: 0.4rem; line-height: 1.3;">${s.title}</h4>
                             <p style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 1.2rem; line-height: 1.5;">${s.reason}</p>
                             <div style="display: flex; flex-direction: column; gap: 0.7rem;">
-                                ${s.options.map((opt, idx) => `
+                                ${s.options && s.options.length > 0 ? s.options.map((opt, idx) => {
+                            let idKey = s.category + '_id';
+                            if (s.category === 'fans' || s.category === 'case_fan') idKey = 'fans_id';
+                            if (s.category === 'tools' || s.category === 'assembly_tools' || s.category === 'tool') idKey = 'tool_id';
+                            if (s.category === 'monitors' || s.category === 'monitor') idKey = 'monitor_id';
+                            if (s.category === 'network' || s.category === 'network_adapter' || s.category === 'wifi') idKey = 'wifi_id';
+                            if (s.category === 'peripherals') idKey = 'peripherals_id';
+
+                            return `
                                     <button class="btn btn-secondary" 
                                             style="font-size: 0.82rem; text-align: left; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-color: rgba(255,255,255,0.08); border-radius: 10px; gap: 0.5rem;" 
-                                            onclick="applyFix('${s.category === 'tools' ? 'tool' : s.category}_id', '${opt.id}')">
+                                            onclick="applyFix('${idKey}', '${opt.id}')">
                                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${opt.name}</span>
                                         <span style="color: #4ade80; font-weight: 700; flex-shrink: 0; font-size: 0.78rem;">✓ ${btnText}</span>
-                                    </button>
-                                `).join('')}
+                                    </button>`;
+                        }).join('') : '<p style="color: var(--text-muted); font-size: 0.9rem;">No compatible options available in database.</p>'}
                             </div>
                         </div>`;
                     }).join('');
                 } else if (result.status === 'Incomplete Selection') {
                     if (statusTag) { statusTag.textContent = 'Incomplete build'; statusTag.style.background = 'rgba(251,191,36,0.15)'; statusTag.style.color = '#fbbf24'; }
                     container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem;">
-                        <p style="color: #fde68a; margin-bottom: 1rem;">⚠️ Please add CPU, Motherboard, and RAM to your build before fix suggestions can be generated.</p>
+                        <p style="color: #fde68a; margin-bottom: 1rem;">⚠️ Please add CPU, Motherboard, and RAM to your build before suggestions can be generated.</p>
                         <a href="{{ url_for('builder') }}" class="btn btn-primary" style="display: inline-block; padding: 0.7rem 1.5rem; font-size: 0.9rem;">Go to Builder</a>
                     </div>`;
                 } else {
                     const isBorderline = result.status === 'Borderline';
-                    if (statusTag) { 
-                        statusTag.textContent = isBorderline ? 'Optimization needed' : 'All clear'; 
-                        statusTag.style.background = isBorderline ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.15)'; 
-                        statusTag.style.color = isBorderline ? '#fbbf24' : '#4ade80'; 
+                    const isCompatible = result.status === 'Compatible';
+                    if (statusTag) {
+                        statusTag.textContent = isBorderline ? 'Optimization needed' : isCompatible ? 'All clear' : result.status;
+                        statusTag.style.background = isBorderline ? 'rgba(251,191,36,0.15)' : isCompatible ? 'rgba(74,222,128,0.15)' : 'rgba(124,58,237,0.15)';
+                        statusTag.style.color = isBorderline ? '#fbbf24' : isCompatible ? '#4ade80' : 'var(--primary-light)';
                     }
                     container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2.5rem;">
-                        <p style="margin-bottom: 1rem; font-size: 0.95rem;">${isBorderline ? '⚠️ Your build is functional but has potential bottlenecks or suboptimal parts.' : '✅ No automatic fixes are needed. Your build is already well-configured.'}</p>
+                        <p style="margin-bottom: 1rem; font-size: 0.95rem;">${isBorderline ? '⚠️ Your build is functional but may have potential bottlenecks or minor incompatibilities that we are still analyzing.' : isCompatible ? '✅ No suggestions needed. Your build is already well-configured.' : '✅ Build analysis complete.'}</p>
                         <p style="font-size: 0.85rem;">For manual customization, visit the <a href="{{ url_for('builder') }}" style="color: var(--accent);">Builder</a>.</p>
                     </div>`;
                 }
             } catch (e) {
                 console.error('Fix suggestions error:', e);
                 if (statusTag) { statusTag.textContent = 'Error'; }
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #f87171; padding: 2rem;">Failed to load suggestions. Please try again.</div>';
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #f87171; padding: 2rem;"><p>Failed to load suggestions: ' + e.message + '</p><p style="font-size: 0.85rem; color: var(--text-muted);">Please check the console for details and try again.</p></div>';
             }
         }
 
         async function applyFix(key, value) {
             const statusEl = document.getElementById('compat-status');
             const originalStatus = statusEl.textContent;
-            
+            const fixPanel = document.getElementById('fix-suggestions-panel');
+            const statusTag = document.getElementById('fix-panel-status-tag');
+
             // UX: provide immediate feedback
             statusEl.textContent = "Updating Build...";
             statusEl.style.color = "var(--primary-light)";
-            
-            const statusTag = document.getElementById('fix-panel-status-tag');
             if (statusTag) statusTag.textContent = 'Applying...';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const buildId = urlParams.get('build_id');
 
             // 1. Update Global State (source of truth)
             buildData[key] = value;
-            
+
             // 2. Update URL parameters without reloading for page consistency
-            const urlParams = new URLSearchParams(window.location.search);
             urlParams.set(key, value);
             const newUrl = window.location.pathname + '?' + urlParams.toString();
             window.history.replaceState({ path: newUrl }, '', newUrl);
 
             // 3. Persist to Database if build_id is present
-            const buildId = urlParams.get('build_id');
             if (buildId) {
                 try {
-                    // Critical: Use the full global buildData to preserve all components 
                     const savePayload = {
                         build_id: buildId,
                         ...buildData
                     };
-                    
+
                     const saveResponse = await fetch('/api/save_build', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(savePayload)
                     });
-                    
+
                     const saveResult = await saveResponse.json();
                     if (saveResult.status !== 'success') {
                         console.error('Save failed:', saveResult.message);
@@ -1863,11 +1960,50 @@
                 }
             }
 
-            // 4. Re-evaluate Compatibility IMMEDIATELY
-            // This updates the status bar, messages, price tracker, and energy labs
-            await validateBuild(buildData);
-            
-            // Scroll to the top of results to show the updated status
+            // 4. Re-validate and keep suggestions panel visible
+            // First, do a quick validation check
+            try {
+                const valResponse = await fetch('/api/validate_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buildData)
+                });
+                const valResult = await valResponse.json();
+                const badge = document.getElementById('health-status-badge');
+                const icon = document.getElementById('health-icon');
+                
+                // Update status display
+                statusEl.textContent = valResult.status;
+                if (valResult.status === 'Compatible') {
+                    statusEl.style.color = '#4ade80';
+                    statusEl.setAttribute('data-status', 'compatible');
+                    if (badge) badge.setAttribute('data-status', 'compatible');
+                    if (icon) icon.setAttribute('data-status', 'compatible');
+                    // Hide fix suggestions for compatible build
+                    if (fixPanel) fixPanel.style.display = 'none';
+                } else if (valResult.status === 'Not Compatible') {
+                    statusEl.style.color = '#f87171';
+                    statusEl.setAttribute('data-status', 'not-compatible');
+                    if (badge) badge.setAttribute('data-status', 'not-compatible');
+                    if (icon) icon.setAttribute('data-status', 'not-compatible');
+                    // Keep panel open and refresh suggestions
+                    if (fixPanel) fixPanel.style.display = 'block';
+                    await showFixSuggestions(buildData);
+                } else if (valResult.status === 'Borderline') {
+                    statusEl.style.color = '#fbbf24';
+                    statusEl.setAttribute('data-status', 'borderline');
+                    if (badge) badge.setAttribute('data-status', 'borderline');
+                    if (icon) icon.setAttribute('data-status', 'borderline');
+                    // Keep panel open and refresh suggestions
+                    if (fixPanel) fixPanel.style.display = 'block';
+                    await showFixSuggestions(buildData);
+                }
+            } catch (e) {
+                console.error('Quick validation error:', e);
+                statusEl.textContent = originalStatus;
+            }
+
+            // Scroll to results to show the updated suggestions
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     </script>
