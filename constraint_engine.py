@@ -210,7 +210,7 @@ class RelationalConstraintEngine:
         psu = self.parts.get("psu")
         total_tdp = 0
         for cat, part in self.parts.items():
-            if part and cat not in ["ups", "monitors"]:
+            if part and cat not in ["ups", "monitors", "psu"]:
                 total_tdp += part.get("electrical", {}).get("tdp") or 0
         
         peripheral_draw = 25 # Heuristic for USB/RGB/Drives
@@ -435,9 +435,15 @@ class RelationalConstraintEngine:
     def _add_conflict(self, severity, message, target_category, target_prop):
         # SEARCH FILTER query for Healing Logic
         replacement_parts = self.parts.get(target_category)
-        base_price = replacement_parts.get("price", 0) if replacement_parts else 0
-        min_p = base_price * 0.9
-        max_p = base_price * 1.1
+        base_price = replacement_parts.get("price") or 0 if replacement_parts else 0
+        
+        # If part is missing or has no price, provide a broader search range
+        if not replacement_parts or base_price == 0:
+            min_p = 0
+            max_p = 10000 
+        else:
+            min_p = base_price * 0.9
+            max_p = base_price * 1.1
         
         healing_filter = {
             "category": target_category,
