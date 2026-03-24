@@ -1749,7 +1749,7 @@ def api_fix_compatibility():
                         
                         # Sort candidates: prioritize higher tier for "Fixes"
                         # and similar/higher tier for "Improvements"
-                        candidates.sort(key=lambda x: get_comp_tier(x, cat), reverse=True)
+                        candidates.sort(key=lambda x: get_comp_tier(x), reverse=True)
                         
                         matches = []
                         for c in candidates:
@@ -1760,43 +1760,47 @@ def api_fix_compatibility():
                             p_max = price_range[1] * 1.5 if conflict['severity'] == "INCOMPATIBLE" else price_range[1] * 1.15
                             
                             if p_min <= p <= p_max:
-                                # Constraints
-                                if cat == 'motherboard' and cpu:
-                                    cms = (infer_mobo_socket(c) or "")
-                                    cs = (infer_cpu_socket(cpu) or "")
-                                    if cs not in [s.strip() for s in cms.split('/')]: continue
-                                if cat == 'cpu' and mobo:
-                                    mcs = (infer_mobo_socket(mobo) or "")
-                                    cs = (infer_cpu_socket(c) or "")
-                                    if cs not in [s.strip() for s in mcs.split('/')]: continue
+                                # Dry-run validation constraints
+                                mock_parts = engine_parts.copy()
+                                mock_parts[cat] = transform_component_for_engine(c, cat)
+                                mock_engine = RelationalConstraintEngine(mock_parts)
+                                mock_results = mock_engine.validate_full_build()
+                                
+                                # Check if the specific conflict message is gone
+                                if any(mc.get('message') == conflict.get('message') for mc in mock_results): continue
+                                
+                                # Ensure we don't introduce MORE critical errors
+                                orig_crit = sum(1 for x in conflicts if x.get('severity') == "INCOMPATIBLE")
+                                new_crit = sum(1 for x in mock_results if x.get('severity') == "INCOMPATIBLE")
+                                if new_crit > orig_crit: continue
                                     
                                 matches.append({
                                     'id': str(c['_id']),
                                     'name': c.get('name'),
-                                    'tier': get_comp_tier(c, cat)
+                                    'tier': get_comp_tier(c)
                                 })
                                 if len(matches) >= 5: break
                         
-                        # If no matches found in price range, try broader search (especially for WARNING/SUBOPTIMAL)
-                        if not matches and conflict['severity'] in ["WARNING", "SUBOPTIMAL"]:
+                        # If no matches found in price range, try broader search
+                        if not matches:
                             # Try without price constraint
-                            fallback_candidates = candidates[:10]  # Get top 10 by tier
-                            for c in fallback_candidates:
+                            for c in candidates:
                                 if c.get('_id') != exclude:
-                                    # Apply compatibility constraints for cpu/motherboard
-                                    if cat == 'motherboard' and cpu:
-                                        cms = (infer_mobo_socket(c) or "")
-                                        cs = (infer_cpu_socket(cpu) or "")
-                                        if cs not in [s.strip() for s in cms.split('/')]: continue
-                                    if cat == 'cpu' and mobo:
-                                        mcs = (infer_mobo_socket(mobo) or "")
-                                        cs = (infer_cpu_socket(c) or "")
-                                        if cs not in [s.strip() for s in mcs.split('/')]: continue
+                                    # Dry-run validation constraints
+                                    mock_parts = engine_parts.copy()
+                                    mock_parts[cat] = transform_component_for_engine(c, cat)
+                                    mock_engine = RelationalConstraintEngine(mock_parts)
+                                    mock_results = mock_engine.validate_full_build()
+                                    
+                                    if any(mc.get('message') == conflict.get('message') for mc in mock_results): continue
+                                    orig_crit = sum(1 for x in conflicts if x.get('severity') == "INCOMPATIBLE")
+                                    new_crit = sum(1 for x in mock_results if x.get('severity') == "INCOMPATIBLE")
+                                    if new_crit > orig_crit: continue
                                     
                                     matches.append({
                                         'id': str(c['_id']),
                                         'name': c.get('name'),
-                                        'tier': get_comp_tier(c, cat)
+                                        'tier': get_comp_tier(c)
                                     })
                                     if len(matches) >= 3: break
                         
@@ -1816,7 +1820,7 @@ def api_fix_compatibility():
         # --- 2.2 Special Handling for OS Compatibility Issues (Windows 11 TPM 2.0) ---
         # Check if any conflict is about Windows 11 TPM/Secure Boot for legacy architectures
         for conflict in conflicts:
-            if conflict['severity'] == "INCOMPATIBLE" and 'os' in conflict.get('target', '').lower():
+            if conflict['severity'] == "INCOMPATIBLE" and 'os' in str(conflict.get('target', '')).lower():
                 msg = conflict.get('message', '')
                 if 'Windows 11' in msg and 'TPM' in msg:
                     # Option 1: Suggest Windows 10 as an alternative
@@ -1869,6 +1873,33 @@ def api_fix_compatibility():
                                     'options': cpu_matches
                                 })
                                 suggested_cats.add('cpu')
+
+        # --- 2.3 Special Handling for 32-bit OS / RAM Incompatibility ---
+        # Check if any conflict is about 32-bit OS with too much memory
+        for conflict in conflicts:
+            if conflict['severity'] == "INCOMPATIBLE" and 'os' in str(conflict.get('target', '')).lower():
+                msg = conflict.get('message', '')
+                if '32-bit' in msg and '4GB' in msg:
+                    # Suggest 64-bit OS alternatives
+                    os_name = normalize(os_cfg.get('name', '')) if os_cfg else ""
+                    
+                    # Search specifically for 64-bit alternatives
+                    win64_options = list(db.components.find({
+                        'category': 'os', 
+                        'name': {'$regex': r'64-bit|64 bit|x64', '$options': 'i'}
+                    }).limit(5))
+                    
+                    if win64_options and 'os' not in suggested_cats:
+                        win64_matches = [{'id': str(w['_id']), 'name': w.get('name')} for w in win64_options]
+                        if win64_matches:
+                            suggestions.append({
+                                'category': 'os',
+                                'type': 'fix',
+                                'title': 'Switch to 64-bit Operating System',
+                                'reason': 'A 32-bit OS cannot utilize more than 4GB of RAM. Switching to a 64-bit OS will allow your system to address all installed memory.',
+                                'options': win64_matches
+                            })
+                            suggested_cats.add('os')
 
         # --- 2.5 Component Logic Context ---
         system_tier = get_comp_tier(cpu)
