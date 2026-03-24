@@ -291,11 +291,22 @@
                 </div>
             </div>
 
-            <!-- Compact List of messages -->
+            <!-- PCPartPicker-Style Compatibility Notes -->
             <div id="analysis-results" style="display: none; margin-bottom: 2rem;">
-                <ul id="compat-messages"
-                    style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.8rem; padding-bottom: 0.5rem;">
-                </ul>
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <div style="background: rgba(251, 191, 36, 0.15); padding: 1rem 1.5rem; border-bottom: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <h3 style="margin: 0; color: #fbbf24; font-size: 1.1rem; font-weight: 700;">Compatibility Notes</h3>
+                        <span id="compat-count-badge" style="background: rgba(0,0,0,0.3); color: #fbbf24; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 800; margin-left: auto;">0 Notes</span>
+                    </div>
+                    <div id="compat-messages-container" style="display: flex; flex-direction: column;">
+                        <!-- JS populated structured rows -->
+                    </div>
+                </div>
             </div>
 
             <!-- Compatibility Fix Suggestions Panel -->
@@ -1549,48 +1560,75 @@
                     if (fixPanel) fixPanel.style.display = 'none';
                 }
 
-                listEl.innerHTML = ''; // Clear previous messages
-                validationResult.messages.forEach(msg => {
-                    const li = document.createElement('li');
-                    li.textContent = msg;
-                    li.style.padding = '0.5rem 1rem';
-                    li.style.borderRadius = '8px';
-                    li.style.fontSize = '0.85rem';
-                    li.style.lineHeight = '1.4';
-                    li.style.maxWidth = '100%';
-                    li.style.whiteSpace = 'normal';
-                    li.style.wordBreak = 'break-word';
+                // Map of Component Icons
+                const COMP_ICONS = {
+                    cpu: '🔲', motherboard: '📋', ram: '🧩', gpu: '🎮',
+                    psu: '⚡', case: '🖥️', cooler: '❄️', storage: '💾',
+                    os: '💿', case_fan: '🌀', assembly: '🔧', ups: '🔋',
+                    network_adapter: '📡', thermal_paste: '🧴'
+                };
 
-                    // Color-code based on message content
-                    const msgUpper = msg.toUpperCase();
-                    const isError = msgUpper.includes('MISMATCH') || msgUpper.includes('DEFICIT') ||
-                        msgUpper.includes('INCOMPATIB') || msgUpper.includes('NOT COMPAT') ||
-                        msgUpper.includes('OVERLOAD') || msgUpper.includes('MISSING:') ||
-                        msgUpper.includes('CLEARANCE:') || msgUpper.includes('COOLING MISSING');
-                    const isSuccess = msgUpper.includes('ALL SELECTED COMPONENTS') || msgUpper.includes('SYSTEMS CHECK');
-                    const isWarning = msgUpper.includes('ADVISORY') || msgUpper.includes('ALERT') ||
-                        msgUpper.includes('BIOS') || msgUpper.includes('NOTE') ||
-                        msgUpper.includes('BORDERLINE') || msgUpper.includes('INCOMPLETE BUILD');
+                const msgContainer = document.getElementById('compat-messages-container');
+                const countBadge = document.getElementById('compat-count-badge');
+                if(msgContainer) msgContainer.innerHTML = '';
+                
+                let totalNotes = 0;
 
-                    if (isError) {
-                        li.style.background = 'rgba(239, 68, 68, 0.12)';
-                        li.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-                        li.style.color = '#fca5a5';
-                    } else if (isSuccess) {
-                        li.style.background = 'rgba(74, 222, 128, 0.1)';
-                        li.style.border = '1px solid rgba(74, 222, 128, 0.25)';
-                        li.style.color = '#86efac';
-                    } else if (isWarning) {
-                        li.style.background = 'rgba(251, 191, 36, 0.1)';
-                        li.style.border = '1px solid rgba(251, 191, 36, 0.25)';
-                        li.style.color = '#fde68a';
-                    } else {
-                        li.style.background = 'rgba(0,0,0,0.3)';
-                        li.style.border = '1px solid rgba(255,255,255,0.06)';
-                        li.style.color = 'var(--text-main)';
-                    }
-                    listEl.appendChild(li);
-                });
+                if (validationResult.arch_conflicts && validationResult.arch_conflicts.length > 0) {
+                    // Sort by severity: INCOMPATIBLE first, then WARNING, then SUBOPTIMAL
+                    const severityRank = { 'INCOMPATIBLE': 0, 'WARNING': 1, 'SUBOPTIMAL': 2, 'OPTIMAL': 3 };
+                    validationResult.arch_conflicts.sort((a, b) => (severityRank[a.severity] || 9) - (severityRank[b.severity] || 9));
+
+                    validationResult.arch_conflicts.forEach((conflict, index) => {
+                        const target = conflict.target || 'assembly';
+                        const icon = COMP_ICONS[target.toLowerCase()] || '📌';
+                        const isError = conflict.severity === 'INCOMPATIBLE';
+                        const isWarning = conflict.severity === 'WARNING' || conflict.severity === 'SUBOPTIMAL';
+                        
+                        // Compatibility note row (alternating bg)
+                        const rowBg = index % 2 === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)';
+                        const badgeBg = isError ? 'rgba(239, 68, 68, 0.15)' : (isWarning ? 'rgba(251, 191, 36, 0.15)' : 'rgba(74, 222, 128, 0.15)');
+                        const badgeColor = isError ? '#f87171' : (isWarning ? '#fbbf24' : '#4ade80');
+                        const badgeBorder = isError ? '#ef4444' : (isWarning ? '#f59e0b' : '#22c55e');
+                        const badgeText = isError ? 'Error' : (isWarning ? 'Warning' : 'Note');
+
+                        const row = document.createElement('div');
+                        row.style.cssText = `display: flex; gap: 1rem; align-items: flex-start; padding: 1.2rem 1.5rem; background: ${rowBg}; border-bottom: 1px solid rgba(255,255,255,0.03);`;
+                        
+                        row.innerHTML = `
+                            <div style="font-size: 1.5rem; line-height: 1; padding-top: 0.2rem;">${icon}</div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                    <span style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; border-radius: 6px; padding: 0.15rem 0.6rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">${badgeText}</span>
+                                    <span style="color: rgba(255,255,255,0.5); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${target.replace('_', ' ')}</span>
+                                </div>
+                                <div style="color: var(--text-main); font-size: 0.95rem; line-height: 1.5;">${conflict.message}</div>
+                            </div>
+                            ${(isError || isWarning) ? `<button onclick="document.getElementById('btn-fix-compatibility').click()" style="background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">Fix &rarr;</button>` : ''}
+                        `;
+                        if(msgContainer) msgContainer.appendChild(row);
+                        totalNotes++;
+                    });
+                } else if (validationResult.messages && validationResult.messages.length > 0) {
+                    // Fallback for success message or string messages
+                    validationResult.messages.forEach((msg, index) => {
+                        const rowBg = index % 2 === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)';
+                        const isSuccess = msg.toUpperCase().includes('COMPATIBLE') || msg.toUpperCase().includes('ALL SELECTED');
+                        
+                        const row = document.createElement('div');
+                        row.style.cssText = `display: flex; gap: 1rem; align-items: center; padding: 1.2rem 1.5rem; background: ${rowBg}; border-bottom: 1px solid rgba(255,255,255,0.03);`;
+                        
+                        row.innerHTML = `
+                            <div style="font-size: 1.5rem; line-height: 1;">${isSuccess ? '✅' : '📌'}</div>
+                            <div style="flex: 1; color: ${isSuccess ? '#4ade80' : 'var(--text-main)'}; font-size: 0.95rem; font-weight: 500;">${msg}</div>
+                        `;
+                        if(msgContainer) msgContainer.appendChild(row);
+                        totalNotes++;
+                    });
+                }
+
+                if(countBadge) countBadge.textContent = `${totalNotes} Note${totalNotes !== 1 ? 's' : ''}`;
+
 
             } catch (error) {
                 console.error('Validation failed:', error);
