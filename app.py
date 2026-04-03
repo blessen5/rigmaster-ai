@@ -102,7 +102,7 @@ def clean_comp_name(name):
     s = str(name)
     # Remove "ID:..." prefix (very greedy/loose match to catch all variations)
     # This matches "ID" followed by anything up to a pipe
-    s = re.sub(r'^(?i)id\s*:?.*?[|]\s*', '', s)
+    s = re.sub(r'(?i)^id\s*:?.*?[|]\s*', '', s)
     # Fallback: matches a 24-char hex ID if it's at the start
     s = re.sub(r'^[0-9a-fA-F]{24}\s*[|]\s*', '', s)
     
@@ -784,7 +784,213 @@ def api_my_builds():
 @app.route('/analysis')
 @login_required
 def analysis():
-    return render_template('analysis.html')
+    user_builds = []
+    try:
+        if db is not None:
+            user_id = session.get('user_id')
+            user_ids = [user_id]
+            try:
+                user_ids.append(ObjectId(user_id))
+            except:
+                pass
+            builds = list(db.saved_builds.find(
+                {'user_id': {'$in': user_ids}},
+                {'name': 1, 'created_at': 1}
+            ).sort('created_at', -1))
+            for b in builds:
+                bname = b.get('name') or 'Custom Rig'
+                user_builds.append({'id': str(b['_id']), 'name': str(bname).strip() or 'Custom Rig'})
+    except Exception as e:
+        app.logger.warning(f"Analysis build list error: {e}")
+    return render_template('analysis.html', user_builds=user_builds)
+
+@app.route('/api/full-analysis', methods=['POST'])
+@login_required
+def api_full_analysis():
+    """Combined analysis endpoint: validation + power + component names."""
+    try:
+        data = request.json or {}
+        if db is None:
+            return jsonify({'status': 'error', 'message': 'Database offline'}), 503
+
+        # If build_id provided, load the saved build first
+        build_id = data.get('build_id')
+        if build_id:
+            try:
+                user_id = session.get('user_id')
+                user_ids = [user_id]
+                try:
+                    user_ids.append(ObjectId(user_id))
+                except:
+                    pass
+                saved = db.saved_builds.find_one({'_id': ObjectId(build_id), 'user_id': {'$in': user_ids}})
+                if saved:
+                    for k in ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id',
+                              'case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id',
+                              'mouse_id','headset_id','webcam_id','thermal_paste_id','wifi_id',
+                              'speakers_id','microphone_id','ups_id','tool_id','peripherals_id']:
+                        if not data.get(k) and saved.get(k):
+                            data[k] = saved[k]
+                    if not data.get('name'):
+                        data['name'] = saved.get('name', 'Custom Rig')
+            except Exception as e:
+                app.logger.warning(f"Full-analysis build load error: {e}")
+
+        # 1. Resolve component names + prices for display
+        comp_map = {
+            'cpu_id': ('CPU', 'cpus'), 'gpu_id': ('GPU', 'gpus'),
+            'motherboard_id': ('Motherboard', 'motherboards'), 'ram_id': ('RAM', 'ram'),
+            'storage_id': ('Storage', 'storage'), 'psu_id': ('PSU', 'psu'),
+            'case_id': ('Case', 'cases'), 'cooler_id': ('Cooler', 'coolers'),
+            'monitor_id': ('Monitor', 'monitors'), 'os_id': ('OS', 'os'),
+            'fans_id': ('Case Fans', 'fans'), 'keyboard_id': ('Keyboard', 'keyboards'),
+            'mouse_id': ('Mouse', 'mice'), 'headset_id': ('Headset', 'headsets'),
+            'webcam_id': ('Webcam', 'webcams'), 'thermal_paste_id': ('Thermal Paste', 'thermal_paste'),
+            'wifi_id': ('WiFi Adapter', 'wifi_adapters'), 'speakers_id': ('Speakers', 'speakers'),
+            'microphone_id': ('Microphone', 'microphones'), 'ups_id': ('UPS', 'ups'),
+            'tool_id': ('Tools', 'tools')
+        }
+        components = {}
+        total_price = 0.0
+        for key, (label, cat) in comp_map.items():
+            cid = data.get(key)
+            if cid:
+                comp = get_component_by_id(cid)
+                if comp:
+                    price = get_comp_price_usd(comp, id_key=key)
+                    total_price += price
+                    components[key] = {
+                        'label': label,
+                        'name': clean_comp_name(comp.get('name', 'Unknown')),
+                        'price': format_price(price),
+                        'price_usd': price,
+                        'id': str(comp['_id'])
+                    }
+
+        # 2. Run validation
+        validation = run_validation_logic(data)
+
+        # 3. Run power analysis
+        power = run_power_analysis(data)
+
+        # 4. Generate fix suggestions for each conflict directly from MongoDB
+        fix_suggestions = []
+        arch_conflicts = validation.get('arch_conflicts', [])
+        if arch_conflicts:
+            # Category → DB category mapping
+            cat_db_map = {
+                'cpu': 'cpu', 'gpu': 'gpu', 'motherboard': 'motherboard',
+                'ram': 'ram', 'memory': 'ram', 'storage': 'storage',
+                'psu': 'psu', 'case': 'case', 'cooler': 'cooler',
+                'monitors': 'monitor', 'monitor': 'monitor',
+                'fans': 'fans', 'case_fan': 'fans',
+                'os': 'os', 'keyboard': 'peripherals', 'mouse': 'peripherals',
+                'headset': 'peripherals', 'webcam': 'peripherals',
+                'thermal_paste': 'thermal_paste', 'network': 'wifi_adapters',
+                'network_adapter': 'wifi_adapters', 'speakers': 'speakers',
+                'microphone': 'microphones', 'ups': 'ups',
+                'tools': 'tools', 'assembly_tools': 'tools'
+            }
+            # Category → build data key mapping
+            cat_key_map = {
+                'cpu': 'cpu_id', 'gpu': 'gpu_id', 'motherboard': 'motherboard_id',
+                'ram': 'ram_id', 'memory': 'ram_id', 'storage': 'storage_id',
+                'psu': 'psu_id', 'case': 'case_id', 'cooler': 'cooler_id',
+                'monitors': 'monitor_id', 'monitor': 'monitor_id',
+                'fans': 'fans_id', 'case_fan': 'fans_id',
+                'os': 'os_id', 'keyboard': 'keyboard_id', 'mouse': 'mouse_id',
+                'headset': 'headset_id', 'webcam': 'webcam_id',
+                'thermal_paste': 'thermal_paste_id', 'network': 'wifi_id',
+                'network_adapter': 'wifi_id', 'speakers': 'speakers_id',
+                'microphone': 'microphone_id', 'ups': 'ups_id',
+                'tools': 'tool_id', 'assembly_tools': 'tool_id'
+            }
+            suggested_cats = set()
+            for conflict in arch_conflicts:
+                if conflict['severity'] not in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL'):
+                    continue
+                h_query = conflict.get('healing_query')
+                if not h_query:
+                    continue
+                cat = h_query.get('category', '')
+                if cat in suggested_cats:
+                    continue
+                db_cat = cat_db_map.get(cat, cat)
+                data_key = cat_key_map.get(cat)
+                exclude_id = h_query.get('exclude_id')
+
+                try:
+                    # Query MongoDB for alternative components
+                    q = {'category': {'$regex': f'^{db_cat}$', '$options': 'i'}}
+                    if db_cat == 'ram':
+                        q = {'category': {'$in': ['ram', 'memory']}}
+                    if exclude_id:
+                        try:
+                            q['_id'] = {'$ne': ObjectId(exclude_id)}
+                        except:
+                            pass
+
+                    candidates = list(db.components.find(q).limit(50))
+                    if not candidates:
+                        continue
+
+                    # Dry-run: test each candidate to see if it fixes THIS conflict
+                    verified = []
+                    for cand in candidates:
+                        if len(verified) >= 5:
+                            break
+                        # Build a mock data dict with this candidate swapped in
+                        mock_data = dict(data)
+                        if data_key:
+                            mock_data[data_key] = str(cand['_id'])
+                        try:
+                            mock_result = run_validation_logic(mock_data)
+                            mock_conflicts = mock_result.get('arch_conflicts', [])
+                            # Check if this specific conflict message is gone
+                            still_has = any(
+                                mc.get('message') == conflict.get('message')
+                                for mc in mock_conflicts
+                            )
+                            if not still_has:
+                                # Count remaining critical issues
+                                orig_crit = sum(1 for c in arch_conflicts if c['severity'] == 'INCOMPATIBLE')
+                                new_crit = sum(1 for c in mock_conflicts if c.get('severity') == 'INCOMPATIBLE')
+                                if new_crit <= orig_crit:
+                                    new_status = mock_result.get('status', 'Compatible')
+                                    verified.append({
+                                        'id': str(cand['_id']),
+                                        'name': clean_comp_name(cand.get('name', 'Unknown')),
+                                        'result_status': new_status
+                                    })
+                        except Exception:
+                            continue
+
+                    if verified:
+                        sev_type = 'fix' if conflict['severity'] == 'INCOMPATIBLE' else 'improvement'
+                        fix_suggestions.append({
+                            'category': cat,
+                            'type': sev_type,
+                            'title': f"{'Fix' if sev_type == 'fix' else 'Improve'}: {cat.replace('_', ' ').title()}",
+                            'reason': conflict['message'],
+                            'options': verified
+                        })
+                        suggested_cats.add(cat)
+                except Exception as fix_e:
+                    app.logger.warning(f"Fix suggestion error for {cat}: {fix_e}")
+
+        return jsonify({
+            'status': 'success',
+            'build_name': data.get('name', 'Custom Rig'),
+            'components': components,
+            'total_price': format_price(total_price),
+            'total_price_usd': total_price,
+            'validation': validation,
+            'power': power,
+            'fix_suggestions': fix_suggestions
+        })
+    except Exception as e:
+        app.logger.error(f"Full analysis error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/ai-recommendation')
 @login_required
