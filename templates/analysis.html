@@ -146,6 +146,7 @@
             align-items: center;
             gap: 4px;
         }
+
         .typing-indicator span {
             width: 6px;
             height: 6px;
@@ -153,11 +154,26 @@
             border-radius: 50%;
             animation: bounce 1.4s infinite ease-in-out both;
         }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
         @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
         }
     </style>
 </head>
@@ -187,8 +203,11 @@
                         <div id="health-status-badge"
                             style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.03); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--border); transition: all 0.3s ease;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <svg id="health-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" style="transition: stroke 0.3s ease;">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                                <svg id="health-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="var(--accent-cyan)" stroke-width="2" style="transition: stroke 0.3s ease;">
+                                    <path
+                                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z">
+                                    </path>
                                 </svg>
                                 <span
                                     style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">System
@@ -208,22 +227,55 @@
                             background: rgba(34, 197, 94, 0.08);
                             border-color: rgba(34, 197, 94, 0.3);
                         }
+
                         #health-status-badge[data-status="not-compatible"] {
                             background: rgba(239, 68, 68, 0.1);
                             border-color: rgba(239, 68, 68, 0.4);
                             box-shadow: 0 0 16px rgba(239, 68, 68, 0.15);
                         }
+
                         #health-status-badge[data-status="borderline"] {
                             background: rgba(251, 191, 36, 0.08);
                             border-color: rgba(251, 191, 36, 0.3);
                         }
-                        #compat-status[data-status="compatible"] { color: #4ade80; }
-                        #compat-status[data-status="not-compatible"] { color: #f87171; text-shadow: 0 0 8px rgba(248, 113, 113, 0.4); }
-                        #compat-status[data-status="borderline"] { color: #fbbf24; }
-                        #health-icon[data-status="compatible"] { stroke: #4ade80; }
-                        #health-icon[data-status="not-compatible"] { stroke: #f87171; animation: pulse-red 2s infinite; }
-                        #health-icon[data-status="borderline"] { stroke: #fbbf24; }
-                        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+                        #compat-status[data-status="compatible"] {
+                            color: #4ade80;
+                        }
+
+                        #compat-status[data-status="not-compatible"] {
+                            color: #f87171;
+                            text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+                        }
+
+                        #compat-status[data-status="borderline"] {
+                            color: #fbbf24;
+                        }
+
+                        #health-icon[data-status="compatible"] {
+                            stroke: #4ade80;
+                        }
+
+                        #health-icon[data-status="not-compatible"] {
+                            stroke: #f87171;
+                            animation: pulse-red 2s infinite;
+                        }
+
+                        #health-icon[data-status="borderline"] {
+                            stroke: #fbbf24;
+                        }
+
+                        @keyframes pulse-red {
+
+                            0%,
+                            100% {
+                                opacity: 1;
+                            }
+
+                            50% {
+                                opacity: 0.6;
+                            }
+                        }
                     </style>
                 </div>
 
@@ -290,15 +342,22 @@
             </div>
 
             <div id="analysis-results" style="display: none; margin-bottom: 2rem;">
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-                    <div style="background: rgba(251, 191, 36, 0.15); padding: 1rem 1.5rem; border-bottom: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 0.8rem;">
+                <div
+                    style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <div
+                        style="background: rgba(251, 191, 36, 0.15); padding: 1rem 1.5rem; border-bottom: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 0.8rem;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                            </path>
                             <line x1="12" y1="9" x2="12" y2="13"></line>
                             <line x1="12" y1="17" x2="12.01" y2="17"></line>
                         </svg>
-                        <h3 style="margin: 0; color: #fbbf24; font-size: 1.1rem; font-weight: 700;">Compatibility Notes</h3>
-                        <span id="compat-count-badge" style="background: rgba(0,0,0,0.3); color: #fbbf24; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 800; margin-left: auto;">0 Notes</span>
+                        <h3 style="margin: 0; color: #fbbf24; font-size: 1.1rem; font-weight: 700;">Compatibility Notes
+                        </h3>
+                        <span id="compat-count-badge"
+                            style="background: rgba(0,0,0,0.3); color: #fbbf24; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 800; margin-left: auto;">0
+                            Notes</span>
                     </div>
                     <div id="compat-messages-container" style="display: flex; flex-direction: column;">
                     </div>
@@ -321,7 +380,8 @@
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span id="fix-panel-status-tag"
                             style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 20px; background: rgba(239,68,68,0.15); color: #f87171; font-weight: 600; letter-spacing: 0.03em;"></span>
-                        <button type="button" onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
+                        <button type="button"
+                            onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
                             style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem;">✕
                             Dismiss</button>
                     </div>
@@ -368,7 +428,8 @@
                             <div id="cost-monthly"
                                 style="font-size: 2.4rem; font-weight: 800; color: white; margin-bottom: 0.5rem;">$0.00
                             </div>
-                            <div id="cost-per-kwh" style="font-size: 0.8rem; color: var(--text-muted);">@ $0.15 per kWh</div>
+                            <div id="cost-per-kwh" style="font-size: 0.8rem; color: var(--text-muted);">@ $0.15 per kWh
+                            </div>
                         </div>
 
                         <div
@@ -380,7 +441,8 @@
                                 style="font-size: 2.4rem; font-weight: 800; color: #4ade80; margin-bottom: 0.5rem;">0
                                 <span style="font-size: 1rem;">kg</span>
                             </div>
-                            <div id="tree-equivalent" style="font-size: 0.8rem; color: var(--text-muted);">Equivalent to 0 trees</div>
+                            <div id="tree-equivalent" style="font-size: 0.8rem; color: var(--text-muted);">Equivalent to
+                                0 trees</div>
                         </div>
 
                         <div
@@ -432,14 +494,14 @@
                         style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
                         <!-- Price cards -->
                         {% set categories = [
-                            ('cpu', 'CPU'), ('gpu', 'GPU'), ('motherboard', 'Motherboard'), 
-                            ('ram', 'RAM'), ('storage', 'Storage'), ('psu', 'PSU'), 
-                            ('case', 'Case'), ('cooler', 'Cooler'), ('monitor', 'Monitor'), 
-                            ('os', 'Operating System'), ('keyboard', 'Keyboard'), 
-                            ('mouse', 'Mouse'), ('headset', 'Headset'), ('webcam', 'Webcam'), 
-                            ('fans', 'Case Fans'), ('thermal_paste', 'Thermal Paste'), 
-                            ('wifi', 'Network Adapter'), ('speakers', 'Speakers'), 
-                            ('microphone', 'Microphone'), ('ups', 'UPS / Surge'), ('tool', 'Assembly Tools')
+                        ('cpu', 'CPU'), ('gpu', 'GPU'), ('motherboard', 'Motherboard'),
+                        ('ram', 'RAM'), ('storage', 'Storage'), ('psu', 'PSU'),
+                        ('case', 'Case'), ('cooler', 'Cooler'), ('monitor', 'Monitor'),
+                        ('os', 'Operating System'), ('keyboard', 'Keyboard'),
+                        ('mouse', 'Mouse'), ('headset', 'Headset'), ('webcam', 'Webcam'),
+                        ('fans', 'Case Fans'), ('thermal_paste', 'Thermal Paste'),
+                        ('wifi', 'Network Adapter'), ('speakers', 'Speakers'),
+                        ('microphone', 'Microphone'), ('ups', 'UPS / Surge'), ('tool', 'Assembly Tools')
                         ] %}
                         {% for cat_id, cat_label in categories %}
                         <div class="price-card" data-category="{{ cat_id }}"
@@ -486,9 +548,10 @@
                 <p style="font-size: 1.1rem;">No build data found. Use the <a href="{{ url_for('builder') }}"
                         style="color: var(--accent);">Builder</a>.</p>
             </div>
-            
+
             <!-- Fix Application Notification -->
-            <div id="fix-notification" style="position: fixed; top: 100px; right: 20px; padding: 1.2rem 1.5rem; border-radius: 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; font-weight: 600; display: none; z-index: 1000; min-width: 300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out;">
+            <div id="fix-notification"
+                style="position: fixed; top: 100px; right: 20px; padding: 1.2rem 1.5rem; border-radius: 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; font-weight: 600; display: none; z-index: 1000; min-width: 300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out;">
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
                     <div class="typing-indicator">
                         <span></span><span></span><span></span>
@@ -505,7 +568,8 @@
             <div class="modal-header">
                 <div>
                     <h2 class="text-gradient" style="margin-bottom: 0.5rem;">What-If Upgrade Simulator</h2>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Simulate part swaps to see the impact on your build.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Simulate part swaps to see the
+                        impact on your build.</p>
                 </div>
                 <div id="sim-lifecycle-warning"
                     style="display:none; font-size:0.8rem; background:rgba(251,191,36,0.1); border:1px solid #fbbf24; color:#fbbf24; padding:6px 12px; border-radius:8px; margin-right: 2rem;">
@@ -676,23 +740,23 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`Validation API returned ${response.status}`);
                 }
-                
+
                 const result = await response.json();
                 console.log('[ValidateBuild] Response received:', result);
                 document.body.style.cursor = 'default';
-                
+
                 statusEl.textContent = result.status;
                 console.log('[ValidateBuild] Status updated to:', result.status);
-                
+
                 const badge = document.getElementById('health-status-badge');
                 const icon = document.getElementById('health-icon');
                 const statusType = result.status.toLowerCase().replace(' ', '-');
                 console.log('[ValidateBuild] Setting statusType to:', statusType);
-                
+
                 badge.setAttribute('data-status', statusType);
                 statusEl.setAttribute('data-status', statusType);
                 icon.setAttribute('data-status', statusType);
@@ -714,14 +778,14 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
+
                 if (!fullResp.ok) {
                     throw new Error(`Full analysis API returned ${fullResp.status}`);
                 }
-                
+
                 const fullData = await fullResp.json();
                 console.log('[ValidateBuild] Full analysis response:', fullData);
-                
+
                 if (fullData.status === 'success') {
                     updatePriceTracker(fullData.components, fullData.total_price);
                     updateEnergyLab(fullData.power_metrics);
@@ -969,7 +1033,7 @@
             }
 
             document.getElementById('energy-efficiency-lab').style.display = 'block';
-            
+
             // Primary metrics
             const totalBaseWattage = Number(power.total_base_wattage || 0);
             const derivedMonthlyCost = totalBaseWattage
@@ -977,26 +1041,26 @@
                 : '$0.00';
             const monthlyCost = power.monthly_cost_formatted || power.monthly_cost || derivedMonthlyCost;
             document.getElementById('cost-monthly').textContent = monthlyCost;
-            
+
             const derivedCarbon = totalBaseWattage
                 ? (((totalBaseWattage / 1000) * 120 * 12 * 0.42).toFixed(1))
                 : '0';
             const carbon = power.annual_carbon !== undefined ? power.annual_carbon : derivedCarbon;
             document.getElementById('carbon-footprint').innerHTML = `${carbon} <span style="font-size: 1rem;">kg</span>`;
-            
+
             const rating = power.efficiency_rating || 'N/A';
             document.getElementById('efficiency-rating').textContent = `Rating: ${rating}`;
-            
+
             const insight = power.efficiency_insight || 'Power analysis data available for this configuration.';
             document.getElementById('efficiency-insight').textContent = insight;
-            
+
             // Enhanced metrics
             const rateEl = document.getElementById('cost-per-kwh');
             if (rateEl) {
                 const rate = power.cost_per_kwh_formatted || power.cost_per_kwh || `$${Number(power.cost_per_kwh_usd || 0.15).toFixed(2)}`;
                 rateEl.textContent = `@ ${rate} per kWh`;
             }
-            
+
             const treeEl = document.getElementById('tree-equivalent');
             if (treeEl) {
                 const trees = power.tree_equivalent !== undefined ? power.tree_equivalent : Math.floor(Number(carbon || 0) / 20);
@@ -1105,12 +1169,12 @@
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         ${(s.options || []).map(opt => {
-                            const isSelected = selectedOption && selectedOption.id === opt.id;
-                            const buttonStyle = isSelected
-                                ? 'font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.6); color: #dcfce7;'
-                                : 'font-size: 0.8rem;';
-                            return `<button type="button" class="btn btn-secondary" onclick="applyFix('${s._key}', '${s.category}', '${opt.id}')" ${_isApplyingFixBatch ? 'disabled' : ''} style="${buttonStyle}">${isSelected ? 'Selected' : 'Update'} to ${opt.name}</button>`;
-                        }).join('')}
+                    const isSelected = selectedOption && selectedOption.id === opt.id;
+                    const buttonStyle = isSelected
+                        ? 'font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.6); color: #dcfce7;'
+                        : 'font-size: 0.8rem;';
+                    return `<button type="button" class="btn btn-secondary" onclick="applyFix('${s._key}', '${s.category}', '${opt.id}')" ${_isApplyingFixBatch ? 'disabled' : ''} style="${buttonStyle}">${isSelected ? 'Selected' : 'Update'} to ${opt.name}</button>`;
+                }).join('')}
                     </div>
                 </div>
             `;
@@ -1180,7 +1244,7 @@
                 if (requestId !== _analysisRequestId) return;
 
                 renderCompatibility(result);
-                
+
                 // Immediately update power lab if validation returned it (faster response)
                 if (result.power) {
                     console.log('[ValidateBuild] Energy data found in validation response.');
@@ -1437,4 +1501,5 @@
     {% include 'shared/rigmaster_ai.html' %}
     {% endif %}
 </body>
+
 </html>
