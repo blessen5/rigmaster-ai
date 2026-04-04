@@ -2233,7 +2233,9 @@ def api_validate_build():
         except Exception as e:
             app.logger.warning(f"Validate-build build load error: {e}")
             
-    return jsonify(run_validation_logic(data))
+    validation = run_validation_logic(data)
+    validation['power'] = run_power_analysis(data)
+    return jsonify(validation)
 
 def rigmaster_detect_pcie(doc):
     if not doc: return 0
@@ -4978,13 +4980,48 @@ def run_power_analysis(data):
         elif total_base_watts > base_overhead: # Components selected but no PSU
              psu_status = "No PSU Selected"
 
+        # Monthly Usage Estimates (Derived from frontend logic for consistency)
+        monthly_usage_hours = 4 * 30 # 4h/day
+        cost_per_kwh_usd = 0.15
+        carbon_per_kwh = 0.42
+        
+        monthly_cost_usd = (total_base_watts / 1000.0) * monthly_usage_hours * cost_per_kwh_usd
+        annual_carbon = (total_base_watts / 1000.0) * monthly_usage_hours * 12 * carbon_per_kwh
+        # Heuristic: 1 tree absorbs ~20kg CO2 per year
+        tree_equivalent = int(annual_carbon / 20.0)
+        
+        # Energy Rating
+        rating = 'A'
+        if total_base_watts > 650: rating = 'D'
+        elif total_base_watts > 450: rating = 'C'
+        elif total_base_watts > 300: rating = 'B'
+        
+        # Energy Insight
+        eff_insight = f"Estimated system draw is {total_base_watts}W. "
+        if psu_status == 'Safe':
+            eff_insight += f"Your {psu_wattage}W PSU has headroom over the {recommended_watts}W recommendation." if psu_wattage else f"The build clears the recommended {recommended_watts}W power target."
+        elif psu_status == 'Borderline':
+            eff_insight += f"The current PSU is usable, but a {recommended_watts}W target would add safer headroom."
+        elif psu_status == 'Insufficient':
+            eff_insight += f"The current PSU is undersized. Aim for at least {recommended_watts}W."
+        elif psu_status == 'No PSU Selected':
+            eff_insight += f"Select a PSU around {recommended_watts}W to complete this power check."
+        else:
+            eff_insight += f"Recommended PSU target is {recommended_watts}W."
+
         return {
             'status': 'success',
             'breakdown': power_breakdown,
             'total_base_wattage': total_base_watts,
             'recommended_wattage': recommended_watts,
             'selected_psu_wattage': psu_wattage,
-            'adequacy_status': psu_status
+            'adequacy_status': psu_status,
+            'monthly_cost_formatted': format_price(monthly_cost_usd),
+            'cost_per_kwh_formatted': format_price(cost_per_kwh_usd),
+            'annual_carbon': round(annual_carbon, 1),
+            'tree_equivalent': tree_equivalent,
+            'efficiency_rating': rating,
+            'efficiency_insight': eff_insight
         }
 
     except Exception as e:

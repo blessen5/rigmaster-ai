@@ -138,7 +138,7 @@
                     </ul>
                     {% if session.get('user_id') %}
                     <a href="#"
-                        onclick="if(typeof RigBot !== 'undefined') { RigBot.toggle(); } else { alert('AI interface loading...'); } return false;"
+                        onclick="if(typeof NexusAI !== 'undefined') { NexusAI.toggle(); } else { alert('AI interface loading...'); } return false;"
                         class="btn btn-primary"
                         style="background: var(--primary); border-color: var(--primary);">Chat with AI</a>
                     {% else %}
