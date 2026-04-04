@@ -321,7 +321,7 @@
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span id="fix-panel-status-tag"
                             style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 20px; background: rgba(239,68,68,0.15); color: #f87171; font-weight: 600; letter-spacing: 0.03em;"></span>
-                        <button onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
+                        <button type="button" onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
                             style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem;">✕
                             Dismiss</button>
                     </div>
@@ -439,7 +439,7 @@
                             ('mouse', 'Mouse'), ('headset', 'Headset'), ('webcam', 'Webcam'), 
                             ('fans', 'Case Fans'), ('thermal_paste', 'Thermal Paste'), 
                             ('wifi', 'Network Adapter'), ('speakers', 'Speakers'), 
-                            ('microphone', 'Microphone'), ('ups', 'UPS / Surge'), ('tools', 'Assembly Tools')
+                            ('microphone', 'Microphone'), ('ups', 'UPS / Surge'), ('tool', 'Assembly Tools')
                         ] %}
                         {% for cat_id, cat_label in categories %}
                         <div class="price-card" data-category="{{ cat_id }}"
@@ -493,7 +493,7 @@
                     <div class="typing-indicator">
                         <span></span><span></span><span></span>
                     </div>
-                    <div>Applying fix and re-validating build...</div>
+                    <div id="fix-notification-text">Applying fix and re-validating build...</div>
                 </div>
             </div>
         </div>
@@ -630,6 +630,38 @@
         let _validationController = null;
         let _fullAnalysisController = null;
         let _simulatorOptions = {};
+        let _activeFixSuggestions = [];
+        let _selectedFixOptions = {};
+        let _isApplyingFixBatch = false;
+        const FIX_CATEGORY_KEY_MAP = {
+            'cpu': 'cpu_id',
+            'gpu': 'gpu_id',
+            'motherboard': 'motherboard_id',
+            'ram': 'ram_id',
+            'memory': 'ram_id',
+            'storage': 'storage_id',
+            'psu': 'psu_id',
+            'case': 'case_id',
+            'cooler': 'cooler_id',
+            'monitor': 'monitor_id',
+            'monitors': 'monitor_id',
+            'fans': 'fans_id',
+            'case_fan': 'fans_id',
+            'os': 'os_id',
+            'keyboard': 'keyboard_id',
+            'mouse': 'mouse_id',
+            'headset': 'headset_id',
+            'webcam': 'webcam_id',
+            'thermal_paste': 'thermal_paste_id',
+            'network': 'wifi_id',
+            'network_adapter': 'wifi_id',
+            'speakers': 'speakers_id',
+            'microphone': 'microphone_id',
+            'ups': 'ups_id',
+            'tool': 'tool_id',
+            'assembly_tools': 'tool_id',
+            'peripherals': 'peripherals_id'
+        };
 
         async function validateBuild(data) {
             console.log('[ValidateBuild] Called with data:', data);
@@ -739,7 +771,7 @@
                     <div style="font-weight: 700; margin-bottom: 0.5rem;">${s.title}</div>
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">${s.reason}</div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        ${s.options.map(opt => `<button class="btn btn-secondary" onclick="applyFix('${s.category}', '${opt.id}')" style="font-size: 0.8rem;">Update to ${opt.name}</button>`).join('')}
+                        ${s.options.map(opt => `<button type="button" class="btn btn-secondary" onclick="applyFix('${s.category}', '${opt.id}')" style="font-size: 0.8rem;">Update to ${opt.name}</button>`).join('')}
                     </div>
                 </div>
             `).join('');
@@ -770,17 +802,14 @@
 
         function createAnalysisPayload(source = buildData) {
             const payload = {};
-            let hasLocalComponents = false;
-
             BUILD_COMPONENT_KEYS.forEach(key => {
                 if (source[key]) {
                     payload[key] = source[key];
-                    hasLocalComponents = true;
                 }
             });
 
             if (source.name) payload.name = source.name;
-            if (source.build_id && !hasLocalComponents) payload.build_id = source.build_id;
+            if (source.build_id) payload.build_id = source.build_id;
 
             return payload;
         }
@@ -797,6 +826,8 @@
             const badge = document.getElementById('health-status-badge');
             const icon = document.getElementById('health-icon');
 
+            resetFixSelectionState();
+            hideFixNotification();
             document.getElementById('analysis-results').style.display = 'block';
             document.getElementById('loading-msg').style.display = 'none';
             document.getElementById('compat-count-badge').textContent = 'Working...';
@@ -940,10 +971,17 @@
             document.getElementById('energy-efficiency-lab').style.display = 'block';
             
             // Primary metrics
-            const monthlyCost = power.monthly_cost_formatted || power.monthly_cost || '$0.00';
+            const totalBaseWattage = Number(power.total_base_wattage || 0);
+            const derivedMonthlyCost = totalBaseWattage
+                ? `$${((totalBaseWattage / 1000) * 120 * 0.15).toFixed(2)}`
+                : '$0.00';
+            const monthlyCost = power.monthly_cost_formatted || power.monthly_cost || derivedMonthlyCost;
             document.getElementById('cost-monthly').textContent = monthlyCost;
             
-            const carbon = power.annual_carbon !== undefined ? power.annual_carbon : '0';
+            const derivedCarbon = totalBaseWattage
+                ? (((totalBaseWattage / 1000) * 120 * 12 * 0.42).toFixed(1))
+                : '0';
+            const carbon = power.annual_carbon !== undefined ? power.annual_carbon : derivedCarbon;
             document.getElementById('carbon-footprint').innerHTML = `${carbon} <span style="font-size: 1rem;">kg</span>`;
             
             const rating = power.efficiency_rating || 'N/A';
@@ -955,41 +993,128 @@
             // Enhanced metrics
             const rateEl = document.getElementById('cost-per-kwh');
             if (rateEl) {
-                const rate = power.cost_per_kwh_formatted || power.cost_per_kwh || '$0.15';
+                const rate = power.cost_per_kwh_formatted || power.cost_per_kwh || `$${Number(power.cost_per_kwh_usd || 0.15).toFixed(2)}`;
                 rateEl.textContent = `@ ${rate} per kWh`;
             }
             
             const treeEl = document.getElementById('tree-equivalent');
             if (treeEl) {
-                const trees = power.tree_equivalent !== undefined ? power.tree_equivalent : '0';
+                const trees = power.tree_equivalent !== undefined ? power.tree_equivalent : Math.floor(Number(carbon || 0) / 20);
                 treeEl.textContent = `Equivalent to ${trees} trees`;
             }
             console.log('[updateEnergyLab] Successfully updated energy dashboard UI.');
         }
 
-        function renderSuggestions(suggestions) {
+        function resetFixSelectionState() {
+            _activeFixSuggestions = [];
+            _selectedFixOptions = {};
+            _isApplyingFixBatch = false;
+        }
+
+        function getSelectedFixCount() {
+            return _activeFixSuggestions.filter(suggestion => _selectedFixOptions[suggestion._key]).length;
+        }
+
+        function showFixNotification(message, tone = 'success') {
+            const notif = document.getElementById('fix-notification');
+            const notifText = document.getElementById('fix-notification-text');
+            if (!notif || !notifText) return;
+
+            const palette = {
+                success: {
+                    background: 'rgba(34, 197, 94, 0.1)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    color: '#4ade80'
+                },
+                info: {
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    color: '#93c5fd'
+                },
+                error: {
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5'
+                }
+            };
+            const colors = palette[tone] || palette.success;
+
+            notif.style.background = colors.background;
+            notif.style.border = colors.border;
+            notif.style.color = colors.color;
+            notifText.textContent = message;
+            notif.style.display = 'block';
+        }
+
+        function hideFixNotification(delay = 0) {
+            const notif = document.getElementById('fix-notification');
+            if (!notif) return;
+
+            const hide = () => { notif.style.display = 'none'; };
+            if (delay > 0) {
+                setTimeout(hide, delay);
+                return;
+            }
+            hide();
+        }
+
+        function renderSuggestions(suggestions, preserveSelections = false) {
             const panel = document.getElementById('fix-suggestions-panel');
             const container = document.getElementById('fix-options-container');
             const statusTag = document.getElementById('fix-panel-status-tag');
 
-            if (!suggestions.length) {
+            if (!preserveSelections) {
+                _activeFixSuggestions = (suggestions || []).map((suggestion, index) => ({
+                    ...suggestion,
+                    _key: suggestion._key || `${suggestion.category || 'suggestion'}:${index}`
+                }));
+                _selectedFixOptions = {};
+                _isApplyingFixBatch = false;
+            }
+
+            if (!_activeFixSuggestions.length) {
                 panel.style.display = 'none';
                 statusTag.textContent = '';
+                container.innerHTML = '';
+                resetFixSelectionState();
                 return;
             }
 
+            const selectedCount = getSelectedFixCount();
+            const remainingCount = Math.max(_activeFixSuggestions.length - selectedCount, 0);
+
             panel.style.display = 'block';
-            statusTag.textContent = `${suggestions.length} recommended update${suggestions.length === 1 ? '' : 's'}`;
-            container.innerHTML = suggestions.map(s => `
+            if (_isApplyingFixBatch) {
+                statusTag.textContent = 'All selections made. Re-checking build...';
+            } else if (selectedCount > 0) {
+                statusTag.textContent = `${selectedCount}/${_activeFixSuggestions.length} selected${remainingCount ? ` • ${remainingCount} remaining` : ''}`;
+            } else {
+                statusTag.textContent = `${_activeFixSuggestions.length} recommended update${_activeFixSuggestions.length === 1 ? '' : 's'}`;
+            }
+
+            container.innerHTML = _activeFixSuggestions.map(s => {
+                const selectedFix = _selectedFixOptions[s._key] || null;
+                const selectedOption = selectedFix ? (s.options || []).find(opt => opt.id === selectedFix.id) : null;
+                return `
                 <div class="step-card" style="padding: 1.5rem; text-align: left;">
                     <div style="color: var(--primary-light); font-weight: 700; font-size: 0.7rem; margin-bottom: 0.5rem;">${s.type.toUpperCase()}</div>
                     <div style="font-weight: 700; margin-bottom: 0.5rem;">${s.title}</div>
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">${s.reason}</div>
+                    <div style="font-size: 0.78rem; color: ${selectedOption ? '#4ade80' : 'var(--text-muted)'}; margin-bottom: 0.9rem;">
+                        ${selectedOption ? `Selected: ${selectedOption.name}` : 'Choose one option from this card to continue.'}
+                    </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        ${s.options.map(opt => `<button class="btn btn-secondary" onclick="applyFix('${s.category}', '${opt.id}')" style="font-size: 0.8rem;">Update to ${opt.name}</button>`).join('')}
+                        ${(s.options || []).map(opt => {
+                            const isSelected = selectedOption && selectedOption.id === opt.id;
+                            const buttonStyle = isSelected
+                                ? 'font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.6); color: #dcfce7;'
+                                : 'font-size: 0.8rem;';
+                            return `<button type="button" class="btn btn-secondary" onclick="applyFix('${s._key}', '${s.category}', '${opt.id}')" ${_isApplyingFixBatch ? 'disabled' : ''} style="${buttonStyle}">${isSelected ? 'Selected' : 'Update'} to ${opt.name}</button>`;
+                        }).join('')}
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         async function startDetailedAnalysis(data, requestId) {
@@ -1010,6 +1135,9 @@
                 const fullData = await fullResp.json();
                 if (requestId !== _analysisRequestId || fullData.status !== 'success') return;
 
+                if (fullData.validation) {
+                    renderCompatibility(fullData.validation);
+                }
                 updatePriceTracker(fullData.components, fullData.total_price);
                 updateEnergyLab(fullData.power);
                 renderSuggestions(fullData.fix_suggestions || []);
@@ -1086,113 +1214,96 @@
             void validateBuild(buildData);
         }
 
-        async function applyFix(category, id) {
-            console.log(`[ApplyFix] Starting fix application: category=${category}, id=${id}`);
-            
-            // Show notification
-            const notif = document.getElementById('fix-notification');
-            notif.style.display = 'block';
-            
-            // Complete mapping of all component categories to database keys
-            const keyMap = {
-                'cpu': 'cpu_id',
-                'gpu': 'gpu_id',
-                'motherboard': 'motherboard_id',
-                'ram': 'ram_id',
-                'memory': 'ram_id',
-                'storage': 'storage_id',
-                'psu': 'psu_id',
-                'case': 'case_id',
-                'cooler': 'cooler_id',
-                'monitor': 'monitor_id',
-                'monitors': 'monitor_id',
-                'fans': 'fans_id',
-                'case_fan': 'fans_id',
-                'os': 'os_id',
-                'keyboard': 'keyboard_id',
-                'mouse': 'mouse_id',
-                'headset': 'headset_id',
-                'webcam': 'webcam_id',
-                'thermal_paste': 'thermal_paste_id',
-                'network': 'wifi_id',
-                'network_adapter': 'wifi_id',
-                'speakers': 'speakers_id',
-                'microphone': 'microphone_id',
-                'ups': 'ups_id',
-                'tools': 'tool_id',
-                'assembly_tools': 'tool_id'
-            };
-            const dbKey = keyMap[category];
+        async function applyFix(suggestionKey, category, id) {
+            console.log(`[ApplyFix] Staging fix selection: suggestion=${suggestionKey}, category=${category}, id=${id}`);
+
+            const dbKey = FIX_CATEGORY_KEY_MAP[category];
             if (!dbKey) {
                 console.error(`[ApplyFix] Unknown category: ${category}`);
-                notif.style.display = 'none';
-                alert(`Error: Unknown component category: ${category}`);
+                showFixNotification(`Unknown component category: ${category}`, 'error');
                 return;
             }
-            console.log(`[ApplyFix] Mapped category to dbKey: ${dbKey}`);
-            
-            // Disable all fix buttons while processing
-            const buttons = document.querySelectorAll('#fix-options-container button');
-            buttons.forEach(btn => btn.disabled = true);
-            
+
+            buildData[dbKey] = id;
+            _selectedFixOptions[suggestionKey] = { category, id, dbKey };
+
+            const params = new URLSearchParams(window.location.search);
+            params.set(dbKey, id);
+            if (buildData.build_id) {
+                params.set('build_id', buildData.build_id);
+            }
+            window.history.pushState({}, '', '/analysis?' + params.toString());
+
+            const totalSuggestions = _activeFixSuggestions.length;
+            const selectedCount = getSelectedFixCount();
+            const remainingCount = Math.max(totalSuggestions - selectedCount, 0);
+
+            renderSuggestions(_activeFixSuggestions, true);
+
+            if (remainingCount > 0) {
+                showFixNotification(
+                    `${selectedCount} of ${totalSuggestions} fixes selected. Choose ${remainingCount} more to re-run analysis.`,
+                    'info'
+                );
+                return;
+            }
+
+            _isApplyingFixBatch = true;
+            renderSuggestions(_activeFixSuggestions, true);
+            showFixNotification(`All ${totalSuggestions} fixes selected. Applying updates and re-validating build...`, 'success');
+
             try {
-                // Update buildData
-                buildData[dbKey] = id;
-                console.log(`[ApplyFix] Updated buildData[${dbKey}] = ${id}`);
-                console.log(`[ApplyFix] Current buildData:`, buildData);
-                
-                // 1. Update URL without refreshing
-                const params = new URLSearchParams(window.location.search);
-                params.set(dbKey, id);
-                window.history.pushState({}, '', '/analysis?' + params.toString());
-                console.log(`[ApplyFix] Updated URL with ${dbKey}=${id}`);
-                
-                // 2. Persist to DB if we have a build_id
-                const build_id = params.get('build_id');
-                console.log(`[ApplyFix] build_id from URL: ${build_id}`);
-                
-                if (build_id) {
-                    buildData.build_id = build_id;
-                    console.log(`[ApplyFix] Calling /api/save_build with build_id=${build_id}`);
-                    
+                const buildId = buildData.build_id || params.get('build_id');
+                if (buildId) {
+                    buildData.build_id = buildId;
+
                     const saveResp = await fetch('/api/save_build', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(buildData)
                     });
-                    
+
                     if (!saveResp.ok) {
                         throw new Error(`Save failed with status ${saveResp.status}`);
                     }
-                    
+
                     const saveResult = await saveResp.json();
                     console.log('[ApplyFix] Build saved successfully:', saveResult);
-                    
+
                     if (saveResult.status !== 'success') {
                         throw new Error(`Save error: ${saveResult.message}`);
                     }
-                    
-                    console.log(`[ApplyFix] Calling validateBuild with build_id=${build_id}`);
-                    // 3. Re-run validation with build_id AND full buildData
-                    const validationData = { ...buildData, build_id: build_id };
-                    console.log('[ApplyFix] Validation data:', validationData);
-                    await validateBuild(validationData);
+
+                    if (saveResult.name) {
+                        buildData.name = saveResult.name;
+                    }
+
+                    const savedBuildIndex = _allBuilds.findIndex(build => build.id === buildId);
+                    if (savedBuildIndex >= 0) {
+                        _allBuilds[savedBuildIndex] = {
+                            ..._allBuilds[savedBuildIndex],
+                            ...createBuildState(buildData),
+                            id: buildId,
+                            name: buildData.name || _allBuilds[savedBuildIndex].name
+                        };
+                    }
+
+                    await validateBuild({ ...buildData, build_id: buildId });
                 } else {
-                    console.log('[ApplyFix] No build_id, validating with buildData');
-                    // 3. Re-run validation with current buildData
                     await validateBuild(buildData);
                 }
-                
-                console.log('[ApplyFix] Fix application completed successfully');
+
+                console.log('[ApplyFix] Batched fix application completed successfully');
             } catch (error) {
-                console.error('[ApplyFix] Error during fix application:', error);
-                alert(`Failed to apply fix: ${error.message}\n\nCheck browser console (F12) for details.`);
-            } finally {
-                // Re-enable buttons
-                buttons.forEach(btn => btn.disabled = false);
-                // Hide notification
-                setTimeout(() => { notif.style.display = 'none'; }, 1000);
+                _isApplyingFixBatch = false;
+                renderSuggestions(_activeFixSuggestions, true);
+                console.error('[ApplyFix] Error during batched fix application:', error);
+                showFixNotification(`Failed to apply selected fixes: ${error.message}`, 'error');
+                alert(`Failed to apply fix selections: ${error.message}\n\nCheck browser console (F12) for details.`);
+                return;
             }
+
+            hideFixNotification(1200);
         }
 
         document.addEventListener('DOMContentLoaded', () => {

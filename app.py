@@ -765,6 +765,39 @@ def get_user_saved_build_summaries(include_components=True):
         result.append(item)
     return result
 
+def hydrate_analysis_build_data(data):
+    """Merge saved build component ids into an analysis payload when build_id is present."""
+    payload = dict(data or {})
+    build_id = payload.get('build_id')
+    if db is None or not build_id:
+        return payload
+
+    try:
+        user_id = session.get('user_id')
+        user_ids = [user_id]
+        try:
+            user_ids.append(ObjectId(user_id))
+        except Exception:
+            pass
+
+        saved = db.saved_builds.find_one({
+            '_id': ObjectId(build_id),
+            'user_id': {'$in': user_ids}
+        })
+        if not saved:
+            return payload
+
+        for key in ANALYSIS_BUILD_KEYS:
+            if not payload.get(key) and saved.get(key):
+                payload[key] = saved.get(key)
+
+        if not payload.get('name') and saved.get('name'):
+            payload['name'] = saved.get('name')
+    except Exception as e:
+        app.logger.warning(f"Analysis build hydration error: {e}")
+
+    return payload
+
 @app.route('/api/my_builds')
 @login_required
 def api_my_builds():
@@ -1088,32 +1121,9 @@ def generate_fix_suggestions(data, arch_conflicts):
 def api_full_analysis():
     """Combined analysis endpoint: validation + power + component names."""
     try:
-        data = request.json or {}
+        data = hydrate_analysis_build_data(request.json or {})
         if db is None:
             return jsonify({'status': 'error', 'message': 'Database offline'}), 503
-
-        # If build_id provided, load the saved build first
-        build_id = data.get('build_id')
-        if build_id:
-            try:
-                user_id = session.get('user_id')
-                user_ids = [user_id]
-                try:
-                    user_ids.append(ObjectId(user_id))
-                except:
-                    pass
-                saved = db.saved_builds.find_one({'_id': ObjectId(build_id), 'user_id': {'$in': user_ids}})
-                if saved:
-                    for k in ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id',
-                              'case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id',
-                              'mouse_id','headset_id','webcam_id','thermal_paste_id','wifi_id',
-                              'speakers_id','microphone_id','ups_id','tool_id','peripherals_id']:
-                        if not data.get(k) and saved.get(k):
-                            data[k] = saved[k]
-                    if not data.get('name'):
-                        data['name'] = saved.get('name', 'Custom Rig')
-            except Exception as e:
-                app.logger.warning(f"Full-analysis build load error: {e}")
 
         # 1. Resolve component names + prices for display
         comp_map = {
@@ -1127,7 +1137,7 @@ def api_full_analysis():
             'webcam_id': ('Webcam', 'webcams'), 'thermal_paste_id': ('Thermal Paste', 'thermal_paste'),
             'wifi_id': ('WiFi Adapter', 'wifi_adapters'), 'speakers_id': ('Speakers', 'speakers'),
             'microphone_id': ('Microphone', 'microphones'), 'ups_id': ('UPS', 'ups'),
-            'tool_id': ('Tools', 'tools')
+            'tool_id': ('Tools', 'tools'), 'peripherals_id': ('Peripherals', 'peripherals')
         }
         components = {}
         total_price = 0.0
@@ -2096,6 +2106,7 @@ def save_build():
         app.logger.info(f"Incoming save_build request. Payload keys: {list(data.keys()) if data else 'None'}")
         
         build_id = data.get('build_id')
+        existing_build = None
         quantity_raw = data.get('quantity', 1)
         try:
             quantity = int(quantity_raw) if quantity_raw is not None else 1
@@ -2112,13 +2123,18 @@ def save_build():
         except:
             pass
 
+        if build_id:
+            existing_build = db.saved_builds.find_one({
+                '_id': ObjectId(build_id),
+                'user_id': {'$in': user_ids_list}
+            })
+
         raw_name = data.get('name')
         if raw_name and str(raw_name).strip():
             build_name = str(raw_name).strip()
         elif build_id:
             # Keep existing name if updating and no new name provided
-            existing = db.saved_builds.find_one({'_id': ObjectId(build_id), 'user_id': {'$in': user_ids_list}})
-            build_name = existing.get('name', 'Custom Rig') if existing else 'Custom Rig'
+            build_name = existing_build.get('name', 'Custom Rig') if existing_build else 'Custom Rig'
         else:
             count = db.saved_builds.count_documents({'user_id': {'$in': user_ids_list}})
             build_name = f"Custom Rig #{count + 1}"
@@ -2133,30 +2149,21 @@ def save_build():
         build_doc = {
             'user_id': user_id,
             'name': build_name,
-            'cpu_id': data.get('cpu_id'),
-            'gpu_id': data.get('gpu_id'),
-            'motherboard_id': data.get('motherboard_id'),
-            'ram_id': data.get('ram_id'),
-            'storage_id': data.get('storage_id'),
-            'psu_id': data.get('psu_id'),
-            'case_id': data.get('case_id'),
-            'cooler_id': data.get('cooler_id'),
-            'monitor_id': data.get('monitor_id'),
-            'os_id': data.get('os_id'),
-            'peripherals_id': data.get('peripherals_id'),
-            'keyboard_id': data.get('keyboard_id'),
-            'mouse_id': data.get('mouse_id'),
-            'headset_id': data.get('headset_id'),
-            'webcam_id': data.get('webcam_id'),
-            'fans_id': data.get('fans_id'),
-            'thermal_paste_id': data.get('thermal_paste_id'),
-            'wifi_id': data.get('wifi_id'),
-            'speakers_id': data.get('speakers_id'),
-            'microphone_id': data.get('microphone_id'),
-            'ups_id': data.get('ups_id'),
-            'tool_id': data.get('tool_id'),
-            'quantity': quantity
         }
+        for key in ANALYSIS_BUILD_KEYS:
+            if key in data:
+                build_doc[key] = data.get(key)
+            elif existing_build is not None and key in existing_build:
+                build_doc[key] = existing_build.get(key)
+            else:
+                build_doc[key] = None
+
+        if 'quantity' in data:
+            build_doc['quantity'] = quantity
+        elif existing_build is not None and existing_build.get('quantity') is not None:
+            build_doc['quantity'] = existing_build.get('quantity')
+        else:
+            build_doc['quantity'] = quantity
         
         if build_id:
             db.saved_builds.update_one(
@@ -2212,27 +2219,7 @@ def api_get_build(build_id):
 @app.route('/api/validate_build', methods=['POST'])
 @login_required
 def api_validate_build():
-    data = request.json or {}
-    build_id = data.get('build_id')
-    if build_id:
-        try:
-            user_id = session.get('user_id')
-            user_ids = [user_id]
-            try:
-                user_ids.append(ObjectId(user_id))
-            except:
-                pass
-            saved = db.saved_builds.find_one({'_id': ObjectId(build_id), 'user_id': {'$in': user_ids}})
-            if saved:
-                for k in ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id',
-                          'case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id',
-                          'mouse_id','headset_id','webcam_id','thermal_paste_id','wifi_id',
-                          'speakers_id','microphone_id','ups_id','tool_id','peripherals_id']:
-                    if not data.get(k) and saved.get(k):
-                        data[k] = saved[k]
-        except Exception as e:
-            app.logger.warning(f"Validate-build build load error: {e}")
-            
+    data = hydrate_analysis_build_data(request.json or {})
     validation = run_validation_logic(data)
     validation['power'] = run_power_analysis(data)
     return jsonify(validation)
@@ -4825,6 +4812,7 @@ def api_analyze_power():
 
 def run_power_analysis(data):
     try:
+        data = hydrate_analysis_build_data(data)
         # Fetch components using our unified helper
         cpu = get_component_by_id(data.get('cpu_id'))
         gpu = get_component_by_id(data.get('gpu_id'))
@@ -5016,7 +5004,9 @@ def run_power_analysis(data):
             'recommended_wattage': recommended_watts,
             'selected_psu_wattage': psu_wattage,
             'adequacy_status': psu_status,
+            'monthly_cost_usd': round(monthly_cost_usd, 2),
             'monthly_cost_formatted': format_price(monthly_cost_usd),
+            'cost_per_kwh_usd': round(cost_per_kwh_usd, 2),
             'cost_per_kwh_formatted': format_price(cost_per_kwh_usd),
             'annual_carbon': round(annual_carbon, 1),
             'tree_equivalent': tree_equivalent,
