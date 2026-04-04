@@ -931,20 +931,40 @@
         }
 
         function updateEnergyLab(power) {
-            if (!power || power.status !== 'success') return;
+            console.log('[updateEnergyLab] Energy analysis data received:', power);
+            if (!power || power.status !== 'success') {
+                console.warn('[updateEnergyLab] Incomplete or unsuccessful power analysis payload.');
+                return;
+            }
 
             document.getElementById('energy-efficiency-lab').style.display = 'block';
-            document.getElementById('cost-monthly').textContent = power.monthly_cost_formatted || '$0.00';
-            document.getElementById('carbon-footprint').innerHTML = `${power.annual_carbon || '0'} <span style="font-size: 1rem;">kg</span>`;
-            document.getElementById('efficiency-rating').textContent = `Rating: ${power.efficiency_rating || 'N/A'}`;
-            document.getElementById('efficiency-insight').textContent = power.efficiency_insight || 'Power analysis available.';
             
-            // New dynamic fields
+            // Primary metrics
+            const monthlyCost = power.monthly_cost_formatted || power.monthly_cost || '$0.00';
+            document.getElementById('cost-monthly').textContent = monthlyCost;
+            
+            const carbon = power.annual_carbon !== undefined ? power.annual_carbon : '0';
+            document.getElementById('carbon-footprint').innerHTML = `${carbon} <span style="font-size: 1rem;">kg</span>`;
+            
+            const rating = power.efficiency_rating || 'N/A';
+            document.getElementById('efficiency-rating').textContent = `Rating: ${rating}`;
+            
+            const insight = power.efficiency_insight || 'Power analysis data available for this configuration.';
+            document.getElementById('efficiency-insight').textContent = insight;
+            
+            // Enhanced metrics
             const rateEl = document.getElementById('cost-per-kwh');
-            if (rateEl) rateEl.textContent = `@ ${power.cost_per_kwh_formatted || '$0.15'} per kWh`;
+            if (rateEl) {
+                const rate = power.cost_per_kwh_formatted || power.cost_per_kwh || '$0.15';
+                rateEl.textContent = `@ ${rate} per kWh`;
+            }
             
             const treeEl = document.getElementById('tree-equivalent');
-            if (treeEl) treeEl.textContent = `Equivalent to ${power.tree_equivalent || '0'} trees`;
+            if (treeEl) {
+                const trees = power.tree_equivalent !== undefined ? power.tree_equivalent : '0';
+                treeEl.textContent = `Equivalent to ${trees} trees`;
+            }
+            console.log('[updateEnergyLab] Successfully updated energy dashboard UI.');
         }
 
         function renderSuggestions(suggestions) {
@@ -1032,6 +1052,13 @@
                 if (requestId !== _analysisRequestId) return;
 
                 renderCompatibility(result);
+                
+                // Immediately update power lab if validation returned it (faster response)
+                if (result.power) {
+                    console.log('[ValidateBuild] Energy data found in validation response.');
+                    updateEnergyLab(result.power);
+                }
+
                 document.body.style.cursor = 'default';
                 void startDetailedAnalysis(payload, requestId);
             } catch (error) {
