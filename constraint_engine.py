@@ -71,6 +71,7 @@ class RelationalConstraintEngine:
                 mobo_sockets = [s.strip() for s in mobo_socket.split('/')]
                 if cpu_socket not in mobo_sockets:
                      self._add_conflict("INCOMPATIBLE", f"Socket Mismatch: CPU ({cpu_socket}) does not fit Motherboard ({mobo_socket}).", "motherboard", "socket")
+                     self._add_conflict("INCOMPATIBLE", f"Socket Mismatch: Motherboard ({mobo_socket}) does not fit CPU ({cpu_socket}).", "cpu", "socket")
 
         # 0.2 CPU Cooler Socket
         if cooler and mobo:
@@ -79,6 +80,7 @@ class RelationalConstraintEngine:
             if cooler_sockets and mobo_socket:
                 if mobo_socket not in str(cooler_sockets).split(','):
                     self._add_conflict("INCOMPATIBLE", f"Cooler Mounting Mismatch: Cooler does not explicitly support {mobo_socket} socket.", "cooler", "socket")
+                    self._add_conflict("INCOMPATIBLE", f"Cooler Mounting Mismatch: Motherboard ({mobo_socket}) socket requires a different Cooler bracket.", "motherboard", "socket")
                     
         # 0.3 RAM Generation & Capacity
         if ram and mobo:
@@ -86,6 +88,7 @@ class RelationalConstraintEngine:
             mobo_ram_gen = mobo.get("logical", {}).get("ram_gen")
             if ram_gen and mobo_ram_gen and ram_gen != mobo_ram_gen:
                 self._add_conflict("INCOMPATIBLE", f"RAM Type Mismatch: Motherboard requires {mobo_ram_gen} but RAM is {ram_gen}.", "ram", "ram_gen")
+                self._add_conflict("INCOMPATIBLE", f"RAM Type Mismatch: RAM ({ram_gen}) is incompatible with Motherboard ({mobo_ram_gen}).", "motherboard", "ram_gen")
             
             # Slots and Capacity
             sticks = ram.get("logical", {}).get("sticks") or 1
@@ -104,6 +107,7 @@ class RelationalConstraintEngine:
             c_ffs = case.get("logical", {}).get("supported_form_factors", [])
             if m_ff and c_ffs and m_ff not in c_ffs:
                 self._add_conflict("INCOMPATIBLE", f"Form Factor Mismatch: Motherboard ({m_ff}) is not supported by the Case ({', '.join(c_ffs)}).", "motherboard", "form_factor")
+                self._add_conflict("INCOMPATIBLE", f"Form Factor Mismatch: Case is too small for Motherboard ({m_ff}).", "case", "form_factor")
 
         # 0.5 Storage Ports limits
         if storage and mobo:
