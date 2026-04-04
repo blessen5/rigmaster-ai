@@ -27,12 +27,11 @@ class AIEngine:
         self.groq_key = os.getenv('GROQ_API_KEY')
         self.mistral_key = os.getenv('MISTRAL_API_KEY')
         self.gemini_key = os.getenv('GEMINI_API_KEY')
-        self.deepseek_key = os.getenv('DEEPSEEK_API_KEY')
         self.hf_key = os.getenv('HF_API_KEY')
         self.openrouter_key = os.getenv('OPENROUTER_API_KEY')
         self.openrouter_model = os.getenv('OPENROUTER_MODEL', 'openrouter/auto')
         self.hf_force_disable = str(os.getenv('HF_FORCE_DISABLE', 'false')).lower() in ('1', 'true', 'yes')
-        self.preferred_provider = os.getenv('PREFERRED_AI_PROVIDER', 'deepseek')
+        self.preferred_provider = os.getenv('PREFERRED_AI_PROVIDER', 'groq')
 
         self.is_hf_installed = InferenceClient is not None
         self._hf_models_cache = []
@@ -53,7 +52,7 @@ class AIEngine:
         """Return the current health/quota status of all providers."""
         status = {}
         # List of all potential providers
-        all_potential = ['deepseek', 'groq', 'gemini', 'mistral', 'openrouter', 'hf']
+        all_potential = ['groq', 'gemini', 'mistral', 'openrouter', 'hf']
         
         for p in all_potential:
             # Special case for HF library
@@ -132,9 +131,6 @@ class AIEngine:
         if keys.get('gemini_key'): 
             self.gemini_key = keys.get('gemini_key')
             updated.append('gemini')
-        if keys.get('deepseek_key'): 
-            self.deepseek_key = keys.get('deepseek_key')
-            updated.append('deepseek')
         if keys.get('hf_key'): 
             self.hf_key = keys.get('hf_key')
             updated.append('hf')
@@ -160,8 +156,6 @@ class AIEngine:
     def _refresh_providers(self):
         """Rebuild providers in cost-aware fallback order for deployment."""
         provider_candidates = []
-        if self.deepseek_key:
-            provider_candidates.append('deepseek')
         if self.groq_key:
             provider_candidates.append('groq')
         if self.gemini_key:
@@ -404,7 +398,7 @@ Respond ONLY in JSON with this schema: {json.dumps(schema)}"""
 
     def analyze_build(self, budget: float, usage: str, requirements: str, components_summary: Dict[str, Any]) -> str:
         """
-        Deep analysis for a build request (DeepSeek-style).
+        Deep analysis for a build request.
         """
         system_prompt = """You are a PC system analyst. 
 Analyze the budget and components, explain trade-offs and compatibility. 
@@ -593,8 +587,6 @@ Return ONLY valid JSON with this structure:
             res = None
             if provider == 'groq':
                 res = self._call_groq(system_prompt, user_prompt, json_mode)
-            elif provider == 'deepseek':
-                res = self._call_deepseek(system_prompt, user_prompt, json_mode)
             elif provider == 'mistral':
                 res = self._call_mistral(system_prompt, user_prompt, json_mode)
             elif provider == 'gemini':
@@ -640,38 +632,6 @@ Return ONLY valid JSON with this structure:
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             logger.error(f"Groq API error: {e}")
-            raise
-    
-    def _call_deepseek(self, system_prompt: str, user_prompt: str, json_mode: bool) -> Optional[str]:
-        """Call DeepSeek API."""
-        url = "https://api.deepseek.com/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.deepseek_key}",
-            "Content-Type": "application/json"
-        }
-        
-        # Use reasoner for non-JSON, chat for JSON-mode (better compatibility)
-        model = "deepseek-chat" if json_mode else "deepseek-reasoner"
-        
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": 0.3
-        }
-        
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
-            
-        try:
-            logger.info(f"Calling DeepSeek with model: {model}")
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
-        except Exception as e:
-            logger.error(f"DeepSeek API error: {e}")
             raise
     
     def _call_mistral(self, system_prompt: str, user_prompt: str, json_mode: bool) -> Optional[str]:

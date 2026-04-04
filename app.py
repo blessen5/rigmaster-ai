@@ -42,7 +42,7 @@ if not _secret:
 app.secret_key = _secret
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
 
-DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'deepseek')
+DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'groq')
 AI_RATE_LIMIT_DEFAULTS = {
     'assistant': (20, 300),
     'recommend': (8, 600),
@@ -467,7 +467,6 @@ def ensure_db():
             'groq_key': custom_keys.get('groq_key') or get_site_setting('GROQ_API_KEY') or os.getenv('GROQ_API_KEY'),
             'gemini_key': custom_keys.get('gemini_key') or get_site_setting('GEMINI_API_KEY') or os.getenv('GEMINI_API_KEY'),
             'mistral_key': custom_keys.get('mistral_key') or get_site_setting('MISTRAL_API_KEY') or os.getenv('MISTRAL_API_KEY'),
-            'deepseek_key': custom_keys.get('deepseek_key') or get_site_setting('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API_KEY'),
             'hf_key': custom_keys.get('hf_key') or get_site_setting('HF_API_KEY') or os.getenv('HF_API_KEY'),
             'openrouter_key': custom_keys.get('openrouter_key') or get_site_setting('OPENROUTER_API_KEY') or os.getenv('OPENROUTER_API_KEY'),
         }
@@ -6192,13 +6191,13 @@ def compare_builds():
 
 
 # ============================================================
-# AI ASSISTANT ANALYSIS (DeepSeek-R1)
+# AI ASSISTANT ANALYSIS
 # ============================================================
 @app.route('/ai/analyze', methods=['POST'])
 @login_required
 def ai_analyze():
     """
-    DeepSeek-R1 AI Assistant endpoint
+    AI Assistant analysis endpoint
     Analyzes user budget and requirements, provides recommendations
     """
     try:
@@ -6228,7 +6227,7 @@ def ai_analyze():
             'psu': list(db.components.find({'category': 'psu'}, {'_id': 0, 'name': 1, 'price': 1, 'wattage': 1}).limit(20))
         }
 
-        # Build system prompt for DeepSeek-R1
+        # Build system prompt for AI analysis
         system_prompt = """You are an AI assistant for PC system assembly and configuration.
 Use ONLY the provided component data to make recommendations.
 Explain recommendations in simple, educational language.
