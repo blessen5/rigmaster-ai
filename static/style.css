@@ -187,6 +187,9 @@ h5,
     gap: 2rem;
     justify-content: center;
     flex: 1;
+    margin: 0;
+    padding: 0;
+    align-items: center;
 }
 
 .nav-links a {

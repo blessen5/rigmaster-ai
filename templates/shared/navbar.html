@@ -82,11 +82,37 @@
         white-space: nowrap;
         padding: 0.5rem 1rem !important;
         font-size: 0.85rem !important;
+        background: var(--bg-glass) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        box-shadow: none !important;
+        text-decoration: none !important;
+        backdrop-filter: blur(10px);
     }
 
     #currency-selector option {
         background-color: #1a1a2e;
         color: #ffffff;
+    }
+
+    #currency-selector {
+        min-width: 118px;
+        cursor: pointer;
+    }
+
+    #currency-selector:focus,
+    .nav-actions .btn:focus {
+        outline: none;
+        border-color: var(--primary-light) !important;
+        box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18) !important;
+    }
+
+    .nav-actions .btn:hover,
+    #currency-selector:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--primary-light) !important;
+        color: var(--text-main) !important;
     }
 
     .nav-links a.active {
