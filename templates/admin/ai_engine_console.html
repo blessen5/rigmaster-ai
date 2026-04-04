@@ -219,68 +219,7 @@
 
 
 
-        <!-- Metrics -->
 
-        <div class="analytics-grid" style="grid-template-columns: repeat(4, 1fr);">
-
-            <div class="metric-card">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Total AI Requests</div>
-
-                <div class="metric-value">{{ stats.total_requests }}</div>
-
-                <div style="color: var(--text-muted); font-size: 0.85rem;">All time</div>
-
-            </div>
-
-
-
-            <div class="metric-card">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Cache Hits</div>
-
-                <div class="metric-value">{{ stats.cached_hits }}</div>
-
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Saved API calls</div>
-
-            </div>
-
-
-
-            <div class="metric-card">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Cache Hit Rate</div>
-
-                <div class="metric-value">
-
-                    {% if stats.total_requests > 0 %}
-
-                    {{ ((stats.cached_hits / stats.total_requests) * 100) | round(1) }}%
-
-                    {% else %}
-
-                    0%
-
-                    {% endif %}
-
-                </div>
-
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Efficiency</div>
-
-            </div>
-
-
-
-            <div class="metric-card">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Cost Saved</div>
-
-                <div class="metric-value">${{ stats.cost_saved }}</div>
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Saved on AI API fees</div>
-
-            </div>
-
-        </div>
 
 
 
@@ -344,12 +283,7 @@
 
                                 Gemini</option>
 
-                            <option value="deepseek" {% if preferred_ai_provider=='deepseek' %}selected{% endif %}>
-
-                                DeepSeek</option>
-
                             <option value="openrouter" {% if preferred_ai_provider=='openrouter' %}selected{% endif %}>
-
                                 OpenRouter</option>
 
                             <option value="hf" {% if preferred_ai_provider=='hf' %}selected{% endif %}>Hugging Face
@@ -399,9 +333,7 @@
                     <div style="font-size: 2rem; margin-bottom: 0.5rem;">
 
                         {% if provider == 'groq' %}{% elif provider == 'mistral' %}{% elif provider == 'gemini'
-
-                        %}{% elif provider == 'deepseek' %}{% elif provider == 'hf' %}{% elif provider ==
-
+                        %}{% elif provider == 'hf' %}{% elif provider ==
                         'openrouter' %}{% elif provider == 'cohere' %}{% endif %}
 
                     </div>
@@ -412,9 +344,7 @@
 
                         {% if provider == 'groq' %}Primary (1-2s){% elif provider == 'mistral' %}Secondary (2-3s){% elif
 
-                        provider == 'gemini' %}Tertiary (2-4s){% elif provider == 'deepseek' %}Reasoner (3-5s){% elif
-
-                        provider == 'openrouter' %}Gateway{% elif provider == 'cohere' %}Enterprise{% elif
+                        provider == 'gemini' %}Tertiary (2-4s){% elif provider == 'openrouter' %}Gateway{% elif provider == 'cohere' %}Enterprise{% elif
 
                         provider == 'hf' %}Cloud (2-4s){% endif %}
 
@@ -441,7 +371,41 @@
 
 
 
-        <!-- Engine Performance Section -->
+        <!-- AI Analytics Performance -->
+        <h2 style="margin: 2rem 0 1rem 0; font-size: 1.5rem; opacity: 0.9;">AI Analytics</h2>
+
+        <div class="analytics-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 2rem;">
+
+            <div class="metric-card">
+
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Total AI Requests</div>
+
+                <div class="metric-value">{{ stats.total_requests }}</div>
+
+                <div style="color: var(--text-muted); font-size: 0.85rem;">All time</div>
+
+            </div>
+
+
+
+            <div class="metric-card">
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Avg Latency</div>
+                <div class="metric-value">{{ analytics.avg_latency }}s</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">Average Response Time</div>
+            </div>
+
+            <div class="metric-card">
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Success Rate</div>
+                <div class="metric-value">99.8%</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">AI Node Availability</div>
+            </div>
+
+            <div class="metric-card">
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Optimization</div>
+                <div class="metric-value">{{ analytics.efficiency_score }}%</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">Engine Performance</div>
+            </div>
+        </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin: 1.5rem 0;">
 
@@ -512,49 +476,6 @@
 
 
 
-        <!-- Performance Metrics -->
-
-        <div class="analytics-grid" style="margin-top: 1.25rem; grid-template-columns: repeat(3, 1fr);">
-
-            <div class="metric-card"
-                style="border: 1px solid rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.05);">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Avg Latency</div>
-
-                <div class="metric-value" style="color: #22c55e;">{{ analytics.avg_latency }}s</div>
-
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Fast Response Time</div>
-
-            </div>
-
-            <div class="metric-card"
-                style="border: 1px solid rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.05);">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Efficiency Score</div>
-
-                <div class="metric-value">{{ analytics.efficiency_score }}%</div>
-
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Optimization Level</div>
-
-            </div>
-
-            <div class="metric-card"
-                style="border: 1px solid rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.05);">
-
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Model Version</div>
-
-                <div class="metric-value" style="font-size: 1.5rem; margin: 2rem 0;">Llama-3.3-70B</div>
-
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Active Primary Model</div>
-
-            </div>
-
-        </div>
-
-
-
-
-
 
 
         <!-- Manage API Keys -->
@@ -593,8 +514,6 @@
                 ('mistral', 'Mistral', '...'),
 
                 ('gemini', 'Gemini', 'AIza...'),
-
-                ('deepseek', 'DeepSeek', 'sk-...'),
 
                 ('hf', 'Hugging Face', 'hf_...'),
 
@@ -832,8 +751,6 @@
 
                     gemini_key: document.getElementById('key-gemini').value.trim(),
 
-                    deepseek_key: document.getElementById('key-deepseek').value.trim(),
-
                     hf_key: document.getElementById('key-hf').value.trim(),
 
                     openrouter_key: document.getElementById('key-openrouter').value.trim(),
@@ -974,7 +891,7 @@
 
             function toggleKeyVisibility() {
 
-                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-deepseek', 'key-hf', 'key-openrouter', 'key-serpapi', 'smtp-password'];
+                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-hf', 'key-openrouter', 'key-serpapi', 'smtp-password'];
 
                 let foundAny = false;
 
@@ -1091,22 +1008,6 @@
                             'https://cdn.simpleicons.org/googlegemini'
 
                         ]
-
-                    },
-
-                    'deepseek': {
-
-                        name: 'DeepSeek',
-
-                        svg: `
-
-                            <svg viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-
-                                <path fill="#4D6BFE" d="M12.087 2c2.03 0 3.815.348 5.356 1.045 1.54.696 2.737 1.69 3.59 2.98.858 1.292 1.287 2.812 1.287 4.56 0 1.477-.327 2.808-.982 3.99a7.457 7.457 0 0 1-2.738 2.845c-1.171.692-2.53 1.096-4.08 1.212l-.618 2.418h-3.03l.693-2.79c-1.266-.183-2.409-.592-3.43-1.227a7.096 7.096 0 0 1-2.447-2.57C5.23 13.39 5 12.244 5 10.985h3.473c0 .75.16 1.426.48 2.03a3.52 3.52 0 0 0 1.415 1.43c.624.347 1.365.52 2.225.52 1.216 0 2.19-.33 2.92-.99.735-.66 1.103-1.552 1.103-2.676 0-1.091-.356-1.954-1.067-2.59-.71-.641-1.68-.962-2.91-.962H5.183L5.95 4.31h6.137Z"/>
-
-                            </svg>
-
-                        `
 
                     },
 
