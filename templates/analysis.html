@@ -4,324 +4,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Build Analysis - RigMaster AI</title>
-    <meta name="description" content="Advanced PC build compatibility analysis and power diagnostics by RigMaster AI.">
+    <title>Analysis - RigMaster AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* ── Professional Dashboard Styles (Matches Theme) ── */
-
-        .analysis-hero { text-align: center; margin-bottom: 1.5rem; }
-        .analysis-hero h1 { font-size: 3rem; margin-bottom: 0.5rem; letter-spacing: -1px; }
-        .analysis-hero p { color: var(--text-muted); font-size: 1.1rem; }
-
-        /* Professional Score Card */
-        .score-section { display: flex; justify-content: center; margin-bottom: 1.5rem; }
-        .score-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 1.5rem 3rem;
-            text-align: center;
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(10px);
-            min-width: 350px;
-        }
-        .score-value {
-            font-family: 'Outfit', sans-serif; font-size: 3rem; font-weight: 700;
-            color: var(--text-main);
-            line-height: 1.1; margin-bottom: 0.5rem;
-        }
-        .score-label {
-            font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 1px; font-weight: 600;
-        }
-        .score-status {
-            margin-top: 1rem; font-size: 0.9rem; font-weight: 600; padding: 6px 16px;
-            border-radius: var(--radius-sm); border: 1px solid var(--border);
-            display: inline-block; background: rgba(0,0,0,0.2);
-        }
-        .status-compatible { color: #10b981; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); }
-        .status-borderline { color: #f59e0b; border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.1); }
-        .status-incompatible { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); }
-        .status-unknown { color: var(--text-muted); }
-
-        /* Stats Row */
-        .stats-row {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem; margin-bottom: 1.5rem;
-        }
-        .stat-card {
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: var(--radius-md); padding: 1rem; text-align: center;
-            box-shadow: var(--shadow); backdrop-filter: blur(10px);
-        }
-        .stat-card .stat-num {
-            font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--text-main);
-        }
-        .stat-card .stat-desc {
-            font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 1px; margin-top: 4px;
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3 {
+            color: var(--primary-light);
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-family: 'Outfit', sans-serif;
         }
 
-        /* Section Layouts */
-        .fade-section {
-            background: rgba(15, 23, 42, 0.4);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-bottom: 1.5rem;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        .markdown-content p {
+            margin-bottom: 1rem;
         }
 
-        .section-header {
-            display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 2rem;
-            padding-bottom: 1rem; border-bottom: 1px solid var(--border);
-            text-align: center;
+        .markdown-content ul,
+        .markdown-content ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
         }
-        .section-icon {
-            width: 50px; height: 50px; border-radius: 12px; display: flex;
-            align-items: center; justify-content: center; font-size: 1.5rem;
-            background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+
+        .markdown-content li {
             margin-bottom: 0.5rem;
         }
-        .section-header h2 {
-            font-size: 1.6rem; margin: 0; color: white; font-family: 'Outfit', sans-serif;
-            letter-spacing: -0.5px;
-        }
-        .section-header .badge {
-            font-size: 0.75rem; font-weight: 700; padding: 4px 14px;
-            border-radius: 100px; border: 1px solid var(--border);
-            margin-top: 8px;
-        }
 
-        /* Conflicts & Suggestions Centering */
-        .conflicts-grid, .fix-grid { 
-            display: flex; flex-direction: column; gap: 1rem; 
-            max-width: 800px; margin: 0 auto; 
-        }
-        .conflict-card, .fix-card {
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-            border-radius: 16px; padding: 1.5rem;
-            display: flex; align-items: center; gap: 1.5rem;
-            transition: all 0.3s;
-        }
-        .conflict-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
-        
-        .conflict-severity-dot {
-            width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
-            box-shadow: 0 0 10px currentColor;
-        }
-        .sev-incompatible .conflict-severity-dot { background: #ef4444; color: #ef4444; }
-        .sev-warning .conflict-severity-dot { background: #f59e0b; color: #f59e0b; }
-        .sev-suboptimal .conflict-severity-dot { background: #06b6d4; color: #06b6d4; }
-
-        .conflict-body { flex: 1; text-align: left; }
-        .conflict-tag {
-            font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
-            padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 8px;
-        }
-        
-        .conflict-msg { font-size: 1rem; color: #e2e8f0; line-height: 1.6; }
-
-        /* Component Grid Centering */
-        .comp-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1rem; justify-content: center;
-        }
-        .comp-glass-card {
-            background: var(--bg-card);
+        .markdown-content table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1.5rem 0;
             border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 0.8rem 1rem;
-            display: flex; align-items: center; gap: 0.8rem;
-        }
-        .comp-icon {
-            width: 40px; height: 40px; border-radius: var(--radius-sm);
-            background: rgba(0,0,0,0.2); display: flex;
-            align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink:0;
-            border: 1px solid var(--border); color: var(--text-muted);
-        }
-        .comp-info { flex: 1; overflow: hidden; }
-        .comp-label { 
-            font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; 
-            letter-spacing: 1px; font-weight: 600; margin-bottom: 2px;
-        }
-        .comp-name { 
-            font-size: 0.95rem; color: var(--text-main); font-weight: 500;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .comp-price {
-            font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--primary-light);
-            font-size: 1rem;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.2);
         }
 
-        /* ── Upgrade Simulator Modal Redesign (Ultra Premium) ── */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(15px);
-            z-index: 10000; display: none; align-items: center; justify-content: center;
-            opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .modal-overlay.active { display: flex; opacity: 1; }
-        
-        .modal-card {
-            background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.08);
-            width: 95%; max-width: 1200px; height: 90vh; border-radius: 24px;
-            display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
-            box-shadow: 0 0 100px rgba(0, 0, 0, 0.8), 0 0 40px rgba(99, 102, 241, 0.15);
-            position: relative; animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        @keyframes modalPop { from { transform: scale(0.9) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-
-        .modal-header {
-            padding: 2rem; border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center;
-            background: linear-gradient(to right, rgba(99, 102, 241, 0.05), transparent);
-        }
-        .close-modal {
-            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-            border-radius: 50%; font-size: 1.5rem; cursor: pointer; transition: all 0.3s;
-        }
-        .close-modal:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); transform: rotate(90deg); }
-
-        .modal-body { display: grid; grid-template-columns: 350px 1fr; overflow: hidden; }
-        
-        /* Sidebar Redesign */
-        .sim-sidebar {
-            border-right: 1px solid var(--border); overflow-y: auto;
-            background: rgba(0,0,0,0.2); padding: 2rem;
-        }
-        .sim-sidebar h3 { font-size: 0.75rem; margin-bottom: 1.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; font-weight: 800; }
-        
-        .sim-build-item {
-            padding: 1.25rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
-            border-radius: 16px; margin-bottom: 1rem; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative; overflow: hidden;
-        }
-        .sim-build-item::before {
-            content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%;
-            background: var(--primary); transform: translateX(-4px); transition: transform 0.3s;
-        }
-        .sim-build-item:hover { background: rgba(255,255,255,0.05); transform: translateX(5px); border-color: rgba(255,255,255,0.15); }
-        .sim-build-item.active { background: rgba(99, 102, 241, 0.1); border-color: var(--primary-light); }
-        .sim-build-item.active::before { transform: translateX(0); }
-        
-        .sim-build-name { font-weight: 600; font-size: 1rem; display: block; margin-bottom: 6px; color: var(--text-main); }
-        .sim-build-date { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-
-        /* Workspace Redesign */
-        .sim-workspace { padding: 2.5rem; overflow-y: auto; background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.03), transparent 50%); }
-        
-        .sim-category-card {
-            background: rgba(255,255,255,0.02); border: 1px solid var(--border);
-            border-radius: 20px; padding: 1.5rem; margin-bottom: 2rem;
-        }
-        .sim-category-title {
-            font-size: 0.85rem; font-weight: 700; color: var(--primary-light);
-            text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1.5rem;
-            display: flex; align-items: center; gap: 8px;
-        }
-        
-        .sim-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
-        .sim-field { display: flex; flex-direction: column; gap: 10px; }
-        .sim-field label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
-        
-        .sim-select-wrapper { position: relative; }
-        .sim-field select {
-            padding: 1rem 1.25rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border);
-            color: var(--text-main); border-radius: 12px; font-size: 0.95rem; width: 100%;
-            cursor: pointer; appearance: none; transition: all 0.3s;
-        }
-        .sim-field select:hover { border-color: rgba(99, 102, 241, 0.4); background: rgba(30, 41, 59, 0.9); }
-        .sim-field select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
-
-        .sim-results {
-            margin-top: 2rem; padding: 2rem; border: 1px solid rgba(99, 102, 241, 0.2);
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.05));
-            border-radius: 24px; position: relative; overflow: hidden;
-        }
-        .sim-results::after {
-            content: 'AI ANALYSIS'; position: absolute; right: 20px; top: 15px;
-            font-size: 4rem; font-weight: 900; color: rgba(255,255,255,0.02); pointer-events: none;
-        }
-        
-        .sim-explanation { font-size: 1.05rem; line-height: 1.8; color: #cbd5e1; }
-        .sim-explanation table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 2rem 0; border-radius: 12px; overflow: hidden; }
-        .sim-explanation th, .sim-explanation td { padding: 16px; text-align: left; border-bottom: 1px solid var(--border); }
-        .sim-explanation th { background: rgba(255,255,255,0.05); color: var(--primary-light); font-weight: 700; text-transform: uppercase; font-size: 0.8rem; }
-        .sim-explanation tr:last-child td { border-bottom: none; }
-        
-        .sim-actions {
-            padding: 2rem; border-top: 1px solid var(--border);
-            display: flex; justify-content: flex-end; gap: 1.5rem;
-            background: rgba(15, 23, 42, 0.95);
+        .markdown-content th {
+            background: rgba(124, 58, 237, 0.2);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        /* Loading Animation Improvements */
-        .sim-loading-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.8); display: none; align-items: center;
-            justify-content: center; flex-direction: column; z-index: 10;
-            backdrop-filter: blur(5px);
+        .markdown-content td {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.95rem;
+            color: var(--text-main);
         }
-        .sim-pulse-ring {
-            width: 80px; height: 80px; border-radius: 50%;
-            border: 4px solid var(--primary); border-top-color: var(--accent-cyan);
-            animation: spin 1s infinite linear;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ── Build Selector Premium Redesign ── */
-        .build-selector-bar {
-            display: flex; flex-direction: column; align-items: center;
-            gap: 1.25rem; margin: 5rem 0 3rem; text-align: center;
+        .markdown-content tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
         }
-        .build-selector-bar label {
-            font-size: 0.8rem; font-weight: 800; color: var(--primary-light);
-            text-transform: uppercase; letter-spacing: 3px; display: block;
+
+        .markdown-content strong {
+            color: var(--accent-cyan);
+            font-weight: 700;
         }
-        .select-pill-wrapper { position: relative; width: 100%; max-width: 500px; }
-        #build-selector {
-            width: 100%; padding: 1.25rem 2.5rem;
-            background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text-main); border-radius: 100px; font-size: 1.1rem;
-            font-weight: 500; cursor: pointer; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align-last: center; /* Center text inside select */
-            backdrop-filter: blur(10px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+
+        .markdown-content hr {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 2rem 0;
         }
-        #build-selector:hover {
-            background: rgba(99, 102, 241, 0.1);
+
+        .markdown-content blockquote {
+            border-left: 4px solid var(--accent);
+            background: rgba(124, 58, 237, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 0 12px 12px 0;
+            font-style: italic;
+            margin: 1.5rem 0;
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 0.4rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .difficulty-badge.beginner {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .difficulty-badge.intermediate {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .difficulty-badge.advanced {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 158, 11, 0.3);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #build-selector-trigger:hover {
+            border-color: var(--primary-light) !important;
+            box-shadow: 0 4px 24px rgba(124, 58, 237, 0.15);
+        }
+
+        #build-search-input:focus {
             border-color: var(--primary-light);
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 20px 45px rgba(99, 102, 241, 0.2);
-        }
-        #build-selector:focus { outline: none; border-color: var(--primary); }
-        #build-selector option {
-            background-color: #0f172a;
-            color: #f8fafc;
-            padding: 10px;
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
         }
 
-        /* ── Analysis Loading State ── */
-        .analysis-loading {
-            text-align: center; padding: 10rem 2rem;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 400px;
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
-        .loading-step {
-            margin: 0.75rem 0; font-size: 1.1rem; color: var(--text-muted);
-            opacity: 0; transform: translateY(10px);
-            animation: stepFadeIn 0.5s ease-out forwards;
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
         }
-        @keyframes stepFadeIn { to { opacity: 1; transform: translateY(0); } }
-        .step-check { color: #10b981; margin-right: 10px; font-weight: bold; }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
     </style>
 </head>
 
@@ -329,234 +166,407 @@
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
 
-    <div class="container section" style="margin-top: 80px; max-width: 1100px;">
+    <div class="container section" style="margin-top: 80px; max-width: 1200px; padding: 0 1rem;">
+        <div class="step-card" style="width: 100%; border: none; background: transparent; padding: 0;">
 
-        <!-- Hero -->
-        <div class="analysis-hero">
-            <h1 class="text-gradient">Build Analysis</h1>
-            <p>Advanced compatibility engine &amp; power diagnostics</p>
-            <div id="system-health-banner" style="display:none; font-family: 'Outfit', sans-serif; font-size: 1.5rem; margin-top: 1rem; font-weight: 700;">
-                System Health: <span id="system-health-status">Unknown</span>
-            </div>
-        </div>
+            <!-- Premium Responsive Header Row -->
+            <div
+                style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 2rem; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(15px); padding: 2rem; border: 1px solid var(--border); border-radius: 24px; margin-bottom: 2.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
 
-        <!-- Build Selector -->
-        {% if user_builds %}
-        <div class="build-selector-bar">
-            <label for="build-selector">🔬 Neural Build Analysis</label>
-            <div class="select-pill-wrapper">
-                <select id="build-selector" onchange="selectBuild(this.value)">
-                    <option value="">Select a saved architecture...</option>
-                    {% for build in user_builds %}
-                    <option value="{{ build.id }}">{{ build.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        {% endif %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; min-width: 300px;">
+                    <div style="display: flex; align-items: baseline; gap: 1rem;">
+                        <h1 class="text-gradient" style="font-size: 3rem; margin: 0; line-height: 1;">Analysis</h1>
+                        <div id="build-name-display"
+                            style="font-size: 1.1rem; color: var(--primary-light); font-weight: 600; display: none; opacity: 0.8;">
+                            &nbsp;—&nbsp;<span id="view-build-name"></span>
+                        </div>
+                    </div>
 
-        <!-- Loading State -->
-        <div id="analysis-loading" class="analysis-loading">
-            <div class="loading-spinner" style="margin-bottom: 2rem;"></div>
-            <div class="loading-text" style="font-size: 1.5rem; margin-bottom: 2rem; font-weight: 700; color: white;">Neural Engine Active...</div>
-            <div id="loading-steps" style="width: 100%; max-width: 400px;">
-                <!-- Steps injected by JS -->
-            </div>
-        </div>
+                    <div id="status-container"
+                        style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                        <div id="health-status-badge"
+                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.03); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--border); transition: all 0.3s ease;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg id="health-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" style="transition: stroke 0.3s ease;">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                                </svg>
+                                <span
+                                    style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">System
+                                    Health:</span>
+                            </div>
+                            <span id="compat-status"
+                                style="font-weight: 800; font-size: 1.2rem; color: var(--accent-cyan); letter-spacing: 0.5px;">Checking...</span>
+                        </div>
+                        <button id="btn-fix-compatibility" class="btn btn-primary"
+                            style="display: none; padding: 0.7rem 1.4rem; font-size: 0.9rem; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); font-weight: 600;">
+                            🔧 Resolve Issues
+                        </button>
+                    </div>
 
-        <!-- Empty State (if no params) -->
-        <div id="analysis-empty" style="display:none;">
-            <div class="empty-state">
-                <div class="empty-icon">🔬</div>
-                <h3>No Build Selected</h3>
-                <p>Save a build from the Builder page, or select one from your Saved Builds to run analysis.</p>
-                <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <a href="{{ url_for('builder') }}" class="btn btn-primary">Open Builder</a>
-                    <a href="{{ url_for('saved_builds') }}" class="btn btn-secondary">Saved Builds</a>
+                    <style>
+                        #health-status-badge[data-status="compatible"] {
+                            background: rgba(34, 197, 94, 0.08);
+                            border-color: rgba(34, 197, 94, 0.3);
+                        }
+                        #health-status-badge[data-status="not-compatible"] {
+                            background: rgba(239, 68, 68, 0.1);
+                            border-color: rgba(239, 68, 68, 0.4);
+                            box-shadow: 0 0 16px rgba(239, 68, 68, 0.15);
+                        }
+                        #health-status-badge[data-status="borderline"] {
+                            background: rgba(251, 191, 36, 0.08);
+                            border-color: rgba(251, 191, 36, 0.3);
+                        }
+                        #compat-status[data-status="compatible"] { color: #4ade80; }
+                        #compat-status[data-status="not-compatible"] { color: #f87171; text-shadow: 0 0 8px rgba(248, 113, 113, 0.4); }
+                        #compat-status[data-status="borderline"] { color: #fbbf24; }
+                        #health-icon[data-status="compatible"] { stroke: #4ade80; }
+                        #health-icon[data-status="not-compatible"] { stroke: #f87171; animation: pulse-red 2s infinite; }
+                        #health-icon[data-status="borderline"] { stroke: #fbbf24; }
+                        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+                    </style>
                 </div>
-            </div>
-        </div>
 
-        <!-- Results Container -->
-        <div id="analysis-results" style="display:none;">
-
-
-
-            <!-- Stat Cards -->
-            <div class="fade-section stats-row" id="stats-row">
-                <div class="stat-card">
-                    <div class="stat-num" id="stat-components">0</div>
-                    <div class="stat-desc">Components</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-num" id="stat-total-price">--</div>
-                    <div class="stat-desc">Estimated Total</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-num" id="stat-issues">0</div>
-                    <div class="stat-desc">Issues Found</div>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="fade-section actions-bar" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border); padding: 1.5rem; border-radius: 20px;">
-                <a id="btn-edit-build" href="{{ url_for('builder') }}" class="btn btn-secondary">✏️ Edit Build</a>
-                <button onclick="toggleUpgradeSimulator(true)" class="btn btn-primary" style="background: linear-gradient(135deg, #6366f1, #a855f7); border: none; box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);">
-                    🚀 What-If Simulator
-                </button>
-            </div>
-
-            <!-- Compatibility Conflicts -->
-            <div class="fade-section" id="conflicts-section">
-                <div class="section-header">
-                    <div class="section-icon" style="background: rgba(239,68,68,0.1); color: #ef4444;">⚡</div>
-                    <h2>Compatibility Report</h2>
-                    <span class="badge" id="conflicts-badge" style="background: rgba(16,185,129,0.1); color: #10b981;">Validating...</span>
-                </div>
-                <div class="conflicts-grid" id="conflicts-list">
-                    <!-- Conflict cards injected here -->
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;">
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="btn-what-if" class="btn btn-primary"
+                            style="padding: 0.8rem 1.6rem; font-size: 0.95rem; background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);">
+                            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                What-If Simulator
+                            </span>
+                        </button>
+                        <a href="{{ url_for('builder') }}" class="btn btn-secondary"
+                            style="padding: 0.8rem 1.4rem; font-size: 0.95rem;">Edit Build</a>
+                        <a href="{{ url_for('builder') }}" class="btn btn-primary"
+                            style="padding: 0.8rem 1.4rem; font-size: 0.95rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); box-shadow: none;">New
+                            Build</a>
+                    </div>
                 </div>
             </div>
 
-            <!-- Fix Suggestions (loaded on-demand) -->
-            <div class="fade-section" id="fixes-section" style="display:none;">
-                <div class="section-header">
-                    <div class="section-icon" style="background: rgba(16,185,129,0.1); color: #10b981;">🔧</div>
-                    <h2>Fix Suggestions</h2>
-                    <span class="badge" id="fixes-badge" style="background: rgba(124,58,237,0.1); color: var(--primary-light);">0 available</span>
+            <!-- Build Selector Dropdown Bar -->
+            <div id="build-selector-bar" style="margin-bottom: 1.5rem;">
+                <div id="build-selector-trigger"
+                    style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.15);"
+                    onclick="toggleBuildSelector()">
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"
+                            stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span id="build-selector-label"
+                            style="color: var(--text-main); font-weight: 600; font-size: 0.95rem;">Select a Saved Build
+                            to Analyze</span>
+                    </div>
+                    <svg id="build-selector-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--text-muted)" stroke-width="2" style="transition: transform 0.3s ease;">
+                        <path d="M6 9l6 6 6-6" />
+                    </svg>
                 </div>
-                <div class="fix-grid" id="fixes-list">
-                    <!-- Fix cards injected here -->
+
+                <div id="build-selector-dropdown"
+                    style="display: none; margin-top: 0.5rem; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.35); animation: slideDown 0.25s ease-out;">
+
+                    <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);">
+                        <input id="build-search-input" type="text" placeholder="Search builds..."
+                            style="width: 100%; padding: 0.6rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: white; font-size: 0.9rem; outline: none;"
+                            oninput="filterBuilds(this.value)">
+                    </div>
+
+                    <div id="build-selector-list"
+                        style="max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;">
+                        <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                            Loading your builds...
+                        </div>
+                    </div>
                 </div>
             </div>
 
-
-
-            <!-- Real Time Price Tracker -->
-            <div class="fade-section" id="components-section">
-                <div class="section-header">
-                    <div class="section-icon" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); color: #22c55e;">💹</div>
-                    <h2>Real Time Price Tracker</h2>
-                </div>
-                <div class="comp-grid" id="comp-grid">
-                    <!-- Component cards injected here -->
+            <div id="analysis-results" style="display: none; margin-bottom: 2rem;">
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <div style="background: rgba(251, 191, 36, 0.15); padding: 1rem 1.5rem; border-bottom: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <h3 style="margin: 0; color: #fbbf24; font-size: 1.1rem; font-weight: 700;">Compatibility Notes</h3>
+                        <span id="compat-count-badge" style="background: rgba(0,0,0,0.3); color: #fbbf24; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 800; margin-left: auto;">0 Notes</span>
+                    </div>
+                    <div id="compat-messages-container" style="display: flex; flex-direction: column;">
+                    </div>
                 </div>
             </div>
 
+            <div id="fix-suggestions-panel"
+                style="display: none; margin-bottom: 2rem; background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 20px; padding: 2.5rem; animation: fadeIn 0.4s ease-out;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2
+                        style="font-size: 1.4rem; color: #f87171; margin: 0; display: flex; align-items: center; gap: 0.8rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path
+                                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+                            </path>
+                        </svg>
+                        Fix Suggestions
+                    </h2>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span id="fix-panel-status-tag"
+                            style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 20px; background: rgba(239,68,68,0.15); color: #f87171; font-weight: 600; letter-spacing: 0.03em;"></span>
+                        <button onclick="document.getElementById('fix-suggestions-panel').style.display='none'"
+                            style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem;">✕
+                            Dismiss</button>
+                    </div>
+                </div>
+                <div id="fix-options-container"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                </div>
+            </div>
+
+            <!-- ENERGY EFFICIENCY & RUNNING COSTS -->
+            <div id="energy-efficiency-lab" style="margin-bottom: 2rem; display: none;">
+                <div
+                    style="background: linear-gradient(145deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; padding: 2.5rem; position: relative;">
+                    <div
+                        style="position: absolute; top: -50px; right: -50px; width: 220px; height: 220px; background: #22c55e; opacity: 0.1; filter: blur(60px); border-radius: 50%;">
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; position: relative;">
+                        <h2 style="font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+                            <span
+                                style="background: #22c55e; color: white; padding: 0.6rem; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path
+                                        d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.4 21 2c-1 5.3-1.3 7-3 10.7C17 14.7 14.4 20 11 20z" />
+                                    <path d="M9.138 9.2a.5.5 0 0 0 0 .8" />
+                                </svg>
+                            </span>
+                            Energy & Sustainability Analysis
+                        </h2>
+                        <div id="efficiency-rating"
+                            style="background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; color: #4ade80; padding: 0.7rem 1.5rem; border-radius: 50px; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;">
+                            Rating: --
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                        <div
+                            style="background: rgba(0,0,0,0.3); padding: 1.8rem; border-radius: 18px; border: 1px solid var(--border); text-align: center;">
+                            <h3
+                                style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                                Est. Monthly Cost</h3>
+                            <div id="cost-monthly"
+                                style="font-size: 2.4rem; font-weight: 800; color: white; margin-bottom: 0.5rem;">$0.00
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">@ $0.15 per kWh</div>
+                        </div>
+
+                        <div
+                            style="background: rgba(0,0,0,0.3); padding: 1.8rem; border-radius: 18px; border: 1px solid var(--border); text-align: center;">
+                            <h3
+                                style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                                Annual Carbon Footprint</h3>
+                            <div id="carbon-footprint"
+                                style="font-size: 2.4rem; font-weight: 800; color: #4ade80; margin-bottom: 0.5rem;">0
+                                <span style="font-size: 1rem;">kg</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Equivalent to 12 trees</div>
+                        </div>
+
+                        <div
+                            style="background: rgba(34, 197, 94, 0.05); padding: 1.8rem; border-radius: 18px; border: 1px solid rgba(34, 197, 94, 0.2);">
+                            <h3
+                                style="margin-bottom: 1rem; font-size: 0.85rem; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Eco-Insight</h3>
+                            <p id="efficiency-insight"
+                                style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin: 0;">
+                                Calculating your build's energy footprint...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRICE TRACKER FEATURE -->
+            <div id="price-tracker-lab" style="margin-bottom: 2rem; display: none;">
+                <div
+                    style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%); 
+                            border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; overflow: hidden; padding: 2.5rem; position: relative;">
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+                        <h2
+                            style="font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 1rem; color: #10b981;">
+                            <span
+                                style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 0.6rem; border-radius: 12px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </span>
+                            Real-Time Price Tracker
+                        </h2>
+                        <div style="text-align: right;">
+                            <div id="total-build-cost"
+                                style="font-size: 2.2rem; font-weight: 800; color: #10b981; margin-bottom: 0.3rem;">
+                                $0.00
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                Total Build Cost
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                        <!-- Price cards -->
+                        {% set categories = [
+                            ('cpu', 'CPU'), ('gpu', 'GPU'), ('motherboard', 'Motherboard'), 
+                            ('ram', 'RAM'), ('storage', 'Storage'), ('psu', 'PSU'), 
+                            ('case', 'Case'), ('cooler', 'Cooler'), ('monitor', 'Monitor'), 
+                            ('os', 'Operating System'), ('keyboard', 'Keyboard'), 
+                            ('mouse', 'Mouse'), ('headset', 'Headset'), ('webcam', 'Webcam'), 
+                            ('fans', 'Case Fans'), ('thermal_paste', 'Thermal Paste'), 
+                            ('wifi', 'Network Adapter'), ('speakers', 'Speakers'), 
+                            ('microphone', 'Microphone'), ('ups', 'UPS / Surge'), ('tools', 'Assembly Tools')
+                        ] %}
+                        {% for cat_id, cat_label in categories %}
+                        <div class="price-card" data-category="{{ cat_id }}"
+                            style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border); position: relative; overflow: hidden;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+                                        {{ cat_label }}</div>
+                                    <div class="component-name"
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">
+                                        --</div>
+                                </div>
+                                <div class="price-value" style="font-size: 1.6rem; font-weight: 700; color: #10b981;">--
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div
+                        style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 16px; padding: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 16v-4"></path>
+                                <path d="M12 8h.01"></path>
+                            </svg>
+                            <h3
+                                style="font-size: 0.95rem; color: #10b981; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Price Insights</h3>
+                        </div>
+                        <p id="price-insight"
+                            style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin: 0;">
+                            Loading pricing data from market sources...
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div id="loading-msg"
+                style="background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--border); padding: 3rem; border-radius: 16px; margin-bottom: 2rem; text-align: center;">
+                <p style="font-size: 1.1rem;">No build data found. Use the <a href="{{ url_for('builder') }}"
+                        style="color: var(--accent);">Builder</a>.</p>
+            </div>
+            
+            <!-- Fix Application Notification -->
+            <div id="fix-notification" style="position: fixed; top: 100px; right: 20px; padding: 1.2rem 1.5rem; border-radius: 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; font-weight: 600; display: none; z-index: 1000; min-width: 300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out;">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div>Applying fix and re-validating build...</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Upgrade Simulator Modal -->
-    <div id="upgrade-modal-overlay" class="modal-overlay">
-        <div class="modal-card">
+    <!-- What-If Upgrade Simulator Modal -->
+    <div id="simulator-modal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; width: 95%;">
             <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span style="font-size: 2rem;">🚀</span>
-                    <div>
-                        <h2 class="text-gradient">Upgrade Simulator</h2>
-                        <span style="font-size: 0.85rem; color: var(--text-muted);">Compare your current build with potential upgrades</span>
-                    </div>
+                <div>
+                    <h2 class="text-gradient" style="margin-bottom: 0.5rem;">What-If Upgrade Simulator</h2>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Simulate part swaps to see the impact on your build.</p>
                 </div>
-                <span class="close-modal" onclick="toggleUpgradeSimulator(false)">&times;</span>
+                <div id="sim-lifecycle-warning"
+                    style="display:none; font-size:0.8rem; background:rgba(251,191,36,0.1); border:1px solid #fbbf24; color:#fbbf24; padding:6px 12px; border-radius:8px; margin-right: 2rem;">
+                    ⚠️ Build contains deprecated parts</div>
+                <span id="close-simulator" class="close-modal">&times;</span>
             </div>
 
-            <div class="modal-body">
-                <div class="sim-sidebar">
-                    <h3>Library of Designs</h3>
-                    <div id="sim-build-list">
-                        <!-- Build items injected here -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-bottom: 2.5rem;">
+                <div class="step-card"
+                    style="text-align: left; padding: 2rem; background: rgba(255,255,255,0.02); border-style: dashed;">
+                    <h3
+                        style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Current Configuration</h3>
+                    <div id="current-build-list" style="display: grid; gap: 0.8rem;">
                     </div>
                 </div>
 
-                <div class="sim-workspace">
-                    <div id="sim-welcome-message" style="text-align: center; padding: 6rem 2rem;">
-                        <div style="width: 100px; height: 100px; background: rgba(99, 102, 241, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; border: 1px solid rgba(99, 102, 241, 0.2);">
-                            <span style="font-size: 3rem;">🔬</span>
-                        </div>
-                        <h2 style="margin-bottom: 0.5rem; font-family: 'Outfit';">Neural Interface Ready</h2>
-                        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto;">Select a rig from your archive to begin the high-fidelity upgrade simulation.</p>
+                <div class="step-card"
+                    style="text-align: left; padding: 2rem; border-color: var(--primary-light); background: rgba(99, 102, 241, 0.03);">
+                    <h3
+                        style="margin-bottom: 1.5rem; color: var(--primary-light); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Proposed Upgrades</h3>
+                    <div id="simulation-controls"
+                        style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                        <div style="text-align: center; color: var(--text-muted); padding: 2rem; grid-column: 1 / -1;">
+                            Loading component database...</div>
                     </div>
-
-                    <div id="sim-form" style="display: none; position: relative;">
-                        <!-- Local Loader -->
-                        <div id="sim-local-loader" class="sim-loading-overlay">
-                            <div class="sim-pulse-ring"></div>
-                            <p style="margin-top: 1.5rem; color: var(--primary-light); font-weight: 600; letter-spacing: 1px;">AI IS COMPUTING...</p>
-                        </div>
-
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
-                            <div style="display:flex; align-items:center; gap: 12px;">
-                                <div style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981;"></div>
-                                <h3 id="sim-current-build-title" style="margin: 0; font-family: 'Outfit';">Simulating Upgrade</h3>
-                            </div>
-                            <button onclick="resetSimForm()" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 16px;">↺ Reload Current Build</button>
-                        </div>
-                        
-                        <!-- Categorized Sections -->
-                        <div class="sim-category-card">
-                            <div class="sim-category-title">
-                                <span style="font-size: 1.2rem;">⚡</span> CORE ARCHITECTURE
-                            </div>
-                            <div class="sim-form-grid">
-                                <div class="sim-field">
-                                    <label>Central Processing Unit</label>
-                                    <select id="sim-cpu" data-cat="cpus" class="sim-select"></select>
-                                </div>
-                                <div class="sim-field">
-                                    <label>Graphics Accelerator</label>
-                                    <select id="sim-gpu" data-cat="gpus" class="sim-select"></select>
-                                </div>
-                                <div class="sim-field">
-                                    <label>Motherboard Base</label>
-                                    <select id="sim-motherboard" data-cat="motherboards" class="sim-select"></select>
-                                </div>
-                                <div class="sim-field">
-                                    <label>System Memory</label>
-                                    <select id="sim-ram" data-cat="ram" class="sim-select"></select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="sim-category-card">
-                            <div class="sim-category-title">
-                                <span style="font-size: 1.2rem;">🌀</span> SYSTEM INFRASTRUCTURE
-                            </div>
-                            <div class="sim-form-grid">
-                                <div class="sim-field">
-                                    <label>Power Delivery Unit</label>
-                                    <select id="sim-psu" data-cat="psu" class="sim-select"></select>
-                                </div>
-                                <div class="sim-field">
-                                    <label>Main Storage Array</label>
-                                    <select id="sim-storage" data-cat="storage" class="sim-select"></select>
-                                </div>
-                                <div class="sim-field">
-                                    <label>Chassis / Frame</label>
-                                    <select id="sim-case" data-cat="cases" class="sim-select"></select>
-                                </div>
-                                <div class="sim-field">
-                                    <label>Thermal Solution</label>
-                                    <select id="sim-cooler" data-cat="coolers" class="sim-select"></select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="simulator-results" class="sim-results">
-                            <div style="display:flex; align-items:center; gap: 15px; margin-bottom: 2rem;">
-                                <div style="width: 40px; height: 40px; background: rgba(99,102,241,0.15); border-radius: 12px; display:flex; align-items:center; justify-content:center;">✨</div>
-                                <h3 style="margin:0;">Intelligence Report</h3>
-                            </div>
-                            <div id="simulator-explanation" class="sim-explanation">
-                                <!-- Results injected here -->
-                            </div>
-                        </div>
-                    </div>
+                    <button id="run-simulation" class="btn btn-primary"
+                        style="width: 100%; margin-top: 2rem; padding: 1rem; font-size: 1.1rem;">
+                        Analyze Upgrade Impact
+                    </button>
                 </div>
             </div>
 
-            <div class="sim-actions">
-                <button class="btn btn-secondary" onclick="toggleUpgradeSimulator(false)">Cancel</button>
-                <button id="btn-run-simulation" class="btn btn-primary" onclick="runUpgradeSimulation()" style="min-width: 200px;" disabled>Run What-If Simulation</button>
+            <div id="simulation-results-section"
+                style="display: none; border-top: 1px solid var(--border); padding-top: 2.5rem; animation: slideUp 0.4s ease-out;">
+
+                <div class="ai-analysis-box"
+                    style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.2); padding: 2.5rem; border-radius: 20px; margin-bottom: 2rem;">
+                    <h4
+                        style="color: var(--primary-light); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.8rem; font-size: 1.2rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Expert AI Analysis
+                    </h4>
+                    <div id="simulation-explanation" class="markdown-content"
+                        style="line-height: 1.6; color: var(--text-main); font-size: 1.1rem;">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; padding-bottom: 1rem;">
+                    <button id="save-sim-build" class="btn btn-primary" style="padding: 0.8rem 2rem; min-width: 200px;">
+                        Save as New Build
+                    </button>
+                    <button onclick="document.getElementById('simulation-results-section').style.display='none'"
+                        class="btn btn-secondary" style="padding: 0.8rem 2rem;">
+                        Discard Results
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -565,565 +575,762 @@
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-brand">
-                    <div class="logo"><span class="logo-accent">Rig</span>Master AI</div>
+                    <div class="logo">
+                        <span class="logo-accent">Rig</span>Master AI
+                    </div>
                     <p>The future of PC building is intelligent.</p>
                 </div>
-                <div class="footer-links">
-                    <h5>Platform</h5>
-                    <ul>
-                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
-                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
-                        <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
-                    </ul>
-                </div>
-                <div class="footer-links">
-                    <h5>Support</h5>
-                    <ul>
-                        <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
-                        <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
-                    </ul>
-                </div>
-                <div class="footer-links">
-                    <h5>Contact</h5>
-                    <ul>
-                        <li><a href="{{ url_for('contact') }}">Support</a></li>
-                        <li><a href="{{ url_for('feedback') }}">Feedback</a></li>
-                    </ul>
-                </div>
+                <!-- ... footer links ... -->
             </div>
-            <div class="footer-bottom">&copy; 2026 RigMaster AI. All rights reserved.</div>
+            <div id="preloaded-builds-data" style="display:none;">{{ user_builds|tojson }}</div>
+            <div class="footer-bottom">
+                &copy; 2026 RigMaster AI. All rights reserved.
+            </div>
         </div>
     </footer>
 
     <script>
-    // ── Globals ──
-    let analysisData = null;
-    let buildParams = {};
+        const BUILD_COMPONENT_KEYS = [
+            'cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id',
+            'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id',
+            'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id',
+            'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id',
+            'ups_id', 'tool_id'
+        ];
+        const SIMULATOR_CATEGORIES = [
+            { id: 'cpu', key: 'cpu_id', label: 'Processor', api: '/api/cpus' },
+            { id: 'gpu', key: 'gpu_id', label: 'Graphics Card', api: '/api/gpus' },
+            { id: 'motherboard', key: 'motherboard_id', label: 'Motherboard', api: '/api/motherboards' },
+            { id: 'ram', key: 'ram_id', label: 'Memory', api: '/api/ram' },
+            { id: 'storage', key: 'storage_id', label: 'Storage', api: '/api/storage' },
+            { id: 'psu', key: 'psu_id', label: 'Power Supply', api: '/api/psu' },
+            { id: 'case', key: 'case_id', label: 'Case', api: '/api/cases' },
+            { id: 'cooler', key: 'cooler_id', label: 'Cooler', api: '/api/coolers' },
+            { id: 'monitor', key: 'monitor_id', label: 'Monitor', api: '/api/monitors' },
+            { id: 'os', key: 'os_id', label: 'Operating System', api: '/api/os' },
+            { id: 'fans', key: 'fans_id', label: 'Case Fans', api: '/api/fans' },
+            { id: 'peripherals', key: 'peripherals_id', label: 'Other Peripherals', api: '/api/peripherals?sub_category=other' },
+            { id: 'keyboard', key: 'keyboard_id', label: 'Keyboard', api: '/api/peripherals?sub_category=keyboard' },
+            { id: 'mouse', key: 'mouse_id', label: 'Mouse', api: '/api/peripherals?sub_category=mouse' },
+            { id: 'headset', key: 'headset_id', label: 'Headset', api: '/api/peripherals?sub_category=headset' },
+            { id: 'webcam', key: 'webcam_id', label: 'Webcam', api: '/api/peripherals?sub_category=webcam' },
+            { id: 'thermal-paste', key: 'thermal_paste_id', label: 'Thermal Paste', api: '/api/thermal_paste' },
+            { id: 'wifi', key: 'wifi_id', label: 'Wi-Fi Adapter', api: '/api/wifi_adapters' },
+            { id: 'speakers', key: 'speakers_id', label: 'Speakers', api: '/api/speakers' },
+            { id: 'microphone', key: 'microphone_id', label: 'Microphone', api: '/api/microphones' },
+            { id: 'ups', key: 'ups_id', label: 'UPS', api: '/api/ups' },
+            { id: 'tool', key: 'tool_id', label: 'Tools', api: '/api/tools' }
+        ];
+        const PRELOADED_DATA_EL = document.getElementById('preloaded-builds-data');
+        const PRELOADED_BUILDS = PRELOADED_DATA_EL ? JSON.parse(PRELOADED_DATA_EL.textContent || '[]') : [];
+        let _allBuilds = Array.isArray(PRELOADED_BUILDS) ? PRELOADED_BUILDS : [];
+        let _selectorOpen = false;
+        let buildData = {};
+        let _analysisRequestId = 0;
+        let _validationController = null;
+        let _fullAnalysisController = null;
+        let _simulatorOptions = {};
 
-    // ── Parse URL params ──
-    function getParams() {
-        const p = new URLSearchParams(window.location.search);
-        const keys = ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id',
-            'case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id',
-            'mouse_id','headset_id','webcam_id','thermal_paste_id','wifi_id',
-            'speakers_id','microphone_id','ups_id','tool_id','build_id'];
-        const out = {};
-        keys.forEach(k => { if (p.get(k)) out[k] = p.get(k); });
-        return out;
-    }
+        async function validateBuild(data) {
+            console.log('[ValidateBuild] Called with data:', data);
+            const statusEl = document.getElementById('compat-status');
+            const originalText = statusEl.textContent;
+            statusEl.textContent = 'Analyzing...';
+            document.body.style.cursor = 'wait';
 
-    // ── Loading Animation ──
-    const loadingSteps = [
-        { text: 'Resolving components...', delay: 300 },
-        { text: 'Running constraint engine...', delay: 800 },
-        { text: 'Analyzing power delivery...', delay: 1400 },
-        { text: 'Computing compatibility score...', delay: 2000 },
-    ];
-
-    function showLoadingSteps() {
-        const container = document.getElementById('loading-steps');
-        container.innerHTML = '';
-        loadingSteps.forEach((step, i) => {
-            setTimeout(() => {
-                const el = document.createElement('div');
-                el.className = 'loading-step';
-                el.style.animationDelay = '0s';
-                el.innerHTML = `<span class="step-check">✓</span> ${step.text}`;
-                container.appendChild(el);
-            }, step.delay);
-        });
-    }
-
-
-
-    // ── Render Conflicts ──
-    function renderConflicts(validation) {
-        const list = document.getElementById('conflicts-list');
-        const badge = document.getElementById('conflicts-badge');
-        const conflicts = validation.arch_conflicts || [];
-        
-        const healthBanner = document.getElementById('system-health-banner');
-        const healthStatus = document.getElementById('system-health-status');
-        healthBanner.style.display = 'block';
-
-        if (conflicts.length === 0) {
-            healthStatus.textContent = 'Compatible';
-            healthStatus.style.color = '#10b981';
-            
-            list.innerHTML = `
-                <div class="conflict-card sev-ok">
-                    <div class="conflict-severity-dot"></div>
-                    <div class="conflict-body">
-                        <span class="conflict-tag">All Clear</span>
-                        <div class="conflict-msg">All selected components passed compatibility checks. Your build is ready to assemble!</div>
-                    </div>
-                </div>`;
-            badge.textContent = 'All Clear';
-            badge.style.background = 'rgba(16,185,129,0.15)';
-            badge.style.color = '#10b981';
-            badge.style.borderColor = 'rgba(16,185,129,0.3)';
-            return;
-        }
-
-        // Sort: INCOMPATIBLE first
-        const sorted = [...conflicts].sort((a, b) => (b.severity_value || 0) - (a.severity_value || 0));
-        const incompatCount = sorted.filter(c => c.severity === 'INCOMPATIBLE').length;
-        const warnCount = sorted.filter(c => c.severity === 'WARNING').length;
-        const subCount = sorted.filter(c => c.severity === 'SUBOPTIMAL').length;
-
-        if (incompatCount > 0) {
-            healthStatus.innerHTML = 'Not Compatible';
-            healthStatus.style.color = '#ef4444';
-            
-            badge.textContent = `NOT COMPATIBLE - ${incompatCount} Critical Issues`;
-            badge.style.background = 'rgba(239,68,68,0.15)';
-            badge.style.color = '#ef4444';
-            badge.style.borderColor = 'rgba(239,68,68,0.3)';
-        } else if (warnCount > 0) {
-            healthStatus.textContent = 'Warnings Found';
-            healthStatus.style.color = '#fbbf24';
-            
-            badge.textContent = `WARNINGS - ${warnCount} Found`;
-            badge.style.background = 'rgba(251,191,36,0.15)';
-            badge.style.color = '#fbbf24';
-            badge.style.borderColor = 'rgba(251,191,36,0.3)';
-        } else if (subCount > 0) {
-            healthStatus.textContent = 'Advisories Found';
-            healthStatus.style.color = '#06b6d4';
-            
-            badge.textContent = `Suboptimal - ${subCount} Advisories`;
-        }
-
-        list.innerHTML = sorted.map(c => {
-            const sevClass = c.severity === 'INCOMPATIBLE' ? 'sev-incompatible' :
-                             c.severity === 'WARNING' ? 'sev-warning' :
-                             c.severity === 'SUBOPTIMAL' ? 'sev-suboptimal' : 'sev-ok';
-            const sevLabel = c.severity === 'INCOMPATIBLE' ? 'Critical' :
-                             c.severity === 'WARNING' ? 'Warning' : 'Advisory';
-            return `
-                <div class="conflict-card ${sevClass}">
-                    <div class="conflict-severity-dot"></div>
-                    <div class="conflict-body">
-                        <span class="conflict-tag">${sevLabel}</span>
-                        <div class="conflict-msg">${c.message}</div>
-                        <div class="conflict-target">Target: ${(c.target || '').replace('_', ' ')}</div>
-                    </div>
-                </div>`;
-        }).join('');
-
-        // Fix suggestions will auto-load for any issues
-    }
-
-    // ── Render Components ──
-    function renderComponents(components) {
-        const grid = document.getElementById('comp-grid');
-        const order = ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id',
-            'case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id',
-            'mouse_id','headset_id','webcam_id','thermal_paste_id','wifi_id',
-            'speakers_id','microphone_id','ups_id','tool_id'];
-
-        const iconMap = {
-            'cpu_id': '🧠', 'gpu_id': '🎮', 'motherboard_id': '📟', 'ram_id': '💾',
-            'storage_id': '🗄️', 'psu_id': '⚡', 'case_id': '🧰', 'cooler_id': '❄️',
-            'monitor_id': '🖥️', 'os_id': '🪟', 'fans_id': '🌪️', 'keyboard_id': '⌨️',
-            'mouse_id': '🖱️', 'headset_id': '🎧', 'webcam_id': '📷', 'thermal_paste_id': '💧',
-            'wifi_id': '📡', 'speakers_id': '🔊', 'microphone_id': '🎤', 'ups_id': '🔋',
-            'tool_id': '🛠️'
-        };
-
-        let html = '';
-        let count = 0;
-        order.forEach(key => {
-            const c = components[key];
-            if (c) {
-                count++;
-                const icon = iconMap[key] || '🧩';
-                html += `
-                    <div class="comp-glass-card">
-                        <div class="comp-icon">${icon}</div>
-                        <div class="comp-info">
-                            <div class="comp-label">${c.label}</div>
-                            <div class="comp-name" title="${c.name}">${c.name}</div>
-                        </div>
-                        <div class="comp-price">${c.price}</div>
-                    </div>`;
-            }
-        });
-        grid.innerHTML = html;
-        document.getElementById('stat-components').textContent = count;
-    }
-
-    // ── Render Fix Suggestions ──
-    function renderFixSuggestions(suggestions) {
-        const fixSection = document.getElementById('fixes-section');
-        const fixList = document.getElementById('fixes-list');
-        const fixBadge = document.getElementById('fixes-badge');
-
-        if (!suggestions || suggestions.length === 0) {
-            fixList.innerHTML = `
-                <div class="fix-card" style="text-align: center; color: var(--text-muted);">
-                    No automatic fix suggestions available for this build configuration.
-                </div>`;
-            fixBadge.textContent = 'None found';
-            fixSection.style.display = 'block';
-            return;
-        }
-        // Proceed to render suggestions
-                fixBadge.textContent = `${suggestions.length} available`;
-                fixList.innerHTML = suggestions.map(s => {
-                    const typeClass = s.type === 'fix' ? 'type-fix' : 'type-improvement';
-                    const typeLabel = s.type === 'fix' ? 'Fix Required' : 'Improvement';
-                    const safeCat = s.category.replace(/"/g, '&quot;');
-                    const opts = (s.options || []).map(o => {
-                        const safeName = (o.name || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
-                        const safeId = (o.id || '').replace(/"/g, '&quot;');
-                        return `<button class="fix-option-btn" data-cat="${safeCat}" data-id="${safeId}" data-name="${safeName}">${safeName}</button>`;
-                    }).join('');
-                    const safeReason = (s.reason || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    return `
-                        <div class="fix-card">
-                            <div class="fix-header">
-                                <span class="fix-type ${typeClass}">${typeLabel}</span>
-                                <span class="fix-title">${(s.title || '').replace(/</g,'&lt;')}</span>
-                            </div>
-                            <div class="fix-reason">${safeReason}</div>
-                            <div class="fix-options">${opts}</div>
-                        </div>`;
-                }).join('');
-
-                // Attach click handlers via delegation
-                fixList.querySelectorAll('.fix-option-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const cat = this.dataset.cat;
-                        const id = this.dataset.id;
-                        const name = this.dataset.name;
-                        // Disable all fix buttons to prevent double-click
-                        fixList.querySelectorAll('.fix-option-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
-                        this.textContent = '⏳ Applying...';
-                        this.style.opacity = '1';
-                        applyFix(cat, id, encodeURIComponent(name), this);
-                    });
+            try {
+                const response = await fetch('/api/validate_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
                 });
-            fixSection.style.display = 'block';
-    }
+                
+                if (!response.ok) {
+                    throw new Error(`Validation API returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('[ValidateBuild] Response received:', result);
+                document.body.style.cursor = 'default';
+                
+                statusEl.textContent = result.status;
+                console.log('[ValidateBuild] Status updated to:', result.status);
+                
+                const badge = document.getElementById('health-status-badge');
+                const icon = document.getElementById('health-icon');
+                const statusType = result.status.toLowerCase().replace(' ', '-');
+                console.log('[ValidateBuild] Setting statusType to:', statusType);
+                
+                badge.setAttribute('data-status', statusType);
+                statusEl.setAttribute('data-status', statusType);
+                icon.setAttribute('data-status', statusType);
 
-    // ── Apply Fix (save updated component then reload analysis cleanly) ──
-    function applyFix(category, compId, compName, buttonEl) {
-        // Comprehensive mapping: constraint engine category → build param key
-        const catKeyMap = {
-            cpu: 'cpu_id', gpu: 'gpu_id', motherboard: 'motherboard_id', ram: 'ram_id',
-            memory: 'ram_id', storage: 'storage_id', psu: 'psu_id', case: 'case_id',
-            cooler: 'cooler_id', monitor: 'monitor_id', monitors: 'monitor_id',
-            os: 'os_id', fans: 'fans_id', case_fan: 'fans_id', case_fans: 'fans_id',
-            keyboard: 'keyboard_id', mouse: 'mouse_id', headset: 'headset_id',
-            webcam: 'webcam_id', thermal_paste: 'thermal_paste_id',
-            network: 'wifi_id', network_adapter: 'wifi_id', wifi: 'wifi_id',
-            wifi_adapters: 'wifi_id', speakers: 'speakers_id',
-            microphone: 'microphone_id', ups: 'ups_id',
-            tools: 'tool_id', assembly_tools: 'tool_id', assembly: 'tool_id'
-        };
+                const msgContainer = document.getElementById('compat-messages-container');
+                msgContainer.innerHTML = (result.arch_conflicts || []).map(c => `
+                    <div style="padding: 1.2rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; gap: 1rem;">
+                        <div style="font-size: 1.2rem;">${c.severity === 'INCOMPATIBLE' ? '❌' : '⚠️'}</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted);">${c.target || 'System'}</div>
+                            <div style="margin-top: 0.25rem;">${c.message}</div>
+                        </div>
+                    </div>
+                `).join('');
 
-        const updateKey = catKeyMap[category];
-        if (!updateKey) {
-            console.warn('Unknown fix category:', category);
-            alert('Could not apply fix: unknown component category "' + category + '"');
-            return;
-        }
-
-        // Show loading state on clicked button
-        if (buttonEl) {
-            buttonEl.textContent = '⏳ Applying...';
-            buttonEl.disabled = true;
-        }
-
-        // Build a full payload containing all current component IDs from the latest analysis data
-        const saveData = {};
-        // Preserve any non-component params (e.g., name, build_id) from buildParams
-        Object.entries(buildParams).forEach(([k, v]) => {
-            if (!k.endsWith('_id')) {
-                saveData[k] = v;
+                // Full Analysis for Labs
+                const fullResp = await fetch('/api/full-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!fullResp.ok) {
+                    throw new Error(`Full analysis API returned ${fullResp.status}`);
+                }
+                
+                const fullData = await fullResp.json();
+                console.log('[ValidateBuild] Full analysis response:', fullData);
+                
+                if (fullData.status === 'success') {
+                    updatePriceTracker(fullData.components, fullData.total_price);
+                    updateEnergyLab(fullData.power_metrics);
+                    if (fullData.fix_suggestions) {
+                        console.log('[ValidateBuild] Rendering fix suggestions:', fullData.fix_suggestions);
+                        renderSuggestions(fullData.fix_suggestions);
+                    }
+                }
+            } catch (error) {
+                console.error('[ValidateBuild] Error:', error);
+                statusEl.textContent = 'Analysis Error';
+                alert(`Validation error: ${error.message}`);
+            } finally {
+                document.body.style.cursor = 'default';
             }
-        });
-        // Add all component IDs from the most recent analysis result
-        if (analysisData && analysisData.components) {
-            Object.entries(analysisData.components).forEach(([key, comp]) => {
-                if (comp && comp.id) {
-                    saveData[key] = comp.id;
+        }
+
+        function updatePriceTracker(components, total) {
+            document.getElementById('price-tracker-lab').style.display = 'block';
+            document.getElementById('total-build-cost').textContent = total || '$0.00';
+            Object.entries(components || {}).forEach(([key, comp]) => {
+                const card = document.querySelector(`.price-card[data-category="${key.replace('_id', '')}"]`);
+                if (card) {
+                    card.querySelector('.component-name').textContent = comp.name;
+                    card.querySelector('.price-value').textContent = comp.price;
                 }
             });
         }
-        // Override the specific component being fixed
-        saveData[updateKey] = compId;
-        // Ensure build_id is included for updates
-        if (buildParams.build_id) {
-            saveData.build_id = buildParams.build_id;
+
+        function updateEnergyLab(metrics) {
+            if (!metrics) return;
+            document.getElementById('energy-efficiency-lab').style.display = 'block';
+            document.getElementById('cost-monthly').textContent = metrics.monthly_cost;
+            document.getElementById('carbon-footprint').innerHTML = `${metrics.annual_carbon} <span style="font-size: 1rem;">kg</span>`;
+            document.getElementById('efficiency-rating').textContent = `Rating: ${metrics.rating}`;
+            document.getElementById('efficiency-insight').textContent = metrics.insight;
         }
 
-        fetch('/api/save_build', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(saveData)
-        }).then(resp => resp.json()).then(result => {
-            if (result.status === 'success') {
-                // Update buildParams and do a clean redirect with fresh URL
-                buildParams[updateKey] = compId;
-                const params = new URLSearchParams();
-                Object.entries(buildParams).forEach(([k, v]) => {
-                    if (v) params.set(k, v);
-                });
-                // Redirect to analysis with updated params for a clean re-analysis
-                window.location.href = '/analysis?' + params.toString();
-            } else {
-                alert('Failed to apply fix: ' + (result.message || 'Unknown error'));
-                if (buttonEl) { buttonEl.textContent = decodeURIComponent(compName); buttonEl.disabled = false; }
-            }
-        }).catch(e => {
-            console.error('Fix save failed:', e);
-            alert('Network error while applying fix.');
-            if (buttonEl) { buttonEl.textContent = decodeURIComponent(compName); buttonEl.disabled = false; }
-        });
-    }
-
-    // ── Main Analysis Flow ──
-    async function runAnalysis() {
-        const loading = document.getElementById('analysis-loading');
-        const results = document.getElementById('analysis-results');
-        const empty = document.getElementById('analysis-empty');
-
-        loading.style.display = 'block';
-        results.style.display = 'none';
-        empty.style.display = 'none';
-        showLoadingSteps();
-
-        try {
-            const resp = await fetch('/api/full-analysis', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildParams)
-            });
-            const data = await resp.json();
-
-            if (data.status !== 'success') {
-                loading.style.display = 'none';
-                empty.style.display = 'block';
-                return;
-            }
-
-            analysisData = data;
-
-            // Wait a bit for loading animation to feel right
-            await new Promise(r => setTimeout(r, 2500));
-
-            loading.style.display = 'none';
-            results.style.display = 'block';
-
-            document.getElementById('stat-total-price').textContent = data.total_price || '--';
-            document.getElementById('stat-issues').textContent =
-                (data.validation?.arch_conflicts || []).length;
-            renderConflicts(data.validation || {});
-            renderComponents(data.components || {});
-
-            // Edit build link
-            if (buildParams.build_id) {
-                document.getElementById('btn-edit-build').href = `/builder?build_id=${buildParams.build_id}`;
-            }
-
-            // Render fix suggestions if they were returned
-            if (data.fix_suggestions && data.fix_suggestions.length > 0) {
-                renderFixSuggestions(data.fix_suggestions);
-            }
-
-        } catch (e) {
-            console.error('Analysis failed:', e);
-            loading.style.display = 'none';
-            empty.style.display = 'block';
-        }
-    }
-
-    // ── Select a build from the dropdown ──
-    function selectBuild(buildId) {
-        if (!buildId) return;
-        window.location.href = '/analysis?build_id=' + buildId;
-    }
-
-    // ── Init ──
-    document.addEventListener('DOMContentLoaded', () => {
-        buildParams = getParams();
-        const hasParams = Object.keys(buildParams).some(k => k !== 'build_id' && buildParams[k]);
-        const hasBuildId = !!buildParams.build_id;
-
-        // Auto-select current build in dropdown
-        const selector = document.getElementById('build-selector');
-        if (selector && buildParams.build_id) {
-            selector.value = buildParams.build_id;
-        }
-
-        if (hasParams || hasBuildId) {
-            runAnalysis();
-        } else {
-            document.getElementById('analysis-loading').style.display = 'none';
-            document.getElementById('analysis-empty').style.display = 'block';
-        }
-    });
-
-    // ── Upgrade Simulator Logic ──
-    let simBuilds = [];
-    let simComponents = {}; // cache for all category options
-    let currentSimBuildId = null;
-
-    async function toggleUpgradeSimulator(show) {
-        const overlay = document.getElementById('upgrade-modal-overlay');
-        overlay.classList.toggle('active', show);
-        
-        if (show) {
-            document.body.style.overflow = 'hidden';
-            if (simBuilds.length === 0) {
-                await loadBuildsForSim();
-                await loadAllComponentOptions();
-            }
-        } else {
-            document.body.style.overflow = '';
-        }
-    }
-
-    async function loadBuildsForSim() {
-        const listEl = document.getElementById('sim-build-list');
-        try {
-            const resp = await fetch('/api/my_builds');
-            simBuilds = await resp.json();
-            
-            if (simBuilds.length === 0) {
-                listEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">No saved builds found.</div>';
-                return;
-            }
-
-            listEl.innerHTML = simBuilds.map(b => `
-                <div class="sim-build-item" onclick="selectBuildForSim('${b.id}')" data-id="${b.id}">
-                    <span class="sim-build-name">${b.name}</span>
-                    <span class="sim-build-date">${b.date}</span>
+        function renderSuggestions(suggestions) {
+            const panel = document.getElementById('fix-suggestions-panel');
+            const container = document.getElementById('fix-options-container');
+            if (!suggestions.length) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            container.innerHTML = suggestions.map(s => `
+                <div class="step-card" style="padding: 1.5rem; text-align: left;">
+                    <div style="color: var(--primary-light); font-weight: 700; font-size: 0.7rem; margin-bottom: 0.5rem;">${s.type.toUpperCase()}</div>
+                    <div style="font-weight: 700; margin-bottom: 0.5rem;">${s.title}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">${s.reason}</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        ${s.options.map(opt => `<button class="btn btn-secondary" onclick="applyFix('${s.category}', '${opt.id}')" style="font-size: 0.8rem;">Update to ${opt.name}</button>`).join('')}
+                    </div>
                 </div>
             `).join('');
-        } catch (e) {
-            listEl.innerHTML = '<div style="color: #ef4444; font-size: 0.8rem;">Failed to load builds.</div>';
         }
-    }
 
-    async function loadAllComponentOptions() {
-        const categories = ['cpus', 'gpus', 'motherboards', 'ram', 'storage', 'psu', 'cases', 'coolers'];
-        const selects = document.querySelectorAll('.sim-select');
-        
-        // Populate "None" for all first
-        selects.forEach(s => s.innerHTML = '<option value="">Loading...</option>');
+        function closeBuildSelector() {
+            const dropdown = document.getElementById('build-selector-dropdown');
+            const arrow = document.getElementById('build-selector-arrow');
+            _selectorOpen = false;
+            dropdown.style.display = 'none';
+            arrow.style.transform = 'rotate(0deg)';
+        }
 
-        try {
-            const results = await Promise.all(categories.map(cat => fetch(`/api/${cat}`).then(r => r.json())));
-            categories.forEach((cat, idx) => {
-                simComponents[cat] = results[idx];
-                const select = document.querySelector(`.sim-select[data-cat="${cat}"]`);
-                if (select) {
-                    select.innerHTML = '<option value="">-- No Change --</option>' + 
-                        results[idx].map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        function findBuildById(buildId) {
+            return _allBuilds.find(build => build.id === buildId) || null;
+        }
+
+        function createBuildState(source = {}) {
+            const next = {};
+            BUILD_COMPONENT_KEYS.forEach(key => {
+                if (source[key]) next[key] = source[key];
+            });
+            if (source.build_id) next.build_id = source.build_id;
+            if (source.id) next.build_id = source.id;
+            if (source.name) next.name = source.name;
+            return next;
+        }
+
+        function createAnalysisPayload(source = buildData) {
+            const payload = {};
+            let hasLocalComponents = false;
+
+            BUILD_COMPONENT_KEYS.forEach(key => {
+                if (source[key]) {
+                    payload[key] = source[key];
+                    hasLocalComponents = true;
                 }
             });
-        } catch (e) {
-            console.error("Failed to load component options for simulation:", e);
+
+            if (source.name) payload.name = source.name;
+            if (source.build_id && !hasLocalComponents) payload.build_id = source.build_id;
+
+            return payload;
         }
-    }
 
-    function selectBuildForSim(buildId) {
-        currentSimBuildId = buildId;
-        const build = simBuilds.find(b => b.id === buildId);
-        if (!build) return;
+        function updateSelectedBuildUi(source = buildData) {
+            const buildName = source?.name || '';
+            document.getElementById('build-selector-label').textContent = buildName || 'Select a Saved Build to Analyze';
+            document.getElementById('view-build-name').textContent = buildName;
+            document.getElementById('build-name-display').style.display = buildName ? 'block' : 'none';
+        }
 
-        // Highlight in list
-        document.querySelectorAll('.sim-build-item').forEach(el => el.classList.remove('active'));
-        document.querySelector(`.sim-build-item[data-id="${buildId}"]`).classList.add('active');
+        function beginAnalysisLoading() {
+            const statusEl = document.getElementById('compat-status');
+            const badge = document.getElementById('health-status-badge');
+            const icon = document.getElementById('health-icon');
 
-        // Show form
-        document.getElementById('sim-welcome-message').style.display = 'none';
-        document.getElementById('sim-form').style.display = 'block';
-        document.getElementById('btn-run-simulation').disabled = false;
-        document.getElementById('simulator-results').style.display = 'none';
+            document.getElementById('analysis-results').style.display = 'block';
+            document.getElementById('loading-msg').style.display = 'none';
+            document.getElementById('compat-count-badge').textContent = 'Working...';
+            document.getElementById('price-tracker-lab').style.display = 'none';
+            document.getElementById('energy-efficiency-lab').style.display = 'none';
+            document.getElementById('fix-suggestions-panel').style.display = 'none';
+            document.getElementById('compat-messages-container').innerHTML =
+                '<div style="padding: 1.2rem 1.5rem; color: var(--text-muted);">Loading compatibility analysis...</div>';
 
-        document.getElementById('sim-current-build-title').textContent = `Upgrading: ${build.name}`;
-        
-        resetSimForm();
-    }
+            statusEl.textContent = 'Analyzing...';
+            badge.removeAttribute('data-status');
+            statusEl.removeAttribute('data-status');
+            icon.removeAttribute('data-status');
+        }
 
-    function resetSimForm() {
-        if (!currentSimBuildId) return;
-        const build = simBuilds.find(b => b.id === currentSimBuildId);
-        if (!build) return;
+        async function loadBuildsList(forceRefresh = false) {
+            const listEl = document.getElementById('build-selector-list');
+            if (!forceRefresh && _allBuilds.length > 0) {
+                renderBuildsList(_allBuilds);
+                return;
+            }
 
-        const map = {
-            'cpu': build.cpu_id, 'gpu': build.gpu_id, 'motherboard': build.motherboard_id,
-            'ram': build.ram_id, 'storage': build.storage_id, 'psu': build.psu_id,
-            'case': build.case_id, 'cooler': build.cooler_id
-        };
+            try {
+                const res = await fetch('/api/my_builds');
+                _allBuilds = await res.json();
+                renderBuildsList(_allBuilds);
+            } catch (e) {
+                listEl.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: #f87171;">Failed to load builds.</div>';
+            }
+        }
 
-        Object.entries(map).forEach(([key, val]) => {
-            const el = document.getElementById(`sim-${key}`);
-            if (el) el.value = val || "";
+        function toggleBuildSelector() {
+            const dropdown = document.getElementById('build-selector-dropdown');
+            const arrow = document.getElementById('build-selector-arrow');
+            _selectorOpen = !_selectorOpen;
+            dropdown.style.display = _selectorOpen ? 'block' : 'none';
+            arrow.style.transform = _selectorOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+            if (_selectorOpen) loadBuildsList();
+        }
+
+        function renderBuildsList(builds) {
+            const listEl = document.getElementById('build-selector-list');
+            const currentBuildId = buildData.build_id || new URLSearchParams(window.location.search).get('build_id');
+            if (builds.length === 0) {
+                listEl.innerHTML = '<div style="padding: 2rem; text-align: center;"><p style="color: var(--text-muted);">No saved builds found.</p></div>';
+                return;
+            }
+
+            listEl.innerHTML = builds.map(b => `
+                <div class="build-selector-item" onclick="selectBuildForAnalysis(${JSON.stringify(b).replace(/"/g, '&quot;')})"
+                     style="padding: 0.9rem 1.2rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); background: ${b.id === currentBuildId ? 'rgba(124, 58, 237, 0.12)' : 'transparent'};">
+                    <div style="font-weight: 600;">${b.name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${b.date || ''}</div>
+                </div>
+            `).join('');
+        }
+
+        function filterBuilds(query) {
+            const filtered = _allBuilds.filter(b => b.name.toLowerCase().includes(query.toLowerCase()));
+            renderBuildsList(filtered);
+        }
+
+        function renderCompatibility(result) {
+            const statusEl = document.getElementById('compat-status');
+            const badge = document.getElementById('health-status-badge');
+            const icon = document.getElementById('health-icon');
+            const msgContainer = document.getElementById('compat-messages-container');
+            const compatCountBadge = document.getElementById('compat-count-badge');
+            const conflicts = result.arch_conflicts || [];
+            const displayItems = conflicts.length
+                ? conflicts.map(conflict => ({
+                    severity: conflict.severity || 'INFO',
+                    target: conflict.target || 'System',
+                    message: conflict.message || 'Compatibility note available.'
+                }))
+                : (result.messages || ['Systems check: All selected components are compatible!']).map(message => ({
+                    severity: result.status === 'Compatible' ? 'OK' : 'INFO',
+                    target: 'System',
+                    message
+                }));
+
+            statusEl.textContent = result.status || 'Unknown';
+            const statusType = (result.status || 'Unknown').toLowerCase().replace(/\s+/g, '-');
+            badge.setAttribute('data-status', statusType);
+            statusEl.setAttribute('data-status', statusType);
+            icon.setAttribute('data-status', statusType);
+
+            compatCountBadge.textContent = conflicts.length
+                ? `${conflicts.length} ${conflicts.length === 1 ? 'Note' : 'Notes'}`
+                : 'All Clear';
+
+            msgContainer.innerHTML = displayItems.map(item => {
+                const isWarning = item.severity === 'WARNING' || item.severity === 'SUBOPTIMAL';
+                const accent = item.severity === 'INCOMPATIBLE' ? '#f87171' : (isWarning ? '#fbbf24' : '#4ade80');
+                const iconLabel = item.severity === 'INCOMPATIBLE' ? 'X' : (isWarning ? '!' : 'OK');
+                return `
+                    <div style="padding: 1.2rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; gap: 1rem;">
+                        <div style="font-size: 1rem; min-width: 1.8rem; color: ${accent};">${iconLabel}</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted);">${item.target}</div>
+                            <div style="margin-top: 0.25rem;">${item.message}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetPriceCards() {
+            document.querySelectorAll('.price-card').forEach(card => {
+                card.querySelector('.component-name').textContent = '--';
+                card.querySelector('.price-value').textContent = '--';
+            });
+        }
+
+        function updatePriceTracker(components, total) {
+            resetPriceCards();
+            document.getElementById('price-tracker-lab').style.display = 'block';
+            document.getElementById('total-build-cost').textContent = total || '$0.00';
+
+            Object.entries(components || {}).forEach(([key, comp]) => {
+                const card = document.querySelector(`.price-card[data-category="${key.replace('_id', '')}"]`);
+                if (card) {
+                    card.querySelector('.component-name').textContent = comp.name;
+                    card.querySelector('.price-value').textContent = comp.price;
+                }
+            });
+
+            const pricedCount = Object.keys(components || {}).length;
+            document.getElementById('price-insight').textContent = pricedCount
+                ? `${pricedCount} selected components were priced for this build snapshot.`
+                : 'Add more parts to see the full pricing breakdown.';
+        }
+
+        function deriveEnergyMetrics(power) {
+            if (!power || power.status !== 'success') return null;
+
+            const totalWatts = Number(power.total_base_wattage || 0);
+            const recommendedWatts = Number(power.recommended_wattage || 0);
+            const selectedPsuWatts = Number(power.selected_psu_wattage || 0);
+            const monthlyUsageHours = 4 * 30;
+            const costPerKwh = 0.15;
+            const carbonPerKwh = 0.42;
+            const monthlyCost = ((totalWatts / 1000) * monthlyUsageHours * costPerKwh).toFixed(2);
+            const annualCarbon = ((totalWatts / 1000) * monthlyUsageHours * 12 * carbonPerKwh).toFixed(1);
+
+            let rating = 'A';
+            if (totalWatts > 650) rating = 'D';
+            else if (totalWatts > 450) rating = 'C';
+            else if (totalWatts > 300) rating = 'B';
+
+            let insight = `Estimated system draw is ${totalWatts}W. `;
+            if (power.adequacy_status === 'Safe') {
+                insight += selectedPsuWatts
+                    ? `Your ${selectedPsuWatts}W PSU has headroom over the ${recommendedWatts}W recommendation.`
+                    : `The build clears the recommended ${recommendedWatts}W power target.`;
+            } else if (power.adequacy_status === 'Borderline') {
+                insight += `The current PSU is usable, but a ${recommendedWatts}W target would add safer headroom.`;
+            } else if (power.adequacy_status === 'Insufficient') {
+                insight += `The current PSU is undersized. Aim for at least ${recommendedWatts}W.`;
+            } else if (power.adequacy_status === 'No PSU Selected') {
+                insight += `Select a PSU around ${recommendedWatts}W to complete this power check.`;
+            } else {
+                insight += `Recommended PSU target is ${recommendedWatts}W.`;
+            }
+
+            return {
+                monthly_cost: `$${monthlyCost}`,
+                annual_carbon: annualCarbon,
+                rating,
+                insight
+            };
+        }
+
+        function updateEnergyLab(power) {
+            const metrics = deriveEnergyMetrics(power);
+            if (!metrics) return;
+
+            document.getElementById('energy-efficiency-lab').style.display = 'block';
+            document.getElementById('cost-monthly').textContent = metrics.monthly_cost;
+            document.getElementById('carbon-footprint').innerHTML = `${metrics.annual_carbon} <span style="font-size: 1rem;">kg</span>`;
+            document.getElementById('efficiency-rating').textContent = `Rating: ${metrics.rating}`;
+            document.getElementById('efficiency-insight').textContent = metrics.insight;
+        }
+
+        function renderSuggestions(suggestions) {
+            const panel = document.getElementById('fix-suggestions-panel');
+            const container = document.getElementById('fix-options-container');
+            const statusTag = document.getElementById('fix-panel-status-tag');
+
+            if (!suggestions.length) {
+                panel.style.display = 'none';
+                statusTag.textContent = '';
+                return;
+            }
+
+            panel.style.display = 'block';
+            statusTag.textContent = `${suggestions.length} recommended update${suggestions.length === 1 ? '' : 's'}`;
+            container.innerHTML = suggestions.map(s => `
+                <div class="step-card" style="padding: 1.5rem; text-align: left;">
+                    <div style="color: var(--primary-light); font-weight: 700; font-size: 0.7rem; margin-bottom: 0.5rem;">${s.type.toUpperCase()}</div>
+                    <div style="font-weight: 700; margin-bottom: 0.5rem;">${s.title}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">${s.reason}</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        ${s.options.map(opt => `<button class="btn btn-secondary" onclick="applyFix('${s.category}', '${opt.id}')" style="font-size: 0.8rem;">Update to ${opt.name}</button>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function startDetailedAnalysis(data, requestId) {
+            _fullAnalysisController = new AbortController();
+
+            try {
+                const fullResp = await fetch('/api/full-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    signal: _fullAnalysisController.signal
+                });
+
+                if (!fullResp.ok) {
+                    throw new Error(`Full analysis API returned ${fullResp.status}`);
+                }
+
+                const fullData = await fullResp.json();
+                if (requestId !== _analysisRequestId || fullData.status !== 'success') return;
+
+                updatePriceTracker(fullData.components, fullData.total_price);
+                updateEnergyLab(fullData.power);
+                renderSuggestions(fullData.fix_suggestions || []);
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.error('[FullAnalysis] Error:', error);
+            }
+        }
+
+        async function validateBuild(data) {
+            buildData = { ...buildData, ...createBuildState(data) };
+            const requestId = ++_analysisRequestId;
+            const payload = createAnalysisPayload(buildData);
+
+            if (!payload.build_id && !BUILD_COMPONENT_KEYS.some(key => payload[key])) {
+                document.getElementById('loading-msg').style.display = 'block';
+                return;
+            }
+
+            if (_validationController) _validationController.abort();
+            if (_fullAnalysisController) _fullAnalysisController.abort();
+
+            beginAnalysisLoading();
+            document.body.style.cursor = 'wait';
+            _validationController = new AbortController();
+
+            try {
+                const response = await fetch('/api/validate_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: _validationController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Validation API returned ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (requestId !== _analysisRequestId) return;
+
+                renderCompatibility(result);
+                document.body.style.cursor = 'default';
+                void startDetailedAnalysis(payload, requestId);
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.error('[ValidateBuild] Error:', error);
+                document.getElementById('compat-status').textContent = 'Analysis Error';
+                document.getElementById('compat-messages-container').innerHTML =
+                    `<div style="padding: 1.2rem 1.5rem; color: #f87171;">${error.message}</div>`;
+                alert(`Validation error: ${error.message}`);
+            } finally {
+                if (requestId === _analysisRequestId) document.body.style.cursor = 'default';
+            }
+        }
+
+        function selectBuildForAnalysis(build) {
+            buildData = createBuildState(build);
+            updateSelectedBuildUi(buildData);
+            closeBuildSelector();
+            renderBuildsList(_allBuilds);
+
+            const params = new URLSearchParams();
+            params.set('build_id', build.id);
+            window.history.pushState({}, '', `/analysis?${params.toString()}`);
+
+            void validateBuild(buildData);
+        }
+
+        async function applyFix(category, id) {
+            console.log(`[ApplyFix] Starting fix application: category=${category}, id=${id}`);
+            
+            // Show notification
+            const notif = document.getElementById('fix-notification');
+            notif.style.display = 'block';
+            
+            // Complete mapping of all component categories to database keys
+            const keyMap = {
+                'cpu': 'cpu_id',
+                'gpu': 'gpu_id',
+                'motherboard': 'motherboard_id',
+                'ram': 'ram_id',
+                'memory': 'ram_id',
+                'storage': 'storage_id',
+                'psu': 'psu_id',
+                'case': 'case_id',
+                'cooler': 'cooler_id',
+                'monitor': 'monitor_id',
+                'monitors': 'monitor_id',
+                'fans': 'fans_id',
+                'case_fan': 'fans_id',
+                'os': 'os_id',
+                'keyboard': 'keyboard_id',
+                'mouse': 'mouse_id',
+                'headset': 'headset_id',
+                'webcam': 'webcam_id',
+                'thermal_paste': 'thermal_paste_id',
+                'network': 'wifi_id',
+                'network_adapter': 'wifi_id',
+                'speakers': 'speakers_id',
+                'microphone': 'microphone_id',
+                'ups': 'ups_id',
+                'tools': 'tool_id',
+                'assembly_tools': 'tool_id'
+            };
+            const dbKey = keyMap[category];
+            if (!dbKey) {
+                console.error(`[ApplyFix] Unknown category: ${category}`);
+                notif.style.display = 'none';
+                alert(`Error: Unknown component category: ${category}`);
+                return;
+            }
+            console.log(`[ApplyFix] Mapped category to dbKey: ${dbKey}`);
+            
+            // Disable all fix buttons while processing
+            const buttons = document.querySelectorAll('#fix-options-container button');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            try {
+                // Update buildData
+                buildData[dbKey] = id;
+                console.log(`[ApplyFix] Updated buildData[${dbKey}] = ${id}`);
+                console.log(`[ApplyFix] Current buildData:`, buildData);
+                
+                // 1. Update URL without refreshing
+                const params = new URLSearchParams(window.location.search);
+                params.set(dbKey, id);
+                window.history.pushState({}, '', '/analysis?' + params.toString());
+                console.log(`[ApplyFix] Updated URL with ${dbKey}=${id}`);
+                
+                // 2. Persist to DB if we have a build_id
+                const build_id = params.get('build_id');
+                console.log(`[ApplyFix] build_id from URL: ${build_id}`);
+                
+                if (build_id) {
+                    buildData.build_id = build_id;
+                    console.log(`[ApplyFix] Calling /api/save_build with build_id=${build_id}`);
+                    
+                    const saveResp = await fetch('/api/save_build', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(buildData)
+                    });
+                    
+                    if (!saveResp.ok) {
+                        throw new Error(`Save failed with status ${saveResp.status}`);
+                    }
+                    
+                    const saveResult = await saveResp.json();
+                    console.log('[ApplyFix] Build saved successfully:', saveResult);
+                    
+                    if (saveResult.status !== 'success') {
+                        throw new Error(`Save error: ${saveResult.message}`);
+                    }
+                    
+                    console.log(`[ApplyFix] Calling validateBuild with build_id=${build_id}`);
+                    // 3. Re-run validation with build_id AND full buildData
+                    const validationData = { ...buildData, build_id: build_id };
+                    console.log('[ApplyFix] Validation data:', validationData);
+                    await validateBuild(validationData);
+                } else {
+                    console.log('[ApplyFix] No build_id, validating with buildData');
+                    // 3. Re-run validation with current buildData
+                    await validateBuild(buildData);
+                }
+                
+                console.log('[ApplyFix] Fix application completed successfully');
+            } catch (error) {
+                console.error('[ApplyFix] Error during fix application:', error);
+                alert(`Failed to apply fix: ${error.message}\n\nCheck browser console (F12) for details.`);
+            } finally {
+                // Re-enable buttons
+                buttons.forEach(btn => btn.disabled = false);
+                // Hide notification
+                setTimeout(() => { notif.style.display = 'none'; }, 1000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const p = new URLSearchParams(window.location.search);
+            const buildIdFromUrl = p.get('build_id');
+            const preloadMatch = buildIdFromUrl ? findBuildById(buildIdFromUrl) : null;
+            const urlState = {};
+
+            [...BUILD_COMPONENT_KEYS, 'build_id'].forEach(key => {
+                if (p.get(key)) urlState[key] = p.get(key);
+            });
+
+            buildData = {
+                ...createBuildState(preloadMatch || {}),
+                ...createBuildState(urlState)
+            };
+
+            if (preloadMatch && !buildData.name) buildData.name = preloadMatch.name;
+
+            updateSelectedBuildUi(buildData);
+            renderBuildsList(_allBuilds);
+
+            document.addEventListener('click', (event) => {
+                const selectorBar = document.getElementById('build-selector-bar');
+                if (_selectorOpen && selectorBar && !selectorBar.contains(event.target)) {
+                    closeBuildSelector();
+                }
+            });
+
+            if (buildData.build_id || BUILD_COMPONENT_KEYS.some(key => buildData[key])) {
+                void validateBuild(buildData);
+            }
+
+            document.getElementById('btn-what-if').onclick = () => {
+                document.getElementById('simulator-modal').style.display = 'block';
+                prepareSimulator();
+            };
+            document.getElementById('close-simulator').onclick = () => document.getElementById('simulator-modal').style.display = 'none';
         });
-    }
 
-    async function runUpgradeSimulation() {
-        if (!currentSimBuildId) return;
+        function getSimulatorOptionName(key, selectedId) {
+            if (!selectedId) return 'None Selected';
+            const options = _simulatorOptions[key] || [];
+            const match = options.find(item => item.id === selectedId);
+            return match ? match.name : 'Selected Component';
+        }
 
-        const btn = document.getElementById('btn-run-simulation');
-        const loader = document.getElementById('sim-local-loader');
-        const resultsEl = document.getElementById('simulator-results');
-        const explanationEl = document.getElementById('simulator-explanation');
-        
-        btn.disabled = true;
-        loader.style.display = 'flex';
-        btn.innerHTML = '<span class="loading-spinner" style="width:14px; height:14px; border-width:2px; margin-right:8px;"></span> ANALYZING...';
-        resultsEl.style.display = 'none';
+        function renderCurrentBuildList() {
+            const currentList = document.getElementById('current-build-list');
+            currentList.innerHTML = '';
 
-        const upgrades = {
-            cpu_id: document.getElementById('sim-cpu').value,
-            gpu_id: document.getElementById('sim-gpu').value,
-            motherboard_id: document.getElementById('sim-motherboard').value,
-            ram_id: document.getElementById('sim-ram').value,
-            storage_id: document.getElementById('sim-storage').value,
-            psu_id: document.getElementById('sim-psu').value,
-            case_id: document.getElementById('sim-case').value,
-            cooler_id: document.getElementById('sim-cooler').value,
-        };
+            SIMULATOR_CATEGORIES.forEach(category => {
+                const currentName = getSimulatorOptionName(category.key, buildData[category.key]);
+                const item = document.createElement('div');
+                item.style.cssText = 'display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; padding:0.9rem 1rem; border:1px solid rgba(255,255,255,0.05); border-radius:12px; background:rgba(255,255,255,0.02);';
+                item.innerHTML = `
+                    <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; min-width:120px;">${category.label}</div>
+                    <div style="text-align:right; font-size:0.9rem; color:var(--text-main); line-height:1.4;">${currentName}</div>
+                `;
+                currentList.appendChild(item);
+            });
+        }
 
-        try {
+        function renderSimulationControls() {
+            const controls = document.getElementById('simulation-controls');
+            controls.innerHTML = '';
+
+            SIMULATOR_CATEGORIES.forEach(category => {
+                const group = document.createElement('div');
+                group.innerHTML = `
+                    <label for="sim-${category.id}" style="font-size: 0.7rem; color: var(--text-muted);">${category.label}</label>
+                    <select id="sim-${category.id}" class="form-select" style="width:100%; margin-top:0.4rem;"></select>
+                `;
+                controls.appendChild(group);
+
+                const select = group.querySelector('select');
+                const currentId = buildData[category.key] || '';
+                const options = _simulatorOptions[category.key] || [];
+                select.innerHTML = '<option value="">-- Keep Current --</option>' + options.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+                select.value = currentId;
+            });
+        }
+
+        async function prepareSimulator() {
+            if (!buildData.build_id && !BUILD_COMPONENT_KEYS.some(key => buildData[key])) {
+                document.getElementById('current-build-list').innerHTML = '<div style="color: var(--text-muted); text-align:center; padding:1rem;">Select a build first to simulate upgrades.</div>';
+                document.getElementById('simulation-controls').innerHTML = '<div style="color: var(--text-muted); text-align:center; padding:1rem; grid-column:1 / -1;">No build selected for simulation.</div>';
+                return;
+            }
+
+            document.getElementById('simulation-results-section').style.display = 'none';
+
+            const controls = document.getElementById('simulation-controls');
+            controls.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem; grid-column: 1 / -1;">Loading component database...</div>';
+            try {
+                const responses = await Promise.all(
+                    SIMULATOR_CATEGORIES.map(async category => {
+                        const res = await fetch(category.api);
+                        const data = await res.json();
+                        return [category.key, Array.isArray(data) ? data : []];
+                    })
+                );
+
+                _simulatorOptions = Object.fromEntries(responses);
+                renderCurrentBuildList();
+                renderSimulationControls();
+            } catch (error) {
+                console.error('[Simulator] Failed to load options:', error);
+                document.getElementById('current-build-list').innerHTML = '<div style="color: #f87171; text-align:center; padding:1rem;">Failed to load the current configuration.</div>';
+                document.getElementById('simulation-controls').innerHTML = '<div style="color: #f87171; text-align:center; padding:1rem; grid-column:1 / -1;">Failed to load upgrade options. Please try again.</div>';
+            }
+        }
+
+        document.getElementById('run-simulation').onclick = async () => {
+            const upgrades = {};
+            SIMULATOR_CATEGORIES.forEach(category => {
+                const select = document.getElementById(`sim-${category.id}`);
+                if (select) upgrades[category.key] = select.value;
+            });
             const resp = await fetch('/api/simulate-upgrade', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    original_build_id: currentSimBuildId,
-                    upgraded_components: upgrades
-                })
+                body: JSON.stringify({ original_components: buildData, upgraded_components: upgrades })
             });
-            const data = await resp.json();
-
-            if (data.status === 'success') {
-                resultsEl.style.display = 'block';
-                // Use marked for simulation results
-                explanationEl.innerHTML = typeof marked !== 'undefined' ? marked.parse(data.explanation) : data.explanation;
-                resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                alert("Neural analysis failed: " + data.message);
-            }
-        } catch (e) {
-            console.error("Simulation error:", e);
-            alert("Network link failure during simulation.");
-        } finally {
-            btn.disabled = false;
-            loader.style.display = 'none';
-            btn.innerHTML = '🚀 RUN WHAT-IF SIMULATION';
-        }
-    }
+            const result = await resp.json();
+            document.getElementById('simulation-results-section').style.display = 'block';
+            document.getElementById('simulation-explanation').innerHTML = marked.parse(result.explanation);
+        };
     </script>
-
     {% if session.get('user_id') %}
     {% include 'shared/rigmaster_ai.html' %}
     {% endif %}
 </body>
-
 </html>

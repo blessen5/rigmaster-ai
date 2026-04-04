@@ -723,60 +723,55 @@ def hardware_encyclopedia():
 def builder():
     return render_template('builder.html')
 
+ANALYSIS_BUILD_KEYS = (
+    'cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id',
+    'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id',
+    'mouse_id', 'headset_id', 'webcam_id', 'peripherals_id',
+    'thermal_paste_id', 'wifi_id', 'speakers_id', 'microphone_id',
+    'ups_id', 'tool_id'
+)
+
+def get_user_saved_build_summaries(include_components=True):
+    """Return saved builds for the current user, optionally including component ids."""
+    if db is None:
+        return []
+
+    user_id = session.get('user_id')
+    user_ids = [user_id]
+    try:
+        user_ids.append(ObjectId(user_id))
+    except Exception:
+        pass
+
+    projection = {'name': 1, 'created_at': 1}
+    if include_components:
+        for key in ANALYSIS_BUILD_KEYS:
+            projection[key] = 1
+
+    builds = list(db.saved_builds.find(
+        {'user_id': {'$in': user_ids}},
+        projection
+    ).sort('created_at', -1))
+
+    result = []
+    for b in builds:
+        item = {
+            'id': str(b['_id']),
+            'name': b.get('name') or 'Custom Rig',
+            'date': b.get('created_at', '').strftime('%Y-%m-%d') if hasattr(b.get('created_at', ''), 'strftime') else ''
+        }
+        if include_components:
+            for key in ANALYSIS_BUILD_KEYS:
+                item[key] = b.get(key) or ''
+        result.append(item)
+    return result
+
 @app.route('/api/my_builds')
 @login_required
 def api_my_builds():
     """Return a lightweight list of the current user's saved builds for dropdown selectors."""
     try:
-        if db is None:
-            return jsonify([])
-        user_id = session.get('user_id')
-        user_ids = [user_id]
-        try:
-            user_ids.append(ObjectId(user_id))
-        except:
-            pass
-        builds = list(db.saved_builds.find(
-            {'user_id': {'$in': user_ids}},
-            {'name': 1, 'created_at': 1,
-             'cpu_id': 1, 'gpu_id': 1, 'motherboard_id': 1, 'ram_id': 1,
-             'storage_id': 1, 'psu_id': 1, 'case_id': 1, 'cooler_id': 1,
-             'monitor_id': 1, 'os_id': 1, 'fans_id': 1,
-             'keyboard_id': 1, 'mouse_id': 1, 'headset_id': 1,
-             'webcam_id': 1, 'peripherals_id': 1,
-             'thermal_paste_id': 1, 'wifi_id': 1, 'speakers_id': 1,
-             'microphone_id': 1, 'ups_id': 1, 'tool_id': 1}
-        ).sort('created_at', -1))
-        result = []
-        for b in builds:
-            result.append({
-                'id': str(b['_id']),
-                'name': b.get('name') or 'Custom Rig',
-                'date': b.get('created_at', '').strftime('%Y-%m-%d') if hasattr(b.get('created_at', ''), 'strftime') else '',
-                'cpu_id': b.get('cpu_id') or '',
-                'gpu_id': b.get('gpu_id') or '',
-                'motherboard_id': b.get('motherboard_id') or '',
-                'ram_id': b.get('ram_id') or '',
-                'storage_id': b.get('storage_id') or '',
-                'psu_id': b.get('psu_id') or '',
-                'case_id': b.get('case_id') or '',
-                'cooler_id': b.get('cooler_id') or '',
-                'monitor_id': b.get('monitor_id') or '',
-                'os_id': b.get('os_id') or '',
-                'fans_id': b.get('fans_id') or '',
-                'keyboard_id': b.get('keyboard_id') or '',
-                'mouse_id': b.get('mouse_id') or '',
-                'headset_id': b.get('headset_id') or '',
-                'webcam_id': b.get('webcam_id') or '',
-                'peripherals_id': b.get('peripherals_id') or '',
-                'thermal_paste_id': b.get('thermal_paste_id') or '',
-                'wifi_id': b.get('wifi_id') or '',
-                'speakers_id': b.get('speakers_id') or '',
-                'microphone_id': b.get('microphone_id') or '',
-                'ups_id': b.get('ups_id') or '',
-                'tool_id': b.get('tool_id') or '',
-            })
-        return jsonify(result)
+        return jsonify(get_user_saved_build_summaries(include_components=True))
     except Exception as e:
         app.logger.error(f"Error fetching user builds: {e}")
         return jsonify([])
@@ -786,23 +781,308 @@ def api_my_builds():
 def analysis():
     user_builds = []
     try:
-        if db is not None:
-            user_id = session.get('user_id')
-            user_ids = [user_id]
-            try:
-                user_ids.append(ObjectId(user_id))
-            except:
-                pass
-            builds = list(db.saved_builds.find(
-                {'user_id': {'$in': user_ids}},
-                {'name': 1, 'created_at': 1}
-            ).sort('created_at', -1))
-            for b in builds:
-                bname = b.get('name') or 'Custom Rig'
-                user_builds.append({'id': str(b['_id']), 'name': str(bname).strip() or 'Custom Rig'})
+        user_builds = get_user_saved_build_summaries(include_components=True)
     except Exception as e:
         app.logger.warning(f"Analysis build list error: {e}")
     return render_template('analysis.html', user_builds=user_builds)
+
+FIX_SUGGESTION_DB_CATEGORY_MAP = {
+    'cpu': 'cpu', 'gpu': 'gpu', 'motherboard': 'motherboard',
+    'ram': 'ram', 'memory': 'ram', 'storage': 'storage',
+    'psu': 'psu', 'case': 'case', 'cooler': 'cooler',
+    'monitors': 'monitor', 'monitor': 'monitor',
+    'fans': 'fans', 'case_fan': 'fans',
+    'os': 'os', 'keyboard': 'peripherals', 'mouse': 'peripherals',
+    'headset': 'peripherals', 'webcam': 'peripherals',
+    'thermal_paste': 'thermal_paste', 'network': 'wifi_adapters',
+    'network_adapter': 'wifi_adapters', 'speakers': 'speakers',
+    'microphone': 'microphones', 'ups': 'ups',
+    'tools': 'tools', 'assembly_tools': 'tools'
+}
+
+FIX_SUGGESTION_DATA_KEY_MAP = {
+    'cpu': 'cpu_id', 'gpu': 'gpu_id', 'motherboard': 'motherboard_id',
+    'ram': 'ram_id', 'memory': 'ram_id', 'storage': 'storage_id',
+    'psu': 'psu_id', 'case': 'case_id', 'cooler': 'cooler_id',
+    'monitors': 'monitor_id', 'monitor': 'monitor_id',
+    'fans': 'fans_id', 'case_fan': 'fans_id',
+    'os': 'os_id', 'keyboard': 'keyboard_id', 'mouse': 'mouse_id',
+    'headset': 'headset_id', 'webcam': 'webcam_id',
+    'thermal_paste': 'thermal_paste_id', 'network': 'wifi_id',
+    'network_adapter': 'wifi_id', 'speakers': 'speakers_id',
+    'microphone': 'microphone_id', 'ups': 'ups_id',
+    'tools': 'tool_id', 'assembly_tools': 'tool_id'
+}
+
+FIX_SUGGESTION_ENGINE_SLOT_MAP = {
+    'cpu': 'cpu', 'gpu': 'gpu', 'motherboard': 'motherboard',
+    'ram': 'ram', 'memory': 'ram', 'storage': 'storage',
+    'psu': 'psu', 'case': 'case', 'cooler': 'cooler',
+    'monitors': 'monitors', 'monitor': 'monitors',
+    'fans': 'fans', 'case_fan': 'fans',
+    'os': 'os', 'keyboard': 'keyboard', 'mouse': 'mouse',
+    'headset': 'headset', 'webcam': 'webcam',
+    'thermal_paste': 'thermal_paste', 'network': 'network',
+    'network_adapter': 'network', 'speakers': 'speakers',
+    'microphone': 'microphone', 'ups': 'ups',
+    'tools': 'tools', 'assembly_tools': 'tools'
+}
+
+FIX_SUGGESTION_TRANSFORM_CATEGORY_MAP = {
+    'memory': 'ram',
+    'monitors': 'monitor',
+    'monitor': 'monitor',
+    'fans': 'case_fan',
+    'case_fan': 'case_fan',
+    'network': 'network_adapter',
+    'network_adapter': 'network_adapter',
+    'tools': 'assembly_tools',
+    'assembly_tools': 'assembly_tools'
+}
+
+FIX_SUGGESTION_SUBCATEGORY_MAP = {
+    'keyboard': 'keyboard',
+    'mouse': 'mouse',
+    'headset': 'headset',
+    'webcam': 'webcam'
+}
+
+ENGINE_PART_SOURCES = {
+    'cpu': ('cpu_id', 'cpu'),
+    'motherboard': ('motherboard_id', 'motherboard'),
+    'ram': ('ram_id', 'ram'),
+    'gpu': ('gpu_id', 'gpu'),
+    'psu': ('psu_id', 'psu'),
+    'case': ('case_id', 'case'),
+    'cooler': ('cooler_id', 'cooler'),
+    'storage': ('storage_id', 'storage'),
+    'fans': ('fans_id', 'case_fan'),
+    'os': ('os_id', 'os'),
+    'monitors': ('monitor_id', 'monitor'),
+    'keyboard': ('keyboard_id', 'keyboard'),
+    'mouse': ('mouse_id', 'mouse'),
+    'headset': ('headset_id', 'headset'),
+    'webcam': ('webcam_id', 'webcam'),
+    'speakers': ('speakers_id', 'speakers'),
+    'microphone': ('microphone_id', 'microphone'),
+    'thermal_paste': ('thermal_paste_id', 'thermal_paste'),
+    'network': ('wifi_id', 'network_adapter'),
+    'ups': ('ups_id', 'ups'),
+    'tools': ('tool_id', 'assembly_tools')
+}
+
+def build_engine_parts_from_build_data(data):
+    engine_parts = {}
+    for engine_key, (data_key, transform_category) in ENGINE_PART_SOURCES.items():
+        engine_parts[engine_key] = transform_component_for_engine(
+            get_component_by_id(data.get(data_key)),
+            transform_category
+        )
+    return engine_parts
+
+def build_fix_trait_query(data, db_category):
+    if db_category == 'motherboard' and data.get('cpu_id'):
+        curr_cpu = get_component_by_id(data['cpu_id'])
+        if curr_cpu:
+            socket = infer_cpu_socket(curr_cpu)
+            if socket:
+                return {
+                    '$or': [
+                        {'socket': {'$regex': f'^{socket}$', '$options': 'i'}},
+                        {'socket_cpu': {'$regex': f'^{socket}$', '$options': 'i'}},
+                        {'socket_mobo': {'$regex': f'^{socket}$', '$options': 'i'}},
+                        {'specs': {'$regex': socket, '$options': 'i'}},
+                        {'name': {'$regex': socket, '$options': 'i'}}
+                    ]
+                }
+    elif db_category == 'cpu' and data.get('motherboard_id'):
+        curr_mobo = get_component_by_id(data['motherboard_id'])
+        if curr_mobo:
+            socket = infer_mobo_socket(curr_mobo)
+            if socket:
+                return {
+                    '$or': [
+                        {'socket': {'$regex': socket, '$options': 'i'}},
+                        {'specs': {'$regex': socket, '$options': 'i'}},
+                        {'name': {'$regex': socket, '$options': 'i'}}
+                    ]
+                }
+    elif db_category == 'ram' and data.get('motherboard_id'):
+        curr_mobo = get_component_by_id(data['motherboard_id'])
+        if curr_mobo:
+            gen = infer_ram_generation(curr_mobo, is_mobo=True)
+            if gen:
+                return {
+                    '$or': [
+                        {'type': {'$regex': gen, '$options': 'i'}},
+                        {'name': {'$regex': gen, '$options': 'i'}},
+                        {'ram_gen': {'$regex': gen, '$options': 'i'}}
+                    ]
+                }
+    return None
+
+def build_fix_candidate_query(conflict_category, db_category, price_range=None, exclude_id=None, trait_query=None):
+    if db_category == 'ram':
+        base_query = {'category': {'$in': ['ram', 'memory']}}
+    else:
+        base_query = {'category': {'$regex': f'^{re.escape(db_category)}$', '$options': 'i'}}
+
+    sub_category = FIX_SUGGESTION_SUBCATEGORY_MAP.get(conflict_category)
+    if sub_category:
+        base_query['sub_category'] = {'$regex': f'^{re.escape(sub_category)}$', '$options': 'i'}
+
+    clauses = [base_query]
+
+    if price_range and len(price_range) == 2:
+        clauses.append({
+            '$or': [
+                {'price': {'$gte': price_range[0], '$lte': price_range[1]}},
+                {'price_usd': {'$gte': price_range[0], '$lte': price_range[1]}}
+            ]
+        })
+
+    if trait_query:
+        clauses.append(trait_query)
+
+    if exclude_id:
+        try:
+            clauses.append({'_id': {'$ne': ObjectId(exclude_id)}})
+        except Exception:
+            pass
+
+    return clauses[0] if len(clauses) == 1 else {'$and': clauses}
+
+def conflict_still_present(conflict, mock_conflicts):
+    conflict_msg = conflict.get('message', '')
+    conflict_target = conflict.get('target', '')
+    conflict_severity = conflict.get('severity')
+    conflict_category = (conflict.get('healing_query') or {}).get('category')
+    return any(
+        (mc.get('message') == conflict_msg) or
+        (
+            conflict_category and
+            (mc.get('healing_query') or {}).get('category') == conflict_category and
+            mc.get('target') == conflict_target and
+            mc.get('severity') == conflict_severity
+        )
+        for mc in mock_conflicts
+    )
+
+def generate_fix_suggestions(data, arch_conflicts):
+    if db is None or not arch_conflicts:
+        return []
+
+    fix_suggestions = []
+    suggested_slots = set()
+    engine_parts = build_engine_parts_from_build_data(data)
+    original_incompatibles = sum(1 for conflict in arch_conflicts if conflict.get('severity') == 'INCOMPATIBLE')
+
+    for conflict in arch_conflicts:
+        if conflict.get('severity') not in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL'):
+            continue
+
+        healing_query = conflict.get('healing_query') or {}
+        conflict_category = healing_query.get('category', '')
+        if not conflict_category:
+            continue
+
+        data_key = FIX_SUGGESTION_DATA_KEY_MAP.get(conflict_category)
+        engine_slot = FIX_SUGGESTION_ENGINE_SLOT_MAP.get(conflict_category)
+        db_category = FIX_SUGGESTION_DB_CATEGORY_MAP.get(conflict_category, conflict_category)
+        transform_category = FIX_SUGGESTION_TRANSFORM_CATEGORY_MAP.get(conflict_category, conflict_category)
+        dedupe_slot = engine_slot or conflict_category
+
+        if not data_key or not engine_slot or dedupe_slot in suggested_slots:
+            continue
+
+        price_range = healing_query.get('price_range')
+        exclude_id = healing_query.get('exclude_id')
+        trait_query = build_fix_trait_query(data, db_category)
+        current_comp = get_component_by_id(data.get(data_key))
+        current_price = get_comp_price_usd(current_comp) if current_comp else 0
+
+        query_variants = [
+            build_fix_candidate_query(conflict_category, db_category, price_range, exclude_id, trait_query),
+            build_fix_candidate_query(conflict_category, db_category, price_range, exclude_id, None),
+            build_fix_candidate_query(conflict_category, db_category, None, exclude_id, trait_query),
+            build_fix_candidate_query(conflict_category, db_category, None, exclude_id, None),
+        ]
+
+        candidates = []
+        seen_ids = set()
+        for query in query_variants:
+            try:
+                for cand in db.components.find(query).limit(60):
+                    cand_id = str(cand.get('_id'))
+                    if cand_id and cand_id not in seen_ids:
+                        seen_ids.add(cand_id)
+                        candidates.append(cand)
+            except Exception:
+                continue
+            if candidates:
+                break
+
+        if not candidates:
+            continue
+
+        ranked_candidates = []
+        for cand in candidates:
+            mock_engine_parts = dict(engine_parts)
+            mock_engine_parts[engine_slot] = transform_component_for_engine(cand, transform_category)
+
+            try:
+                mock_engine = RelationalConstraintEngine(mock_engine_parts)
+                mock_conflicts = mock_engine.validate_full_build()
+            except Exception:
+                continue
+
+            if conflict_still_present(conflict, mock_conflicts):
+                continue
+
+            remaining_incompatibles = sum(1 for item in mock_conflicts if item.get('severity') == 'INCOMPATIBLE')
+            if remaining_incompatibles > original_incompatibles:
+                continue
+
+            remaining_conflicts = sum(
+                1 for item in mock_conflicts if item.get('severity') in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL')
+            )
+            ranked_candidates.append({
+                'id': str(cand['_id']),
+                'name': clean_comp_name(cand.get('name', 'Unknown')),
+                'result_status': 'Compatible' if remaining_incompatibles == 0 else 'Improved',
+                '_remaining_incompatibles': remaining_incompatibles,
+                '_remaining_conflicts': remaining_conflicts,
+                '_price_distance': abs((get_comp_price_usd(cand) or 0) - current_price)
+            })
+
+        if not ranked_candidates:
+            continue
+
+        ranked_candidates.sort(
+            key=lambda item: (
+                item['_remaining_incompatibles'],
+                item['_remaining_conflicts'],
+                item['_price_distance']
+            )
+        )
+
+        top_options = []
+        for item in ranked_candidates[:3]:
+            item.pop('_remaining_incompatibles', None)
+            item.pop('_remaining_conflicts', None)
+            item.pop('_price_distance', None)
+            top_options.append(item)
+
+        fix_suggestions.append({
+            'category': conflict_category,
+            'type': 'fix' if conflict.get('severity') == 'INCOMPATIBLE' else 'improvement',
+            'title': f"{'Fix' if conflict.get('severity') == 'INCOMPATIBLE' else 'Improve'}: {conflict_category.replace('_', ' ').title()}",
+            'reason': conflict.get('message', 'Compatibility issue detected.'),
+            'options': top_options
+        })
+        suggested_slots.add(dedupe_slot)
+
+    return fix_suggestions
 
 @app.route('/api/full-analysis', methods=['POST'])
 @login_required
@@ -876,7 +1156,8 @@ def api_full_analysis():
         # 4. Generate fix suggestions for each conflict directly from MongoDB
         fix_suggestions = []
         arch_conflicts = validation.get('arch_conflicts', [])
-        if arch_conflicts:
+        # Legacy inline healer kept disabled; generate_fix_suggestions() is the active path.
+        if False and arch_conflicts:
             # Category → DB category mapping
             cat_db_map = {
                 'cpu': 'cpu', 'gpu': 'gpu', 'motherboard': 'motherboard',
@@ -906,77 +1187,186 @@ def api_full_analysis():
                 'tools': 'tool_id', 'assembly_tools': 'tool_id'
             }
             suggested_cats = set()
+            app.logger.info(f"[FixSuggestion] Processing {len(arch_conflicts)} arch conflicts for fix suggestions")
+            
+            # Pre-resolve all current components for the engine (DO ONCE)
+            engine_parts = {
+                "cpu": transform_component_for_engine(get_component_by_id(data.get('cpu_id')), "cpu"),
+                "motherboard": transform_component_for_engine(get_component_by_id(data.get('motherboard_id')), "motherboard"),
+                "ram": transform_component_for_engine(get_component_by_id(data.get('ram_id')), "ram"),
+                "gpu": transform_component_for_engine(get_component_by_id(data.get('gpu_id')), "gpu"),
+                "psu": transform_component_for_engine(get_component_by_id(data.get('psu_id')), "psu"),
+                "case": transform_component_for_engine(get_component_by_id(data.get('case_id')), "case"),
+                "cooler": transform_component_for_engine(get_component_by_id(data.get('cooler_id')), "cooler"),
+                "storage": transform_component_for_engine(get_component_by_id(data.get('storage_id')), "storage"),
+                "fans": transform_component_for_engine(get_component_by_id(data.get('fans_id')), "case_fan"),
+                "os": transform_component_for_engine(get_component_by_id(data.get('os_id')), "os"),
+                "monitors": transform_component_for_engine(get_component_by_id(data.get('monitor_id')), "monitor"),
+                "keyboard": transform_component_for_engine(get_component_by_id(data.get('keyboard_id')), "keyboard"),
+                "mouse": transform_component_for_engine(get_component_by_id(data.get('mouse_id')), "mouse"),
+                "headset": transform_component_for_engine(get_component_by_id(data.get('headset_id')), "headset"),
+                "webcam": transform_component_for_engine(get_component_by_id(data.get('webcam_id')), "webcam"),
+                "speakers": transform_component_for_engine(get_component_by_id(data.get('speakers_id')), "speakers"),
+                "microphone": transform_component_for_engine(get_component_by_id(data.get('microphone_id')), "microphone"),
+                "thermal_paste": transform_component_for_engine(get_component_by_id(data.get('thermal_paste_id')), "thermal_paste"),
+                "network": transform_component_for_engine(get_component_by_id(data.get('wifi_id')), "network_adapter"),
+                "ups": transform_component_for_engine(get_component_by_id(data.get('ups_id')), "ups"),
+                "tools": transform_component_for_engine(get_component_by_id(data.get('tool_id')), "assembly_tools")
+            }
+
             for conflict in arch_conflicts:
+                app.logger.info(f"[FixSuggestion] Processing conflict: {conflict.get('message')} | Severity: {conflict.get('severity')} | Target: {conflict.get('target')}")
+                
                 if conflict['severity'] not in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL'):
+                    app.logger.info(f"[FixSuggestion] Skipping - severity not in fix list")
                     continue
                 h_query = conflict.get('healing_query')
                 if not h_query:
+                    app.logger.info(f"[FixSuggestion] Skipping - no healing query")
                     continue
                 cat = h_query.get('category', '')
                 if cat in suggested_cats:
+                    app.logger.info(f"[FixSuggestion] Skipping - already suggested for {cat}")
                     continue
                 db_cat = cat_db_map.get(cat, cat)
                 data_key = cat_key_map.get(cat)
                 exclude_id = h_query.get('exclude_id')
+                
+                app.logger.info(f"[FixSuggestion] Creating fix suggestion for category={cat}, db_cat={db_cat}, data_key={data_key}")
+                
+                if not data_key:
+                    app.logger.warning(f"[FixSuggestion] No data_key mapping found for category {cat}")
+                    continue
 
                 try:
-                    # Query MongoDB for alternative components
+                    # Enhanced MongoDB Query logic for intelligent healing suggestions
                     q = {'category': {'$regex': f'^{db_cat}$', '$options': 'i'}}
                     if db_cat == 'ram':
                         q = {'category': {'$in': ['ram', 'memory']}}
+                    
+                    # 1. Price Filtering (Architectural target margin)
+                    price_range = h_query.get('price_range')
+                    if price_range and len(price_range) == 2:
+                        # Attempt numeric comparison (requires numeric data in MongoDB)
+                        q['$or'] = [
+                            {'price': {'$gte': price_range[0], '$lte': price_range[1]}},
+                            {'price_usd': {'$gte': price_range[0], '$lte': price_range[1]}}
+                        ]
+
+                    # 2. Smart Technical Trait Filtering (Pre-emptive compatibility check)
+                    trait_query = None
+                    if db_cat == 'motherboard' and data.get('cpu_id'):
+                        curr_cpu = get_component_by_id(data['cpu_id'])
+                        if curr_cpu:
+                            socket = infer_cpu_socket(curr_cpu)
+                            if socket:
+                                trait_query = {
+                                    '$or': [
+                                        {'socket': {'$regex': f'^{socket}$', '$options': 'i'}},
+                                        {'socket_cpu': {'$regex': f'^{socket}$', '$options': 'i'}},
+                                        {'socket_mobo': {'$regex': f'^{socket}$', '$options': 'i'}},
+                                        {'specs': {'$regex': socket, '$options': 'i'}},
+                                        {'name': {'$regex': socket, '$options': 'i'}}
+                                    ]
+                                }
+                    elif db_cat == 'cpu' and data.get('motherboard_id'):
+                        curr_mobo = get_component_by_id(data['motherboard_id'])
+                        if curr_mobo:
+                            socket = infer_mobo_socket(curr_mobo)
+                            if socket:
+                                trait_query = {
+                                    '$or': [
+                                        {'socket': {'$regex': socket, '$options': 'i'}},
+                                        {'specs': {'$regex': socket, '$options': 'i'}},
+                                        {'name': {'$regex': socket, '$options': 'i'}}
+                                    ]
+                                }
+                    elif db_cat == 'ram' and data.get('motherboard_id'):
+                        curr_mobo = get_component_by_id(data['motherboard_id'])
+                        if curr_mobo:
+                            gen = infer_ram_generation(curr_mobo, is_mobo=True)
+                            if gen:
+                                trait_query = {
+                                    '$or': [
+                                        {'type': {'$regex': gen, '$options': 'i'}},
+                                        {'name': {'$regex': gen, '$options': 'i'}},
+                                        {'ram_gen': {'$regex': gen, '$options': 'i'}}
+                                    ]
+                                }
+
+                    if trait_query:
+                        if '$or' in q:
+                            q['$and'] = [{'$or': q.pop('$or')}, trait_query]
+                        else:
+                            q.update(trait_query)
+
                     if exclude_id:
                         try:
                             q['_id'] = {'$ne': ObjectId(exclude_id)}
                         except:
                             pass
 
-                    candidates = list(db.components.find(q).limit(50))
+                    # Fetch candidates - reduced limit for performance
+                    candidates = list(db.components.find(q).limit(40))
+                    
+                    if not candidates and trait_query and db_cat not in ['motherboard', 'cpu']:
+                         for key in trait_query: q.pop(key, None)
+                         q.pop('$and', None)
+                         candidates = list(db.components.find(q).limit(20))
+                    
                     if not candidates:
                         continue
 
-                    # Dry-run: test each candidate to see if it fixes THIS conflict
+                    # Dry-run: IN-MEMORY VALIDATION (Fast)
                     verified = []
+                    conflict_msg = conflict.get('message', '')
+                    conflict_target = conflict.get('target', '')
+                    
                     for cand in candidates:
-                        if len(verified) >= 5:
+                        if len(verified) >= 3: # 3 verified options is usually enough
                             break
-                        # Build a mock data dict with this candidate swapped in
-                        mock_data = dict(data)
-                        if data_key:
-                            mock_data[data_key] = str(cand['_id'])
+                            
+                        # Build a mock engine parts dict with this candidate swapped in
+                        mock_engine_parts = dict(engine_parts)
+                        mock_engine_parts[cat] = transform_component_for_engine(cand, db_cat)
+                        
                         try:
-                            mock_result = run_validation_logic(mock_data)
-                            mock_conflicts = mock_result.get('arch_conflicts', [])
-                            # Check if this specific conflict message is gone
+                            mock_engine = RelationalConstraintEngine(mock_engine_parts)
+                            mock_conflicts = mock_engine.validate_full_build()
+                            
+                            # Check if SPECIFIC conflict is resolved
                             still_has = any(
-                                mc.get('message') == conflict.get('message')
+                                (mc.get('message') == conflict_msg or            
+                                 (mc.get('target') == conflict_target and        
+                                  mc.get('severity') == conflict.get('severity'))) 
                                 for mc in mock_conflicts
                             )
+                            
                             if not still_has:
-                                # Count remaining critical issues
-                                orig_crit = sum(1 for c in arch_conflicts if c['severity'] == 'INCOMPATIBLE')
-                                new_crit = sum(1 for c in mock_conflicts if c.get('severity') == 'INCOMPATIBLE')
-                                if new_crit <= orig_crit:
-                                    new_status = mock_result.get('status', 'Compatible')
-                                    verified.append({
-                                        'id': str(cand['_id']),
-                                        'name': clean_comp_name(cand.get('name', 'Unknown')),
-                                        'result_status': new_status
-                                    })
+                                verified.append({
+                                    'id': str(cand['_id']),
+                                    'name': clean_comp_name(cand.get('name', 'Unknown')),
+                                    'result_status': 'Compatible' # Heuristic
+                                })
                         except Exception:
                             continue
 
                     if verified:
                         sev_type = 'fix' if conflict['severity'] == 'INCOMPATIBLE' else 'improvement'
-                        fix_suggestions.append({
+                        suggestion = {
                             'category': cat,
                             'type': sev_type,
                             'title': f"{'Fix' if sev_type == 'fix' else 'Improve'}: {cat.replace('_', ' ').title()}",
                             'reason': conflict['message'],
                             'options': verified
-                        })
+                        }
+                        fix_suggestions.append(suggestion)
                         suggested_cats.add(cat)
                 except Exception as fix_e:
                     app.logger.warning(f"Fix suggestion error for {cat}: {fix_e}")
+
+
+        fix_suggestions = generate_fix_suggestions(data, validation.get('arch_conflicts', []))
 
         return jsonify({
             'status': 'success',
@@ -1823,7 +2213,27 @@ def api_get_build(build_id):
 @app.route('/api/validate_build', methods=['POST'])
 @login_required
 def api_validate_build():
-    data = request.json
+    data = request.json or {}
+    build_id = data.get('build_id')
+    if build_id:
+        try:
+            user_id = session.get('user_id')
+            user_ids = [user_id]
+            try:
+                user_ids.append(ObjectId(user_id))
+            except:
+                pass
+            saved = db.saved_builds.find_one({'_id': ObjectId(build_id), 'user_id': {'$in': user_ids}})
+            if saved:
+                for k in ['cpu_id','gpu_id','motherboard_id','ram_id','storage_id','psu_id',
+                          'case_id','cooler_id','monitor_id','os_id','fans_id','keyboard_id',
+                          'mouse_id','headset_id','webcam_id','thermal_paste_id','wifi_id',
+                          'speakers_id','microphone_id','ups_id','tool_id','peripherals_id']:
+                    if not data.get(k) and saved.get(k):
+                        data[k] = saved[k]
+        except Exception as e:
+            app.logger.warning(f"Validate-build build load error: {e}")
+            
     return jsonify(run_validation_logic(data))
 
 def rigmaster_detect_pcie(doc):
@@ -3855,7 +4265,7 @@ def transform_component_for_engine(doc, category):
             "usb_3_0": extract_usb_ports(doc).get('usb3', 2)
         },
         "logical": {
-            "socket": infer_cpu_socket(doc) if category in ['cpu', 'motherboard'] else infer_cooler_socket_support(doc) if category == 'cooler' else None,
+            "socket": infer_cpu_socket(doc) if category == 'cpu' else infer_mobo_socket(doc) if category == 'motherboard' else infer_cooler_socket_support(doc) if category == 'cooler' else None,
             "release_date": doc.get('release_date', '2023-01-01'), # Fallback
             "pcie_version": rigmaster_detect_pcie(doc),
             "ram_gen": infer_ram_generation(doc, is_mobo=True) if category == 'motherboard' else infer_ram_generation(doc, is_mobo=False) if category == 'ram' else None,

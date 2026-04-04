@@ -1,0 +1,410 @@
+/* ── Neural Diagnostic Dashboard Styles ── */
+:root {
+    --emerg-red: #ef4444;
+    --warn-yellow: #f59e0b;
+    --info-cyan: #06b6d4;
+    --ok-green: #10b981;
+    --neural-indigo: #6366f1;
+    --panel-bg: rgba(15, 23, 42, 0.6);
+    --panel-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Base Container Override */
+.analysis-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: block; /* Override grid from base */
+}
+
+/* Dashboard Grid Layout */
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .dashboard-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Sidebar: Neural Diagnostic Center ── */
+.diagnostic-sidebar {
+    position: sticky;
+    top: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.glass-panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--panel-border);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Neural Health Gauge */
+.health-center {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.1), transparent 70%);
+}
+
+.gauge-wrapper {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 1.5rem;
+}
+
+.gauge-svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+}
+
+.gauge-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 12;
+}
+
+.gauge-fill {
+    fill: none;
+    stroke: var(--neural-indigo);
+    stroke-width: 12;
+    stroke-linecap: round;
+    stroke-dasharray: 565.48; /* 2 * PI * 90 */
+    stroke-dashoffset: 565.48;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s;
+    filter: drop-shadow(0 0 8px var(--neural-indigo));
+}
+
+.gauge-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.gauge-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    font-family: 'Outfit', sans-serif;
+    line-height: 1;
+    display: block;
+    color: white;
+}
+
+.gauge-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+/* Quick Stats Card */
+.mini-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.mini-stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.mini-stat-val {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    display: block;
+}
+
+.mini-stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* ── Main content: Neural Diagnostics ── */
+.diagnostic-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+}
+
+.panel-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* Diagnostic terminal Log */
+.diagnostic-log-container {
+    background: rgba(2, 6, 23, 0.4);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.log-entry {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.2s;
+    position: relative;
+}
+
+.log-entry:last-child { border-bottom: none; }
+.log-entry:hover { background: rgba(255, 255, 255, 0.02); }
+
+.log-meta {
+    font-size: 0.75rem;
+    color: var(--neural-indigo);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.log-code { font-weight: 700; letter-spacing: 1px; }
+.log-timestamp { opacity: 0.5; font-size: 0.65rem; }
+
+.log-content {
+    border-left: 2px solid rgba(255, 255, 255, 0.05);
+    padding-left: 1.5rem;
+}
+
+.log-tag {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.log-msg { color: #e2e8f0; font-size: 0.9rem; line-height: 1.6; }
+
+/* Log Severity States */
+.log-critical { border-left: 4px solid var(--emerg-red); }
+.log-critical .log-tag { background: rgba(239, 68, 68, 0.15); color: var(--emerg-red); }
+.log-critical .log-code { color: var(--emerg-red); }
+
+.log-warning { border-left: 4px solid var(--warn-yellow); }
+.log-warning .log-tag { background: rgba(245, 158, 11, 0.15); color: var(--warn-yellow); }
+.log-warning .log-code { color: var(--warn-yellow); }
+
+.log-success { border-left: 4px solid var(--ok-green); }
+.log-success .log-tag { background: rgba(16, 185, 129, 0.15); color: var(--ok-green); }
+.log-success .log-code { color: var(--ok-green); }
+
+/* Neural Suggestions Grid */
+.suggestion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.suggestion-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.suggestion-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--neural-indigo);
+    box-shadow: 0 12px 24px rgba(99, 102, 241, 0.15);
+}
+
+.suggestion-type {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+.type-fix { background: rgba(239, 68, 68, 0.1); color: var(--emerg-red); border: 1px solid rgba(239, 68, 68, 0.2); }
+.type-opt { background: rgba(16, 185, 129, 0.1); color: var(--ok-green); border: 1px solid rgba(16, 185, 129, 0.2); }
+
+.suggestion-title { font-size: 1rem; font-weight: 700; color: white; margin-bottom: 0.75rem; }
+.suggestion-reason { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem; flex: 1; }
+
+.suggestion-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fix-btn {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    color: var(--neural-indigo);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.fix-btn:hover { background: var(--neural-indigo); color: white; }
+
+/* Module Price Trackers */
+.price-matrix {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.price-pill {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s;
+}
+
+.price-pill:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255,255,255,0.1); }
+
+.pill-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.pill-info { flex: 1; min-width: 0; }
+.pill-label { font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 2px; }
+.pill-name { font-size: 0.85rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill-value { font-family: 'JetBrains Mono'; color: var(--ok-green); font-weight: 700; font-size: 0.9rem; }
+
+/* ── Terminal Loading Experience ── */
+.terminal-overlay {
+    position: fixed;
+    inset: 0;
+    background: #020617;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.terminal-window {
+    width: 90%;
+    max-width: 650px;
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+    border: 1px solid #1e293b;
+}
+
+.terminal-header {
+    background: #1e293b;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ef4444; }
+.dot-yellow { background: #f59e0b; }
+.dot-green { background: #10b981; }
+
+.terminal-body {
+    padding: 2rem;
+    height: 300px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+.term-line {
+    margin-bottom: 10px;
+    opacity: 0;
+    transform: translateX(-10px);
+    animation: termFadeIn 0.3s forwards;
+}
+
+@keyframes termFadeIn { to { opacity: 1; transform: translateX(0); } }
+
+.term-input { color: var(--neural-indigo); font-weight: 700; margin-right: 10px; }
+.term-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background: var(--neural-indigo);
+    animation: blink 0.8s infinite;
+    vertical-align: middle;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Hero redesign */
+.analysis-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.header-title {
+    font-size: 4rem;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -2px;
+    margin-bottom: 0.5rem;
+}
+
+.header-subtitle {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    font-weight: 700;
+}
