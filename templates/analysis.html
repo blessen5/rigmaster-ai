@@ -368,7 +368,7 @@
                             <div id="cost-monthly"
                                 style="font-size: 2.4rem; font-weight: 800; color: white; margin-bottom: 0.5rem;">$0.00
                             </div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">@ $0.15 per kWh</div>
+                            <div id="cost-per-kwh" style="font-size: 0.8rem; color: var(--text-muted);">@ $0.15 per kWh</div>
                         </div>
 
                         <div
@@ -380,7 +380,7 @@
                                 style="font-size: 2.4rem; font-weight: 800; color: #4ade80; margin-bottom: 0.5rem;">0
                                 <span style="font-size: 1rem;">kg</span>
                             </div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Equivalent to 12 trees</div>
+                            <div id="tree-equivalent" style="font-size: 0.8rem; color: var(--text-muted);">Equivalent to 0 trees</div>
                         </div>
 
                         <div
@@ -930,55 +930,21 @@
                 : 'Add more parts to see the full pricing breakdown.';
         }
 
-        function deriveEnergyMetrics(power) {
-            if (!power || power.status !== 'success') return null;
-
-            const totalWatts = Number(power.total_base_wattage || 0);
-            const recommendedWatts = Number(power.recommended_wattage || 0);
-            const selectedPsuWatts = Number(power.selected_psu_wattage || 0);
-            const monthlyUsageHours = 4 * 30;
-            const costPerKwh = 0.15;
-            const carbonPerKwh = 0.42;
-            const monthlyCost = ((totalWatts / 1000) * monthlyUsageHours * costPerKwh).toFixed(2);
-            const annualCarbon = ((totalWatts / 1000) * monthlyUsageHours * 12 * carbonPerKwh).toFixed(1);
-
-            let rating = 'A';
-            if (totalWatts > 650) rating = 'D';
-            else if (totalWatts > 450) rating = 'C';
-            else if (totalWatts > 300) rating = 'B';
-
-            let insight = `Estimated system draw is ${totalWatts}W. `;
-            if (power.adequacy_status === 'Safe') {
-                insight += selectedPsuWatts
-                    ? `Your ${selectedPsuWatts}W PSU has headroom over the ${recommendedWatts}W recommendation.`
-                    : `The build clears the recommended ${recommendedWatts}W power target.`;
-            } else if (power.adequacy_status === 'Borderline') {
-                insight += `The current PSU is usable, but a ${recommendedWatts}W target would add safer headroom.`;
-            } else if (power.adequacy_status === 'Insufficient') {
-                insight += `The current PSU is undersized. Aim for at least ${recommendedWatts}W.`;
-            } else if (power.adequacy_status === 'No PSU Selected') {
-                insight += `Select a PSU around ${recommendedWatts}W to complete this power check.`;
-            } else {
-                insight += `Recommended PSU target is ${recommendedWatts}W.`;
-            }
-
-            return {
-                monthly_cost: `$${monthlyCost}`,
-                annual_carbon: annualCarbon,
-                rating,
-                insight
-            };
-        }
-
         function updateEnergyLab(power) {
-            const metrics = deriveEnergyMetrics(power);
-            if (!metrics) return;
+            if (!power || power.status !== 'success') return;
 
             document.getElementById('energy-efficiency-lab').style.display = 'block';
-            document.getElementById('cost-monthly').textContent = metrics.monthly_cost;
-            document.getElementById('carbon-footprint').innerHTML = `${metrics.annual_carbon} <span style="font-size: 1rem;">kg</span>`;
-            document.getElementById('efficiency-rating').textContent = `Rating: ${metrics.rating}`;
-            document.getElementById('efficiency-insight').textContent = metrics.insight;
+            document.getElementById('cost-monthly').textContent = power.monthly_cost_formatted || '$0.00';
+            document.getElementById('carbon-footprint').innerHTML = `${power.annual_carbon || '0'} <span style="font-size: 1rem;">kg</span>`;
+            document.getElementById('efficiency-rating').textContent = `Rating: ${power.efficiency_rating || 'N/A'}`;
+            document.getElementById('efficiency-insight').textContent = power.efficiency_insight || 'Power analysis available.';
+            
+            // New dynamic fields
+            const rateEl = document.getElementById('cost-per-kwh');
+            if (rateEl) rateEl.textContent = `@ ${power.cost_per_kwh_formatted || '$0.15'} per kWh`;
+            
+            const treeEl = document.getElementById('tree-equivalent');
+            if (treeEl) treeEl.textContent = `Equivalent to ${power.tree_equivalent || '0'} trees`;
         }
 
         function renderSuggestions(suggestions) {

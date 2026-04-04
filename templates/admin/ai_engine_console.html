@@ -517,11 +517,7 @@
 
                 ('hf', 'Hugging Face', 'hf_...'),
 
-                ('openrouter', ' OpenRouter', 'sk-or-...'),
-
-
-
-                ('serpapi', ' SerpAPI', 'Enter token...')
+                ('openrouter', ' OpenRouter', 'sk-or-...')
 
                 ] %}
 
@@ -753,11 +749,7 @@
 
                     hf_key: document.getElementById('key-hf').value.trim(),
 
-                    openrouter_key: document.getElementById('key-openrouter').value.trim(),
-
-
-
-                    serpapi_key: document.getElementById('key-serpapi').value.trim()
+                    openrouter_key: document.getElementById('key-openrouter').value.trim()
 
                 };
 
@@ -891,7 +883,7 @@
 
             function toggleKeyVisibility() {
 
-                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-hf', 'key-openrouter', 'key-serpapi', 'smtp-password'];
+                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-hf', 'key-openrouter', 'smtp-password'];
 
                 let foundAny = false;
 
