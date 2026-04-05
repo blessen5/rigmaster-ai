@@ -1159,9 +1159,10 @@
             container.innerHTML = _activeFixSuggestions.map(s => {
                 const selectedFix = _selectedFixOptions[s._key] || null;
                 const selectedOption = selectedFix ? (s.options || []).find(opt => opt.id === selectedFix.id) : null;
+                const suggestionType = String(s.type || 'improvement').toUpperCase();
                 return `
                 <div class="step-card" style="padding: 1.5rem; text-align: left;">
-                    <div style="color: var(--primary-light); font-weight: 700; font-size: 0.7rem; margin-bottom: 0.5rem;">${s.type.toUpperCase()}</div>
+                    <div style="color: var(--primary-light); font-weight: 700; font-size: 0.7rem; margin-bottom: 0.5rem;">${suggestionType}</div>
                     <div style="font-weight: 700; margin-bottom: 0.5rem;">${s.title}</div>
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">${s.reason}</div>
                     <div style="font-size: 0.78rem; color: ${selectedOption ? '#4ade80' : 'var(--text-muted)'}; margin-bottom: 0.9rem;">
@@ -1179,6 +1180,81 @@
                 </div>
             `;
             }).join('');
+        }
+
+        function normalizeSuggestionCategory(category) {
+            return String(category || '').trim();
+        }
+
+        function getConflictSuggestionCategories(validation) {
+            const conflicts = validation?.arch_conflicts || [];
+            return [...new Set(
+                conflicts
+                    .filter(conflict => conflict && ['INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL'].includes(conflict.severity))
+                    .map(conflict => normalizeSuggestionCategory((conflict.healing_query && conflict.healing_query.category) || conflict.target))
+                    .filter(Boolean)
+            )];
+        }
+
+        function upsertSuggestionByCategory(collection, suggestion) {
+            const category = normalizeSuggestionCategory(suggestion?.category);
+            if (!category) return;
+
+            const index = collection.findIndex(item => normalizeSuggestionCategory(item?.category) === category);
+            if (index === -1) {
+                collection.push(suggestion);
+                return;
+            }
+
+            const existingType = String(collection[index]?.type || '').toLowerCase();
+            const incomingType = String(suggestion?.type || '').toLowerCase();
+            if (existingType !== 'fix' && incomingType === 'fix') {
+                collection[index] = suggestion;
+            }
+        }
+
+        async function buildDisplayedSuggestions(data, validation, suggestions) {
+            const mergedSuggestions = [];
+            (suggestions || []).forEach(suggestion => upsertSuggestionByCategory(mergedSuggestions, suggestion));
+
+            if ((validation?.status || '') === 'Compatible') {
+                return mergedSuggestions;
+            }
+
+            const conflictCategories = getConflictSuggestionCategories(validation);
+            const missingCategories = conflictCategories.filter(category =>
+                !mergedSuggestions.some(item => normalizeSuggestionCategory(item?.category) === category)
+            );
+
+            if (!missingCategories.length) {
+                return mergedSuggestions;
+            }
+
+            try {
+                const fallbackResp = await fetch('/api/fix-compatibility', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!fallbackResp.ok) {
+                    throw new Error(`Fix compatibility API returned ${fallbackResp.status}`);
+                }
+
+                const fallbackData = await fallbackResp.json();
+                (fallbackData.suggestions || [])
+                    .filter(suggestion => (suggestion.options || []).length)
+                    .forEach(suggestion => {
+                        const category = normalizeSuggestionCategory(suggestion.category);
+                        if (missingCategories.includes(category)) {
+                            upsertSuggestionByCategory(mergedSuggestions, suggestion);
+                        }
+                    });
+            } catch (error) {
+                console.warn('[FullAnalysis] Fallback fix suggestion fetch failed:', error);
+            }
+
+            return mergedSuggestions;
         }
 
         async function startDetailedAnalysis(data, requestId) {
@@ -1204,7 +1280,9 @@
                 }
                 updatePriceTracker(fullData.components, fullData.total_price);
                 updateEnergyLab(fullData.power);
-                renderSuggestions(fullData.fix_suggestions || []);
+                const displayedSuggestions = await buildDisplayedSuggestions(data, fullData.validation, fullData.fix_suggestions || []);
+                if (requestId !== _analysisRequestId) return;
+                renderSuggestions(displayedSuggestions);
             } catch (error) {
                 if (error.name === 'AbortError') return;
                 console.error('[FullAnalysis] Error:', error);
