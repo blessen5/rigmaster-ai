@@ -378,23 +378,21 @@ def get_db():
                 )
                 _mongo_client.admin.command('ping')
             except Exception as e:
-                app.logger.warning(f"Certifi SSL failed, falling back: {e}")
-                # Append tlsAllowInvalidCertificates to the URI to bypass verification
-                fallback_uri = MONGO_URI + "&tlsAllowInvalidCertificates=true"
+                app.logger.error(f"Certifi SSL failed, falling back: {e}")
+                # Robust URI parameter appending
+                sep = "&" if "?" in MONGO_URI else "?"
+                fallback_uri = f"{MONGO_URI}{sep}tlsAllowInvalidCertificates=true"
                 _mongo_client = MongoClient(
                     fallback_uri,
                     serverSelectionTimeoutMS=5000,
                     tz_aware=True,
                     maxPoolSize=10,
-                    minPoolSize=0,
-                    maxIdleTimeMS=30000,
-                    connectTimeoutMS=10000,
-                    socketTimeoutMS=30000,
+                    connectTimeoutMS=10000
                 )
                 _mongo_client.admin.command('ping')
         return _mongo_client['rigmaster']
     except Exception as e:
-        app.logger.warning(f"MongoDB connection failed: {e}")
+        app.logger.error(f"MongoDB connection failed: {e}")
         _mongo_client = None
         return None
 
@@ -1912,7 +1910,15 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if db is not None:
+        global db
+        if db is None:
+            db = get_db()
+            
+        if db is None:
+            flash('Database connection unavailable. Please verify MONGO_URI and IP whitelisting.')
+            return render_template('login.html'), 503
+            
+        try:
             user = db.users.find_one({'username': username})
             if user and check_password_hash(user['password'], password):
                 if not user.get('is_active', True):
@@ -1938,6 +1944,10 @@ def login():
                 if session['is_admin']:
                     return redirect(url_for('admin_dashboard'))
                 return redirect(url_for('home'))
+        except Exception as e:
+            app.logger.error(f"Login error: {e}")
+            flash('A server error occurred during login.')
+            return render_template('login.html'), 500
             
         flash('Invalid username or password')
         return render_template('login.html'), 401
