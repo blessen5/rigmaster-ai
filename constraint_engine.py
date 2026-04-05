@@ -452,7 +452,8 @@ class RelationalConstraintEngine:
         healing_filter = {
             "category": target_category,
             "price_range": [min_p, max_p],
-            "exclude_id": replacement_parts.get("id") if replacement_parts else None
+            "exclude_id": replacement_parts.get("id") if replacement_parts else None,
+            "target_prop": target_prop
         }
         
         self.conflicts.append({
@@ -460,6 +461,7 @@ class RelationalConstraintEngine:
             "severity_value": SEVERITY[severity],
             "message": message,
             "target": target_category,
+            "target_prop": target_prop,
             "healing_query": healing_filter
         })
 

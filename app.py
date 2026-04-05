@@ -912,48 +912,162 @@ def build_engine_parts_from_build_data(data):
         )
     return engine_parts
 
-def build_fix_trait_query(data, db_category):
-    if db_category == 'motherboard' and data.get('cpu_id'):
-        curr_cpu = get_component_by_id(data['cpu_id'])
-        if curr_cpu:
+def get_conflict_target_prop(conflict):
+    if not conflict:
+        return ''
+    healing_query = conflict.get('healing_query') or {}
+    return str(conflict.get('target_prop') or healing_query.get('target_prop') or '').strip()
+
+def build_value_regex_query(fields, values, exact=False):
+    clauses = []
+    seen = set()
+    for value in values or []:
+        if value is None:
+            continue
+        value_str = str(value).strip()
+        if not value_str:
+            continue
+        pattern = f'^{re.escape(value_str)}$' if exact else re.escape(value_str)
+        for field in fields:
+            key = (field, pattern)
+            if key in seen:
+                continue
+            seen.add(key)
+            clauses.append({field: {'$regex': pattern, '$options': 'i'}})
+    if not clauses:
+        return None
+    return {'$or': clauses}
+
+def build_negative_value_regex_query(fields, values):
+    clauses = []
+    seen = set()
+    for value in values or []:
+        if value is None:
+            continue
+        value_str = str(value).strip()
+        if not value_str:
+            continue
+        pattern = re.escape(value_str)
+        for field in fields:
+            key = (field, pattern)
+            if key in seen:
+                continue
+            seen.add(key)
+            clauses.append({field: {'$regex': pattern, '$options': 'i'}})
+    if not clauses:
+        return None
+    return {'$nor': clauses}
+
+def combine_query_clauses(*clauses):
+    filtered = [clause for clause in clauses if clause]
+    if not filtered:
+        return None
+    if len(filtered) == 1:
+        return filtered[0]
+    return {'$and': filtered}
+
+def build_fix_trait_query(data, db_category, conflict=None):
+    target_prop = get_conflict_target_prop(conflict)
+
+    curr_cpu = get_component_by_id(data.get('cpu_id')) if data.get('cpu_id') else None
+    curr_mobo = get_component_by_id(data.get('motherboard_id')) if data.get('motherboard_id') else None
+    curr_ram = get_component_by_id(data.get('ram_id')) if data.get('ram_id') else None
+    curr_case = get_component_by_id(data.get('case_id')) if data.get('case_id') else None
+    curr_cooler = get_component_by_id(data.get('cooler_id')) if data.get('cooler_id') else None
+
+    if db_category == 'motherboard':
+        socket_clause = None
+        ram_gen_clause = None
+        form_factor_clause = None
+
+        if curr_cpu and target_prop in ('', 'socket', 'vrm_phases', 'release_date', 'pcie_lanes', 'usb_c', 'argb_5v', 'usb_ports', 'm2_slots', 'sata_ports'):
             socket = infer_cpu_socket(curr_cpu)
-            if socket:
-                return {
-                    '$or': [
-                        {'socket': {'$regex': f'^{socket}$', '$options': 'i'}},
-                        {'socket_cpu': {'$regex': f'^{socket}$', '$options': 'i'}},
-                        {'socket_mobo': {'$regex': f'^{socket}$', '$options': 'i'}},
-                        {'specs': {'$regex': socket, '$options': 'i'}},
-                        {'name': {'$regex': socket, '$options': 'i'}}
-                    ]
-                }
-    elif db_category == 'cpu' and data.get('motherboard_id'):
-        curr_mobo = get_component_by_id(data['motherboard_id'])
-        if curr_mobo:
+            socket_clause = build_value_regex_query(
+                ['socket', 'socket_cpu', 'socket_mobo', 'name', 'specs'],
+                [socket],
+                exact=False
+            )
+
+        if curr_ram and target_prop == 'ram_gen':
+            ram_gen = infer_ram_generation(curr_ram, is_mobo=False)
+            ram_gen_clause = build_value_regex_query(
+                ['ram_type', 'memory_type', 'name', 'specs'],
+                [ram_gen],
+                exact=False
+            )
+
+        if curr_case and target_prop == 'form_factor':
+            supported_form_factors = infer_case_supported_form_factors(curr_case)
+            form_factor_clause = build_value_regex_query(
+                ['form_factor', 'motherboard_form_factor', 'name', 'specs'],
+                supported_form_factors,
+                exact=False
+            )
+
+        return combine_query_clauses(socket_clause, ram_gen_clause, form_factor_clause)
+
+    if db_category == 'cpu' and curr_mobo:
+        if target_prop in ('', 'socket', 'release_date'):
             socket = infer_mobo_socket(curr_mobo)
-            if socket:
-                return {
-                    '$or': [
-                        {'socket': {'$regex': socket, '$options': 'i'}},
-                        {'specs': {'$regex': socket, '$options': 'i'}},
-                        {'name': {'$regex': socket, '$options': 'i'}}
-                    ]
-                }
-    elif db_category == 'ram' and data.get('motherboard_id'):
-        curr_mobo = get_component_by_id(data['motherboard_id'])
-        if curr_mobo:
-            gen = infer_ram_generation(curr_mobo, is_mobo=True)
-            if gen:
-                return {
-                    '$or': [
-                        {'type': {'$regex': gen, '$options': 'i'}},
-                        {'ram_type': {'$regex': gen, '$options': 'i'}},
-                        {'memory_type': {'$regex': gen, '$options': 'i'}},
-                        {'name': {'$regex': gen, '$options': 'i'}},
-                        {'ram_gen': {'$regex': gen, '$options': 'i'}},
-                        {'specs': {'$regex': gen, '$options': 'i'}}
-                    ]
-                }
+            return build_value_regex_query(
+                ['socket', 'socket_cpu', 'socket_type', 'name', 'specs'],
+                [socket],
+                exact=False
+            )
+        return None
+
+    if db_category == 'ram' and curr_mobo:
+        if target_prop in ('', 'ram_gen', 'sticks', 'capacity', 'speed'):
+            ram_gen = infer_ram_generation(curr_mobo, is_mobo=True)
+            return build_value_regex_query(
+                ['type', 'ram_type', 'memory_type', 'name', 'ram_gen', 'specs'],
+                [ram_gen],
+                exact=False
+            )
+        return None
+
+    if db_category == 'case':
+        if curr_mobo and target_prop == 'form_factor':
+            mobo_form_factor = infer_mobo_form_factor(curr_mobo)
+            return build_value_regex_query(
+                ['type', 'form_factor', 'supported_form_factors', 'name', 'specs'],
+                [mobo_form_factor],
+                exact=False
+            )
+        return None
+
+    if db_category == 'cooler' and curr_cpu:
+        if target_prop in ('', 'socket', 'missing'):
+            cpu_socket = infer_cpu_socket(curr_cpu)
+            return build_value_regex_query(
+                ['socket', 'socket_cpu', 'socket_mobo', 'supported_sockets', 'name', 'specs'],
+                [cpu_socket],
+                exact=False
+            )
+        if target_prop == 'thickness' and curr_case:
+            case_name = normalize(curr_case.get('name', ''))
+            supported_mount = 'TOP' if 'TOP' in case_name else ''
+            if supported_mount:
+                return build_value_regex_query(['name', 'type', 'specs'], [supported_mount], exact=False)
+        return None
+
+    if db_category == 'storage' and curr_mobo:
+        if target_prop == 'm2_slots':
+            return build_negative_value_regex_query(
+                ['type', 'form_factor', 'interface', 'protocol', 'name', 'specs'],
+                ['M.2', 'NVME']
+            )
+        if target_prop == 'sata_ports':
+            return build_value_regex_query(
+                ['type', 'form_factor', 'interface', 'protocol', 'name', 'specs'],
+                ['M.2', 'NVME'],
+                exact=False
+            )
+        return None
+
+    if db_category == 'gpu' and target_prop == 'missing':
+        return None
+
     return None
 
 def build_fix_candidate_query(conflict_category, db_category, price_range=None, exclude_id=None, trait_query=None):
@@ -1003,7 +1117,7 @@ def get_fix_suggestion_options(data, conflict, engine_parts, original_incompatib
 
     price_range = healing_query.get('price_range')
     exclude_id = healing_query.get('exclude_id')
-    trait_query = build_fix_trait_query(data, db_category)
+    trait_query = build_fix_trait_query(data, db_category, conflict)
     current_comp = get_component_by_id(data.get(data_key))
     current_price = get_comp_price_usd(current_comp) if current_comp else 0
 
@@ -1097,6 +1211,7 @@ def get_fix_suggestion_options(data, conflict, engine_parts, original_incompatib
 def conflict_still_present(conflict, mock_conflicts):
     conflict_msg = conflict.get('message', '')
     conflict_target = conflict.get('target', '')
+    conflict_prop = get_conflict_target_prop(conflict)
     conflict_severity = conflict.get('severity')
     conflict_category = (conflict.get('healing_query') or {}).get('category')
     return any(
@@ -1105,7 +1220,8 @@ def conflict_still_present(conflict, mock_conflicts):
             conflict_category and
             (mc.get('healing_query') or {}).get('category') == conflict_category and
             mc.get('target') == conflict_target and
-            mc.get('severity') == conflict_severity
+            mc.get('severity') == conflict_severity and
+            (not conflict_prop or get_conflict_target_prop(mc) == conflict_prop)
         )
         for mc in mock_conflicts
     )
@@ -4014,12 +4130,26 @@ def infer_mobo_vrm_phases(doc):
     name = normalize(doc.get('name', ''))
     ff = infer_mobo_form_factor(doc)
     
-    if 'X870' in chipset or 'X870' in name: return 18
     if 'X870-E' in name: return 24
     if 'X870-F' in name: return 20
+    if 'X870' in chipset or 'X870' in name: return 18
+    if 'X670E' in chipset or 'X670E' in name: return 18
     if 'X670' in chipset or 'X670' in name:
         return 16 if 'E' in name else 14
     if 'B650' in chipset or 'B650' in name: return 12
+
+    if any(x in chipset or x in name for x in ['Z890', 'Z790']): return 18
+    if any(x in chipset or x in name for x in ['Z690', 'H870', 'H770']): return 16
+    if any(x in chipset or x in name for x in ['B860', 'B760', 'B660']): return 12
+    if any(x in chipset or x in name for x in ['H810', 'H710', 'H610', 'H510', 'B560', 'B460']): return 10
+
+    premium_tokens = ['EXTREME', 'APEX', 'MASTER', 'ACE', 'CARBON', 'TAICHI', 'UNIFY', 'GODLIKE', 'FORMULA']
+    enthusiast_tokens = ['HERO', 'AORUS PRO', 'AORUS ELITE', 'TOMAHAWK', 'STEEL LEGEND', 'STRIX', 'PROART']
+    if any(token in name for token in premium_tokens):
+        return 18
+    if any(token in name for token in enthusiast_tokens):
+        return 14
+
     if ff == 'Mini ITX': return 8
     return 10
 
