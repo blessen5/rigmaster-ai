@@ -6349,20 +6349,10 @@ def compare_builds():
             # but we can use our existing power analysis logic
             
             # Power Analysis
-            power_res = run_power_analysis({
-                'cpu_id': build.get('cpu_id'),
-                'gpu_id': build.get('gpu_id'),
-                'ram_id': build.get('ram_id'),
-                'storage_id': build.get('storage_id'),
-                'psu_id': build.get('psu_id')
-            })
+            power_res = run_power_analysis(build)
             
             # Validation (Compatibility)
-            valid_res = run_validation_logic({
-                'cpu_id': build.get('cpu_id'),
-                'motherboard_id': build.get('motherboard_id'),
-                'ram_id': build.get('ram_id')
-            })
+            valid_res = run_validation_logic(build)
 
             details['power_status'] = power_res.get('adequacy_status', 'Unknown')
             details['power_wattage'] = f"{power_res.get('total_base_wattage', 0)}W / {power_res.get('selected_psu_wattage', 0)}W"
@@ -7083,19 +7073,9 @@ def export_build(build_id):
                 components[key.replace('_id', '').upper()] = 'Not Selected'
 
         # Analysis
-        power_res = run_power_analysis({
-            'cpu_id': build.get('cpu_id'),
-            'gpu_id': build.get('gpu_id'),
-            'ram_id': build.get('ram_id'),
-            'storage_id': build.get('storage_id'),
-            'psu_id': build.get('psu_id')
-        })
+        power_res = run_power_analysis(build)
         
-        valid_res = run_validation_logic({
-            'cpu_id': build.get('cpu_id'),
-            'motherboard_id': build.get('motherboard_id'),
-            'ram_id': build.get('ram_id')
-        })
+        valid_res = run_validation_logic(build)
 
         # Generate PDF
         pdf = FPDF()
