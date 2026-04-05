@@ -947,8 +947,11 @@ def build_fix_trait_query(data, db_category):
                 return {
                     '$or': [
                         {'type': {'$regex': gen, '$options': 'i'}},
+                        {'ram_type': {'$regex': gen, '$options': 'i'}},
+                        {'memory_type': {'$regex': gen, '$options': 'i'}},
                         {'name': {'$regex': gen, '$options': 'i'}},
-                        {'ram_gen': {'$regex': gen, '$options': 'i'}}
+                        {'ram_gen': {'$regex': gen, '$options': 'i'}},
+                        {'specs': {'$regex': gen, '$options': 'i'}}
                     ]
                 }
     return None
@@ -984,6 +987,113 @@ def build_fix_candidate_query(conflict_category, db_category, price_range=None, 
 
     return clauses[0] if len(clauses) == 1 else {'$and': clauses}
 
+def get_fix_suggestion_options(data, conflict, engine_parts, original_incompatibles, option_limit=3):
+    healing_query = conflict.get('healing_query') or {}
+    conflict_category = healing_query.get('category', '')
+    if not conflict_category:
+        return None
+
+    data_key = FIX_SUGGESTION_DATA_KEY_MAP.get(conflict_category)
+    engine_slot = FIX_SUGGESTION_ENGINE_SLOT_MAP.get(conflict_category)
+    db_category = FIX_SUGGESTION_DB_CATEGORY_MAP.get(conflict_category, conflict_category)
+    transform_category = FIX_SUGGESTION_TRANSFORM_CATEGORY_MAP.get(conflict_category, conflict_category)
+
+    if not data_key or not engine_slot:
+        return None
+
+    price_range = healing_query.get('price_range')
+    exclude_id = healing_query.get('exclude_id')
+    trait_query = build_fix_trait_query(data, db_category)
+    current_comp = get_component_by_id(data.get(data_key))
+    current_price = get_comp_price_usd(current_comp) if current_comp else 0
+
+    query_variants = [
+        build_fix_candidate_query(conflict_category, db_category, price_range, exclude_id, trait_query),
+        build_fix_candidate_query(conflict_category, db_category, None, exclude_id, trait_query),
+        build_fix_candidate_query(conflict_category, db_category, price_range, exclude_id, None),
+        build_fix_candidate_query(conflict_category, db_category, None, exclude_id, None),
+    ]
+
+    candidates = []
+    seen_ids = set()
+    for query_priority, query in enumerate(query_variants):
+        try:
+            for cand in db.components.find(query).limit(60):
+                cand_id = str(cand.get('_id'))
+                if cand_id and cand_id not in seen_ids:
+                    seen_ids.add(cand_id)
+                    candidates.append((query_priority, cand))
+        except Exception:
+            continue
+
+    if not candidates:
+        return {
+            'category': conflict_category,
+            'engine_slot': engine_slot,
+            'options': []
+        }
+
+    ranked_candidates = []
+    for query_priority, cand in candidates:
+        mock_engine_parts = dict(engine_parts)
+        mock_engine_parts[engine_slot] = transform_component_for_engine(cand, transform_category)
+
+        try:
+            mock_engine = RelationalConstraintEngine(mock_engine_parts)
+            mock_conflicts = mock_engine.validate_full_build()
+        except Exception:
+            continue
+
+        if conflict_still_present(conflict, mock_conflicts):
+            continue
+
+        remaining_incompatibles = sum(1 for item in mock_conflicts if item.get('severity') == 'INCOMPATIBLE')
+        if remaining_incompatibles > original_incompatibles:
+            continue
+
+        remaining_conflicts = sum(
+            1 for item in mock_conflicts if item.get('severity') in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL')
+        )
+        ranked_candidates.append({
+            'id': str(cand['_id']),
+            'name': clean_comp_name(cand.get('name', 'Unknown')),
+            'result_status': 'Compatible' if remaining_incompatibles == 0 else 'Improved',
+            '_query_priority': query_priority,
+            '_remaining_incompatibles': remaining_incompatibles,
+            '_remaining_conflicts': remaining_conflicts,
+            '_price_distance': abs((get_comp_price_usd(cand) or 0) - current_price)
+        })
+
+    if not ranked_candidates:
+        return {
+            'category': conflict_category,
+            'engine_slot': engine_slot,
+            'options': []
+        }
+
+    ranked_candidates.sort(
+        key=lambda item: (
+            item['_remaining_incompatibles'],
+            item['_remaining_conflicts'],
+            item['_query_priority'],
+            item['_price_distance']
+        )
+    )
+
+    top_options = []
+    for item in ranked_candidates[:option_limit]:
+        item.pop('_query_priority', None)
+        item.pop('_remaining_incompatibles', None)
+        item.pop('_remaining_conflicts', None)
+        item.pop('_price_distance', None)
+        top_options.append(item)
+
+    return {
+        'category': conflict_category,
+        'engine_slot': engine_slot,
+        'options': top_options
+    }
+
 def conflict_still_present(conflict, mock_conflicts):
     conflict_msg = conflict.get('message', '')
     conflict_target = conflict.get('target', '')
@@ -1013,97 +1123,20 @@ def generate_fix_suggestions(data, arch_conflicts):
         if conflict.get('severity') not in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL'):
             continue
 
-        healing_query = conflict.get('healing_query') or {}
-        conflict_category = healing_query.get('category', '')
-        if not conflict_category:
+        suggestion_bundle = get_fix_suggestion_options(data, conflict, engine_parts, original_incompatibles, option_limit=3)
+        if not suggestion_bundle:
             continue
 
-        data_key = FIX_SUGGESTION_DATA_KEY_MAP.get(conflict_category)
-        engine_slot = FIX_SUGGESTION_ENGINE_SLOT_MAP.get(conflict_category)
-        db_category = FIX_SUGGESTION_DB_CATEGORY_MAP.get(conflict_category, conflict_category)
-        transform_category = FIX_SUGGESTION_TRANSFORM_CATEGORY_MAP.get(conflict_category, conflict_category)
-        dedupe_slot = engine_slot or conflict_category
+        conflict_category = suggestion_bundle.get('category')
+        dedupe_slot = suggestion_bundle.get('engine_slot') or conflict_category
 
-        if not data_key or not engine_slot or dedupe_slot in suggested_slots:
+        if not conflict_category or dedupe_slot in suggested_slots:
             continue
 
-        price_range = healing_query.get('price_range')
-        exclude_id = healing_query.get('exclude_id')
-        trait_query = build_fix_trait_query(data, db_category)
-        current_comp = get_component_by_id(data.get(data_key))
-        current_price = get_comp_price_usd(current_comp) if current_comp else 0
+        top_options = suggestion_bundle.get('options') or []
 
-        query_variants = [
-            build_fix_candidate_query(conflict_category, db_category, price_range, exclude_id, trait_query),
-            build_fix_candidate_query(conflict_category, db_category, price_range, exclude_id, None),
-            build_fix_candidate_query(conflict_category, db_category, None, exclude_id, trait_query),
-            build_fix_candidate_query(conflict_category, db_category, None, exclude_id, None),
-        ]
-
-        candidates = []
-        seen_ids = set()
-        for query in query_variants:
-            try:
-                for cand in db.components.find(query).limit(60):
-                    cand_id = str(cand.get('_id'))
-                    if cand_id and cand_id not in seen_ids:
-                        seen_ids.add(cand_id)
-                        candidates.append(cand)
-            except Exception:
-                continue
-            if candidates:
-                break
-
-        if not candidates:
+        if not top_options:
             continue
-
-        ranked_candidates = []
-        for cand in candidates:
-            mock_engine_parts = dict(engine_parts)
-            mock_engine_parts[engine_slot] = transform_component_for_engine(cand, transform_category)
-
-            try:
-                mock_engine = RelationalConstraintEngine(mock_engine_parts)
-                mock_conflicts = mock_engine.validate_full_build()
-            except Exception:
-                continue
-
-            if conflict_still_present(conflict, mock_conflicts):
-                continue
-
-            remaining_incompatibles = sum(1 for item in mock_conflicts if item.get('severity') == 'INCOMPATIBLE')
-            if remaining_incompatibles > original_incompatibles:
-                continue
-
-            remaining_conflicts = sum(
-                1 for item in mock_conflicts if item.get('severity') in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL')
-            )
-            ranked_candidates.append({
-                'id': str(cand['_id']),
-                'name': clean_comp_name(cand.get('name', 'Unknown')),
-                'result_status': 'Compatible' if remaining_incompatibles == 0 else 'Improved',
-                '_remaining_incompatibles': remaining_incompatibles,
-                '_remaining_conflicts': remaining_conflicts,
-                '_price_distance': abs((get_comp_price_usd(cand) or 0) - current_price)
-            })
-
-        if not ranked_candidates:
-            continue
-
-        ranked_candidates.sort(
-            key=lambda item: (
-                item['_remaining_incompatibles'],
-                item['_remaining_conflicts'],
-                item['_price_distance']
-            )
-        )
-
-        top_options = []
-        for item in ranked_candidates[:3]:
-            item.pop('_remaining_incompatibles', None)
-            item.pop('_remaining_conflicts', None)
-            item.pop('_price_distance', None)
-            top_options.append(item)
 
         fix_suggestions.append({
             'category': conflict_category,
@@ -2321,102 +2354,26 @@ def api_fix_compatibility():
             
             # Map of already suggested categories to avoid duplicates
             suggested_cats = set()
+            orig_crit = sum(1 for x in conflicts if x.get('severity') == "INCOMPATIBLE")
             
             for conflict in conflicts:
                 if conflict['severity'] in ["INCOMPATIBLE", "WARNING", "SUBOPTIMAL"]:
-                    h_query = conflict.get('healing_query')
-                    if h_query:
-                        cat = h_query['category']
-                        if cat in suggested_cats: continue # Skip duplicate slot suggestions
-                        
-                        price_range = h_query['price_range']
-                        exclude = h_query['exclude_id']
-                        
-                        # Category mapping for DB strings
-                        db_cat = cat
-                        if cat == 'monitors': db_cat = 'monitor'
-                        if cat == 'fans': db_cat = 'case-fan'
-                        if cat == 'network': db_cat = 'network-adapter'
-                        if cat == 'tools': db_cat = 'assembly-tools'
-                        if cat == 'os': db_cat = 'os'
-                        if cat == 'thermal_paste': db_cat = 'thermal-paste'
-                        if cat == 'case_fan': db_cat = 'case-fan'
-                        if cat == 'network_adapter': db_cat = 'network-adapter'
-                        
-                        # Build Suggestion Pool
-                        query = {
-                            'category': {'$regex': f'^{db_cat}$', '$options': 'i'},
-                            '_id': {'$ne': ObjectId(exclude)}
-                        }
-                        
-                        candidates = list(db.components.find(query).limit(100))
-                        
-                        # Sort candidates: prioritize higher tier for "Fixes"
-                        # and similar/higher tier for "Improvements"
-                        candidates.sort(key=lambda x: get_comp_tier(x), reverse=True)
-                        
-                        matches = []
-                        for c in candidates:
-                            p = get_comp_price_usd(c)
-                            # Allow a slightly broader price range for fixes (0.8 to 1.5)
-                            # to ensure we actually find something better if needed.
-                            p_min = price_range[0] * 0.88 # slightly more margin
-                            p_max = price_range[1] * 1.5 if conflict['severity'] == "INCOMPATIBLE" else price_range[1] * 1.15
-                            
-                            if p_min <= p <= p_max:
-                                # Dry-run validation constraints
-                                mock_parts = engine_parts.copy()
-                                mock_parts[cat] = transform_component_for_engine(c, cat)
-                                mock_engine = RelationalConstraintEngine(mock_parts)
-                                mock_results = mock_engine.validate_full_build()
-                                
-                                # Check if the specific conflict message is gone
-                                if any(mc.get('message') == conflict.get('message') for mc in mock_results): continue
-                                
-                                # Ensure we don't introduce MORE critical errors
-                                orig_crit = sum(1 for x in conflicts if x.get('severity') == "INCOMPATIBLE")
-                                new_crit = sum(1 for x in mock_results if x.get('severity') == "INCOMPATIBLE")
-                                if new_crit > orig_crit: continue
-                                    
-                                matches.append({
-                                    'id': str(c['_id']),
-                                    'name': c.get('name'),
-                                    'tier': get_comp_tier(c)
-                                })
-                                if len(matches) >= 5: break
-                        
-                        # If no matches found in price range, try broader search
-                        if not matches:
-                            # Try without price constraint
-                            for c in candidates:
-                                if c.get('_id') != exclude:
-                                    # Dry-run validation constraints
-                                    mock_parts = engine_parts.copy()
-                                    mock_parts[cat] = transform_component_for_engine(c, cat)
-                                    mock_engine = RelationalConstraintEngine(mock_parts)
-                                    mock_results = mock_engine.validate_full_build()
-                                    
-                                    if any(mc.get('message') == conflict.get('message') for mc in mock_results): continue
-                                    orig_crit = sum(1 for x in conflicts if x.get('severity') == "INCOMPATIBLE")
-                                    new_crit = sum(1 for x in mock_results if x.get('severity') == "INCOMPATIBLE")
-                                    if new_crit > orig_crit: continue
-                                    
-                                    matches.append({
-                                        'id': str(c['_id']),
-                                        'name': c.get('name'),
-                                        'tier': get_comp_tier(c)
-                                    })
-                                    if len(matches) >= 3: break
-                        
-                        if matches:
-                            suggestions.append({
-                                'category': cat,
-                                'type': 'fix' if conflict['severity'] == "INCOMPATIBLE" else 'improvement',
-                                'title': f'Relational Engine Fix: {cat.upper()}',
-                                'reason': conflict['message'],
-                                'options': matches
-                            })
-                            suggested_cats.add(cat)
+                    h_query = conflict.get('healing_query') or {}
+                    cat = h_query.get('category')
+                    if not cat or cat in suggested_cats:
+                        continue
+
+                    suggestion_bundle = get_fix_suggestion_options(data, conflict, engine_parts, orig_crit, option_limit=3)
+                    matches = (suggestion_bundle or {}).get('options') or []
+                    if matches:
+                        suggestions.append({
+                            'category': cat,
+                            'type': 'fix' if conflict['severity'] == "INCOMPATIBLE" else 'improvement',
+                            'title': f'Relational Engine Fix: {cat.upper()}',
+                            'reason': conflict['message'],
+                            'options': matches
+                        })
+                        suggested_cats.add(cat)
                             
         except Exception as arc_e:
             app.logger.error(f"Healer Engine Error: {arc_e}")
@@ -2517,7 +2474,57 @@ def api_fix_compatibility():
             
             if gpu:
                 g_len = parse_dimension_mm(gpu, ['length', 'gpu_length'])
-                if g_len > 0 and c_g_max > 0 and g_len > c_g_max:
+                rad_offset = 0
+                if cooler and cooler != "None Selected":
+                    cooler_name = normalize(cooler.get('name', ''))
+                    cooler_type = normalize(cooler.get('type', ''))
+                    cooler_specs = normalize(cooler.get('specs', ''))
+                    is_liquid = any(token in f"{cooler_name} {cooler_type} {cooler_specs}" for token in ['AIO', 'LIQUID', 'RADIATOR'])
+                    mounts_top = 'TOP' in cooler_name or 'TOP' in cooler_type or 'TOP' in cooler_specs
+                    mounts_front = 'FRONT' in cooler_name or 'FRONT' in cooler_type or 'FRONT' in cooler_specs or (is_liquid and not mounts_top)
+                    if mounts_front:
+                        rad_offset = infer_radiator_thickness(cooler) + 25
+
+                effective_gpu_space = c_g_max - rad_offset if c_g_max > 0 else 0
+                if g_len > 0 and effective_gpu_space > 0 and g_len > effective_gpu_space:
+                    shorter_gpus = []
+                    all_gpus = list(db.components.find({'category': 'gpu'}).limit(300))
+                    for g in all_gpus:
+                        candidate_len = parse_dimension_mm(g, ['length', 'gpu_length'])
+                        if 0 < candidate_len <= effective_gpu_space:
+                            shorter_gpus.append({
+                                'id': str(g['_id']),
+                                'name': g.get('name'),
+                                'dist': abs(get_comp_tier(g) - system_tier),
+                                'len': candidate_len
+                            })
+                    if shorter_gpus:
+                        shorter_gpus.sort(key=lambda x: (x['dist'], abs(x['len'] - g_len)))
+                        suggestions.append({
+                            'category': 'gpu',
+                            'type': 'fix',
+                            'title': 'Shorter GPU for Front-Radiator Clearance',
+                            'reason': f'Front radiator hardware reduces effective GPU space to {int(effective_gpu_space)}mm; the current GPU is {int(g_len)}mm long.',
+                            'options': [{'id': g['id'], 'name': g['name']} for g in shorter_gpus[:3]]
+                        })
+
+                    fitting_cases = []
+                    all_c = list(db.components.find({'category': 'case'}).limit(300))
+                    for c in all_c:
+                        candidate_case_max = parse_dimension_mm(c, ['max_video_card_length', 'gpu_clearance'])
+                        if candidate_case_max >= g_len + rad_offset:
+                            fitting_cases.append({'id': str(c['_id']), 'name': c.get('name'), 'dist': abs(get_comp_tier(c) - system_tier)})
+                    if fitting_cases:
+                        fitting_cases.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'case',
+                            'type': 'fix',
+                            'title': 'Case with Better Front-Radiator GPU Clearance',
+                            'reason': f'Your current front-radiator setup leaves only {int(effective_gpu_space)}mm for the GPU.',
+                            'options': [{'id': c['id'], 'name': c['name']} for c in fitting_cases[:3]]
+                        })
+
+                elif g_len > 0 and c_g_max > 0 and g_len > c_g_max:
                     fitting_cases = []
                     all_c = list(db.components.find({'category': 'case'}).limit(300))
                     for c in all_c:
@@ -2767,8 +2774,8 @@ def api_fix_compatibility():
             cpu_voltage = infer_cpu_voltage(cpu)
             mobo_vrm = infer_mobo_vrm_phases(mobo)
             
-            if cpu_tdp > 140 and mobo_vrm < 16:
-                # Suggest high-end motherboards with better VRM
+            if cpu_tdp > 140 and mobo_vrm > 0 and mobo_vrm < 16:
+                # Suggest very high-end motherboards with stronger VRM for extreme CPUs
                 try:
                     cpu_socket = infer_cpu_socket(cpu)
                     high_vrm_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
@@ -2782,8 +2789,32 @@ def api_fix_compatibility():
                         vrm_matches.sort(key=lambda x: x['dist'])
                         suggestions.append({
                             'category': 'motherboard',
+                            'type': 'improvement',
                             'title': f'High-Power-Delivery Motherboard (16+ Phase VRM)',
                             'reason': f'Your {int(cpu_tdp)}W CPU benefits from robust VRM; current board has only {mobo_vrm} phases.',
+                            'options': [{'id': m['id'], 'name': m['name']} for m in vrm_matches[:3]]
+                        })
+                except Exception:
+                    pass
+
+            elif cpu_tdp > 120 and mobo_vrm > 0 and mobo_vrm < 14:
+                # Suggest high-end motherboards with better VRM
+                try:
+                    cpu_socket = infer_cpu_socket(cpu)
+                    high_vrm_mobos = list(db.components.find({'category': 'motherboard'}).limit(300))
+                    vrm_matches = []
+                    for m in high_vrm_mobos:
+                        if cpu_socket and cpu_socket in [s.strip() for s in (infer_mobo_socket(m) or '').split('/')]:
+                            mobo_vrm_check = infer_mobo_vrm_phases(m)
+                            if mobo_vrm_check >= 14:
+                                vrm_matches.append({'id': str(m['_id']), 'name': m.get('name'), 'dist': abs(get_comp_tier(m) - system_tier)})
+                    if vrm_matches:
+                        vrm_matches.sort(key=lambda x: x['dist'])
+                        suggestions.append({
+                            'category': 'motherboard',
+                            'type': 'improvement',
+                            'title': f'Higher-VRM Motherboard for {int(cpu_tdp)}W CPU',
+                            'reason': f'Your {int(cpu_tdp)}W CPU is paired with a {mobo_vrm}-phase board. A stronger VRM design improves stability under sustained load.',
                             'options': [{'id': m['id'], 'name': m['name']} for m in vrm_matches[:3]]
                         })
                 except Exception:
@@ -4039,6 +4070,21 @@ def infer_storage_raid_support(doc):
     # RAID primarily relevant for SATA
     return 'ENTERPRISE' in val or 'RAID' in val or interface == 'HDD'
 
+def infer_radiator_thickness(doc):
+    """Extracts radiator thickness in mm without confusing it with radiator size (240/360mm)."""
+    if not doc: return 27
+    for field in ['thickness', 'radiator_thickness', 'rad_thickness']:
+        val = extract_numeric_value(doc.get(field))
+        if 15 <= val <= 80:
+            return val
+
+    specs = normalize(doc.get('specs', '') or '')
+    match = re.search(r'(\d{2})(?:\.\d+)?\s*MM[^A-Z0-9]*(?:THICK|THICKNESS)', specs)
+    if match:
+        return float(match.group(1))
+
+    return 27
+
 def infer_psu_efficiency_rating(doc):
     """Extracts PSU efficiency rating (80+, Gold, Platinum, etc)."""
     if not doc: return '80+'
@@ -4234,7 +4280,7 @@ def transform_component_for_engine(doc, category):
         "dimensions": {
             "length": parse_dimension_mm(doc, ['length', 'gpu_length', 'max_gpu_length']),
             "height": parse_dimension_mm(doc, ['height', 'cooler_height', 'max_cpucooler_height']),
-            "thickness": extract_numeric_value(doc.get('radiator_size') or doc.get('thickness')) or 27,
+            "thickness": extract_numeric_value(doc.get('thickness')) or 27,
             "fan_thickness": 25 # Standard
         },
         "electrical": {
@@ -4286,6 +4332,7 @@ def transform_component_for_engine(doc, category):
         
     if category == 'cooler':
         res["dimensions"]["height"] = parse_dimension_mm(doc, ['height', 'cooler_height'])
+        res["dimensions"]["thickness"] = infer_radiator_thickness(doc)
         res["type"] = "Liquid Cooler" if 'LIQUID' in normalize(doc.get('type', '')) else "Air Cooler"
         res["mounting"] = "top" if 'TOP' in normalize(doc.get('specs', '')) else "front"
 
