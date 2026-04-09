@@ -611,16 +611,32 @@
             // If already has messages, don't reload from storage
             if (container.children.length > 0) return;
 
-            const userId = '{{ session.get("user_id", "guest") }}';
-            const storageKey = `nexus_chat_history_${userId}`;
-            const history = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            history.forEach(msg => {
-                this.appendMessage(msg.role, msg.content, msg.time, false);
-            });
-            
-            if (history.length > 0) {
-                const chatBody = document.getElementById('nexus-chat-body');
-                chatBody.scrollTop = chatBody.scrollHeight;
+            try {
+                const userId = '{{ session.get("user_id", "guest") }}';
+                const storageKey = `nexus_chat_history_${userId}`;
+                const historyStr = localStorage.getItem(storageKey);
+                if (!historyStr) return;
+                
+                const history = JSON.parse(historyStr);
+                if (!Array.isArray(history)) return;
+                
+                history.forEach(msg => {
+                    if (msg && msg.role && msg.content) {
+                        this.appendMessage(msg.role, msg.content, msg.time || '', false);
+                    }
+                });
+                
+                if (history.length > 0) {
+                    setTimeout(() => {
+                        const chatBody = document.getElementById('nexus-chat-body');
+                        if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+                    }, 50);
+                }
+            } catch (e) {
+                console.error("Failed to load Nexus AI history:", e);
+                // Clear corrupted history
+                const userId = '{{ session.get("user_id", "guest") }}';
+                localStorage.removeItem(`nexus_chat_history_${userId}`);
             }
         },
 
@@ -736,5 +752,8 @@
         } else {
             text.textContent = 'Nexus active on ' + document.title;
         }
+        
+        // Pre-load chat history so it's ready and rendered
+        NexusAI.loadHistory();
     });
 </script>
