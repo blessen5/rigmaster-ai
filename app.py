@@ -113,7 +113,125 @@ def clean_comp_name(name):
     s = s.strip(' |').strip()
     return s if s else "Unknown Component"
 
+ORDER_COMPONENTS_CACHE_VERSION = "v3"
+
+_CURRENCY_HINT_PATTERNS = [
+    ('INR', (r'₹', r'â‚¹', r'\bINR\b', r'\bRS\.?\b', r'\bRUPEES?\b')),
+    ('AUD', (r'\bAUD\b', r'A\$')),
+    ('CAD', (r'\bCAD\b', r'C\$')),
+    ('SGD', (r'\bSGD\b', r'S\$')),
+    ('HKD', (r'\bHKD\b', r'HK\$')),
+    ('NZD', (r'\bNZD\b', r'NZ\$')),
+    ('TWD', (r'\bTWD\b', r'NT\$')),
+    ('EUR', (r'€', r'â‚¬', r'\bEUR\b')),
+    ('GBP', (r'£', r'Â£', r'\bGBP\b')),
+    ('JPY', (r'¥', r'Â¥', r'\bJPY\b')),
+    ('CNY', (r'\bCNY\b', r'\bCNH\b', r'CN¥')),
+    ('BRL', (r'\bBRL\b', r'R\$')),
+    ('PHP', (r'\bPHP\b', r'₱', r'â‚±')),
+    ('AED', (r'\bAED\b', r'د\.إ', r'Ø¯\.Ø¥')),
+    ('USD', (r'\bUSD\b', r'US\$', r'\$')),
+]
+
+def detect_currency_code(value, default='USD'):
+    text = str(value or '').strip()
+    if not text:
+        return default
+
+    for code, patterns in _CURRENCY_HINT_PATTERNS:
+        for pattern in patterns:
+            if re.search(pattern, text, flags=re.IGNORECASE):
+                return code
+
+    upper_text = text.upper()
+    symbol_candidates = sorted(
+        ((code, str(sym).strip()) for code, sym in CURRENCY_SYMBOLS.items() if sym),
+        key=lambda item: len(item[1]),
+        reverse=True
+    )
+    for code, symbol in symbol_candidates:
+        upper_symbol = symbol.upper()
+        if upper_symbol == '$':
+            continue
+        if upper_symbol and upper_symbol in upper_text:
+            return code
+
+    if '$' in text:
+        return 'USD'
+    return default
+
+def normalize_price_to_usd(raw_price, currency_hint=None, default_currency='USD'):
+    if raw_price is None:
+        return 0.0
+
+    try:
+        if isinstance(raw_price, (int, float)):
+            amount = float(raw_price)
+        else:
+            match = re.search(r'[\d,.]+', str(raw_price))
+            if not match:
+                return 0.0
+            amount = float(match.group(0).replace(',', ''))
+    except Exception:
+        return 0.0
+
+    if amount <= 0:
+        return 0.0
+
+    currency_code = detect_currency_code(
+        currency_hint if currency_hint is not None else raw_price,
+        default=default_currency
+    )
+    return amount / EXCHANGE_RATES.get(currency_code, 1.0)
+
+def normalize_listing_price_to_usd(extracted_price, price_text=''):
+    if isinstance(extracted_price, (int, float)):
+        return normalize_price_to_usd(extracted_price, currency_hint=price_text)
+    if price_text:
+        return normalize_price_to_usd(price_text, currency_hint=price_text)
+    return 0.0
+
+def canonicalize_price_category(cat):
+    normalized = str(cat or '').strip().lower()
+    return {
+        'cpu': 'cpu',
+        'cpus': 'cpus',
+        'gpu': 'gpu',
+        'gpus': 'gpus',
+        'motherboard': 'motherboard',
+        'motherboards': 'motherboards',
+        'case': 'case',
+        'cases': 'cases',
+        'cooler': 'cooler',
+        'coolers': 'coolers',
+        'monitor': 'monitor',
+        'monitors': 'monitors',
+        'keyboard': 'keyboard',
+        'keyboards': 'keyboards',
+        'mouse': 'mouse',
+        'mice': 'mice',
+        'headset': 'headset',
+        'headsets': 'headsets',
+        'webcam': 'webcam',
+        'webcams': 'webcams',
+        'microphone': 'microphone',
+        'microphones': 'microphones',
+        'wifi': 'wifi',
+        'wifi_adapter': 'wifi_adapters',
+        'wifi_adapters': 'wifi_adapters',
+        'tool': 'tools',
+        'tools': 'tools',
+        'assembly_tools': 'tools',
+    }.get(normalized, normalized)
+
+_CATEGORY_PRICE_SANITY_LIMITS_USD = {
+    'tools': 15,
+    'thermal_paste': 20,
+    'fans': 80,
+}
+
 def get_estimated_price(comp_name, cat):
+    cat = canonicalize_price_category(cat)
     name = str(comp_name).upper()
     if cat == 'cpus' or cat == 'cpu':
         if 'THREADRIPPER' in name: return 1500
@@ -185,7 +303,7 @@ def get_estimated_price(comp_name, cat):
     if cat == 'ups':
         return 200
     if cat == 'tools':
-        return 50
+        return 8
     return 100
 
 # Shared price-reading fallback map (used by saved_builds & analysis routes)
@@ -211,45 +329,42 @@ def get_comp_price_usd(comp, id_key=None, est_cat=None):
         return 0.0
     
     # Try multiple common price fields in order of reliability
-    price_fields = ['price', 'msrp', 'cost', 'retail_price', 'sale_price']
+    price_fields = ['price_usd', 'price', 'msrp', 'cost', 'retail_price', 'sale_price']
     raw = None
+    raw_field = None
     for field in price_fields:
         val = comp.get(field)
         if val is not None and val != "" and val != 0 and val != 0.0 and str(val).strip() != "0":
             raw = val
+            raw_field = field
             break
             
-    if raw is not None:
-        try:
-            # Detect currency symbol and determine normalization rate
-            raw_s = str(raw).strip().upper()
-            norm_rate = 1.0
-            
-            # Prioritize non-USD symbols to avoid false positives with $
-            for code, sym in CURRENCY_SYMBOLS.items():
-                if sym and sym != '$' and sym in raw_s:
-                    norm_rate = EXCHANGE_RATES.get(code, 1.0)
-                    break
-            else:
-                # Fallback check for $ if no other symbol was found
-                if '$' in raw_s:
-                    norm_rate = EXCHANGE_RATES.get('USD', 1.0)
-
-            # Extract numeric value (remove currency symbols, commas, etc.)
-            # Match digits and decimal point only
-            clean_match = re.search(r'[\d,.]+', raw_s)
-            if clean_match:
-                p_str = clean_match.group(0).replace(',', '')
-                p = float(p_str)
-                if p > 0:
-                    return p / norm_rate
-        except Exception:
-            pass
-            
-    # Determine fallback category for estimation
     fallback_cat = est_cat
     if fallback_cat is None and id_key:
         fallback_cat = _PRICE_CAT_MAP.get(id_key, id_key)
+    fallback_cat = canonicalize_price_category(fallback_cat)
+
+    if raw is not None:
+        try:
+            currency_hint = (
+                comp.get('currency')
+                or comp.get('price_currency')
+                or comp.get('currency_code')
+                or ('USD' if raw_field == 'price_usd' else None)
+                or raw
+            )
+            normalized_usd = normalize_price_to_usd(raw, currency_hint=currency_hint)
+            if normalized_usd > 0:
+                sanity_cap = _CATEGORY_PRICE_SANITY_LIMITS_USD.get(fallback_cat)
+                if sanity_cap and normalized_usd > sanity_cap:
+                    app.logger.warning(
+                        f"Skipping suspicious {fallback_cat} price for {comp.get('name', 'Unknown')}: "
+                        f"{normalized_usd:.2f} USD exceeds sanity cap {sanity_cap:.2f} USD"
+                    )
+                    return get_estimated_price(comp.get('name', ''), fallback_cat or 'peripherals')
+                return normalized_usd
+        except Exception:
+            pass
         
     return get_estimated_price(comp.get('name', ''), fallback_cat or 'peripherals')
     
@@ -5731,7 +5846,7 @@ def order_components():
             app.logger.info(f"Order: Searching for {category}: {comp.get('name')}")
 
             query = f"{comp.get('name')} {category}"
-            cache_query = f"{query}_{session.get('currency', 'USD')}"
+            cache_query = f"{ORDER_COMPONENTS_CACHE_VERSION}_{query}_{session.get('currency', 'USD')}"
             
             # Check cache
             cached = db.shopping_cache.find_one({'query': cache_query})
@@ -5778,26 +5893,8 @@ def order_components():
                         normalized_usd = 0.0
                         
                         try:
-                            if isinstance(extracted_val, (int, float)):
-                                # If we have a raw number, we still need to know its currency.
-                                # Check the price string symbol.
-                                cur_code = 'USD' # default
-                                for code, sym in CURRENCY_SYMBOLS.items():
-                                    if sym and sym in price_str and (sym != '$' or code == 'USD'):
-                                        cur_code = code
-                                        break
-                                normalized_usd = float(extracted_val) / EXCHANGE_RATES.get(cur_code, 1.0)
-                            elif price_str:
-                                # Manual extraction and normalization
-                                p_clean = re.sub(r'[^\d.]', '', price_str.replace(',', ''))
-                                if p_clean:
-                                    cur_code = 'USD'
-                                    for code, sym in CURRENCY_SYMBOLS.items():
-                                        if sym and sym in price_str and (sym != '$' or code == 'USD'):
-                                            cur_code = code
-                                            break
-                                    normalized_usd = float(p_clean) / EXCHANGE_RATES.get(cur_code, 1.0)
-                        except:
+                            normalized_usd = normalize_listing_price_to_usd(extracted_val, price_str)
+                        except Exception:
                             normalized_usd = 0.0
 
                         display_price = format_price(normalized_usd) if normalized_usd > 0 else price_str
@@ -5827,23 +5924,8 @@ def order_components():
                             normalized_usd = 0.0
                             
                             try:
-                                if isinstance(extracted_val, (int, float)):
-                                    cur_code = 'USD'
-                                    for code, sym in CURRENCY_SYMBOLS.items():
-                                        if sym and sym in price_str and (sym != '$' or code == 'USD'):
-                                            cur_code = code
-                                            break
-                                    normalized_usd = float(extracted_val) / EXCHANGE_RATES.get(cur_code, 1.0)
-                                elif price_str:
-                                    p_clean = re.sub(r'[^\d.]', '', price_str.replace(',', ''))
-                                    if p_clean:
-                                        cur_code = 'USD'
-                                        for code, sym in CURRENCY_SYMBOLS.items():
-                                            if sym and sym in price_str and (sym != '$' or code == 'USD'):
-                                                cur_code = code
-                                                break
-                                        normalized_usd = float(p_clean) / EXCHANGE_RATES.get(cur_code, 1.0)
-                            except:
+                                normalized_usd = normalize_listing_price_to_usd(extracted_val, price_str)
+                            except Exception:
                                 normalized_usd = 0.0
 
                             display_price = format_price(normalized_usd) if normalized_usd > 0 else price_str
