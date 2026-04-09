@@ -2131,6 +2131,22 @@ def saved_builds():
         ('tool_id', 'ASSEMBLY TOOLS')
     ]
     
+    # Optimize DB lookups with a batch query
+    all_comp_ids = set()
+    for build in user_builds:
+        for key, _ in slot_order:
+            comp_id = build.get(key)
+            if comp_id:
+                try:
+                    all_comp_ids.add(ObjectId(comp_id))
+                except Exception:
+                    pass
+
+    components_map = {}
+    if all_comp_ids:
+        for comp in db.components.find({'_id': {'$in': list(all_comp_ids)}}):
+            components_map[str(comp['_id'])] = comp
+
     for build in user_builds:
         # Get name with fallback and ensure it's a string
         db_name = build.get('name')
@@ -2164,16 +2180,13 @@ def saved_builds():
             comp_id = build.get(key)
             display_key = f"{EMOJI_MAP.get(raw_key, '')} {raw_key}".strip()
             if comp_id:
-                try:
-                    comp = db.components.find_one({'_id': ObjectId(comp_id)})
-                    if comp:
-                        cname = comp.get('name', 'Unknown')
-                        build_details['components'][display_key] = cname
-                        total_unit_cost += get_comp_price_usd(comp, id_key=key)
-                    else:
-                        build_details['components'][display_key] = "Unknown Component (ID: " + str(comp_id) + ")"
-                except Exception:
-                    build_details['components'][display_key] = "Invalid Component Reference"
+                comp = components_map.get(str(comp_id))
+                if comp:
+                    cname = comp.get('name', 'Unknown')
+                    build_details['components'][display_key] = cname
+                    total_unit_cost += get_comp_price_usd(comp, id_key=key)
+                else:
+                    build_details['components'][display_key] = "Unknown Component (ID: " + str(comp_id) + ")"
             else:
                 # Only show essential components if none selected, hide others to avoid clutter
                 essentials = ['cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id']
