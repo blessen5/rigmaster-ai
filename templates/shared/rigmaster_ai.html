@@ -597,11 +597,13 @@
         },
 
         saveHistory(role, content) {
-            let history = JSON.parse(localStorage.getItem('nexus_chat_history') || '[]');
+            const userId = '{{ session.get("user_id", "guest") }}';
+            const storageKey = `nexus_chat_history_${userId}`;
+            let history = JSON.parse(localStorage.getItem(storageKey) || '[]');
             history.push({ role, content, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
             // Keep last 50 messages to prevent storage bloat
             if (history.length > 50) history.shift();
-            localStorage.setItem('nexus_chat_history', JSON.stringify(history));
+            localStorage.setItem(storageKey, JSON.stringify(history));
         },
 
         loadHistory() {
@@ -609,7 +611,9 @@
             // If already has messages, don't reload from storage
             if (container.children.length > 0) return;
 
-            const history = JSON.parse(localStorage.getItem('nexus_chat_history') || '[]');
+            const userId = '{{ session.get("user_id", "guest") }}';
+            const storageKey = `nexus_chat_history_${userId}`;
+            const history = JSON.parse(localStorage.getItem(storageKey) || '[]');
             history.forEach(msg => {
                 this.appendMessage(msg.role, msg.content, msg.time, false);
             });

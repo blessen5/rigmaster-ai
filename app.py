@@ -20,6 +20,7 @@ import random
 import string
 from collections import defaultdict, deque
 from threading import Lock
+from concurrent.futures import ThreadPoolExecutor
 import time
 
 
@@ -728,6 +729,31 @@ ANALYSIS_BUILD_KEYS = (
     'ups_id', 'tool_id'
 )
 
+ANALYSIS_COMPONENT_DETAILS = {
+    'cpu_id': ('CPU', 'cpu'),
+    'gpu_id': ('GPU', 'gpu'),
+    'motherboard_id': ('Motherboard', 'motherboard'),
+    'ram_id': ('RAM', 'ram'),
+    'storage_id': ('Storage', 'storage'),
+    'psu_id': ('PSU', 'psu'),
+    'case_id': ('Case', 'case'),
+    'cooler_id': ('Cooler', 'cooler'),
+    'monitor_id': ('Monitor', 'monitor'),
+    'os_id': ('OS', 'os'),
+    'fans_id': ('Case Fans', 'fans'),
+    'keyboard_id': ('Keyboard', 'keyboard'),
+    'mouse_id': ('Mouse', 'mouse'),
+    'headset_id': ('Headset', 'headset'),
+    'webcam_id': ('Webcam', 'webcam'),
+    'peripherals_id': ('Peripherals', 'peripherals'),
+    'thermal_paste_id': ('Thermal Paste', 'thermal_paste'),
+    'wifi_id': ('WiFi Adapter', 'wifi'),
+    'speakers_id': ('Speakers', 'speakers'),
+    'microphone_id': ('Microphone', 'microphone'),
+    'ups_id': ('UPS', 'ups'),
+    'tool_id': ('Tools', 'tools')
+}
+
 def get_user_saved_build_summaries(include_components=True):
     """Return saved builds for the current user, optionally including component ids."""
     if db is None:
@@ -795,6 +821,57 @@ def hydrate_analysis_build_data(data):
         app.logger.warning(f"Analysis build hydration error: {e}")
 
     return payload
+
+def build_analysis_component_snapshot(data):
+    """Resolve selected analysis components in bulk for fast pricing and UI updates."""
+    if db is None:
+        return {}, 0.0, {}
+
+    requested_ids = {}
+    for key in ANALYSIS_COMPONENT_DETAILS:
+        comp_id = data.get(key)
+        if not comp_id or comp_id == "None Selected":
+            continue
+        try:
+            requested_ids[key] = ObjectId(comp_id)
+        except Exception:
+            continue
+
+    resolved_docs = {}
+    if requested_ids:
+        try:
+            resolved_docs = {
+                str(doc['_id']): doc
+                for doc in db.components.find({'_id': {'$in': list(requested_ids.values())}})
+            }
+        except Exception:
+            resolved_docs = {}
+
+    components = {}
+    raw_components = {}
+    total_price = 0.0
+
+    for key, (label, _) in ANALYSIS_COMPONENT_DETAILS.items():
+        comp_id = data.get(key)
+        if not comp_id or comp_id == "None Selected":
+            continue
+
+        comp = resolved_docs.get(str(comp_id)) or get_component_by_id(comp_id)
+        if not comp:
+            continue
+
+        price = get_comp_price_usd(comp, id_key=key)
+        total_price += price
+        raw_components[key] = comp
+        components[key] = {
+            'label': label,
+            'name': clean_comp_name(comp.get('name', 'Unknown')),
+            'price': format_price(price),
+            'price_usd': price,
+            'id': str(comp['_id'])
+        }
+
+    return components, total_price, raw_components
 
 @app.route('/api/my_builds')
 @login_required
@@ -1233,32 +1310,56 @@ def generate_fix_suggestions(data, arch_conflicts):
     engine_parts = build_engine_parts_from_build_data(data)
     original_incompatibles = sum(1 for conflict in arch_conflicts if conflict.get('severity') == 'INCOMPATIBLE')
 
-    for conflict in arch_conflicts:
-        if conflict.get('severity') not in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL'):
-            continue
+    relevant_conflicts = [
+        conflict for conflict in arch_conflicts
+        if conflict.get('severity') in ('INCOMPATIBLE', 'WARNING', 'SUBOPTIMAL')
+    ]
 
-        suggestion_bundle = get_fix_suggestion_options(data, conflict, engine_parts, original_incompatibles, option_limit=3)
+    def build_suggestion_payload(conflict):
+        suggestion_bundle = get_fix_suggestion_options(
+            data,
+            conflict,
+            engine_parts,
+            original_incompatibles,
+            option_limit=3
+        )
         if not suggestion_bundle:
-            continue
+            return None
 
         conflict_category = suggestion_bundle.get('category')
         dedupe_slot = suggestion_bundle.get('engine_slot') or conflict_category
-
-        if not conflict_category or dedupe_slot in suggested_slots:
-            continue
-
         top_options = suggestion_bundle.get('options') or []
 
-        if not top_options:
+        if not conflict_category or not top_options:
+            return None
+
+        return {
+            'dedupe_slot': dedupe_slot,
+            'suggestion': {
+                'category': conflict_category,
+                'type': 'fix' if conflict.get('severity') == 'INCOMPATIBLE' else 'improvement',
+                'title': f"{'Fix' if conflict.get('severity') == 'INCOMPATIBLE' else 'Improve'}: {conflict_category.replace('_', ' ').title()}",
+                'reason': conflict.get('message', 'Compatibility issue detected.'),
+                'options': top_options
+            }
+        }
+
+    if len(relevant_conflicts) > 1:
+        max_workers = min(4, len(relevant_conflicts))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            suggestion_payloads = list(executor.map(build_suggestion_payload, relevant_conflicts))
+    else:
+        suggestion_payloads = [build_suggestion_payload(conflict) for conflict in relevant_conflicts]
+
+    for payload in suggestion_payloads:
+        if not payload:
             continue
 
-        fix_suggestions.append({
-            'category': conflict_category,
-            'type': 'fix' if conflict.get('severity') == 'INCOMPATIBLE' else 'improvement',
-            'title': f"{'Fix' if conflict.get('severity') == 'INCOMPATIBLE' else 'Improve'}: {conflict_category.replace('_', ' ').title()}",
-            'reason': conflict.get('message', 'Compatibility issue detected.'),
-            'options': top_options
-        })
+        dedupe_slot = payload.get('dedupe_slot')
+        if dedupe_slot in suggested_slots:
+            continue
+
+        fix_suggestions.append(payload['suggestion'])
         suggested_slots.add(dedupe_slot)
 
     return fix_suggestions
@@ -1266,11 +1367,34 @@ def generate_fix_suggestions(data, arch_conflicts):
 @app.route('/api/full-analysis', methods=['POST'])
 @login_required
 def api_full_analysis():
-    """Combined analysis endpoint: validation + power + component names."""
+    """Combined analysis endpoint for detailed pricing and fix suggestions."""
     try:
         data = hydrate_analysis_build_data(request.json or {})
         if db is None:
             return jsonify({'status': 'error', 'message': 'Database offline'}), 503
+
+        components, total_price, _ = build_analysis_component_snapshot(data)
+
+        precomputed_validation = data.get('validation') if isinstance(data.get('validation'), dict) else None
+        if precomputed_validation and isinstance(precomputed_validation.get('arch_conflicts'), list):
+            validation = {
+                'status': precomputed_validation.get('status', ''),
+                'arch_conflicts': precomputed_validation.get('arch_conflicts', [])
+            }
+        else:
+            validation = run_validation_logic(data)
+
+        fix_suggestions = generate_fix_suggestions(data, validation.get('arch_conflicts', []))
+
+        return jsonify({
+            'status': 'success',
+            'build_name': data.get('name', 'Custom Rig'),
+            'components': components,
+            'total_price': format_price(total_price),
+            'total_price_usd': total_price,
+            'validation': validation,
+            'fix_suggestions': fix_suggestions
+        })
 
         # 1. Resolve component names + prices for display
         comp_map = {
@@ -8333,94 +8457,34 @@ def api_component_prices():
     Returns price data with retailer information.
     """
     try:
-        data = request.json
-        component_ids = {
-            'cpu': data.get('cpu_id'),
-            'gpu': data.get('gpu_id'),
-            'motherboard': data.get('motherboard_id'),
-            'ram': data.get('ram_id'),
-            'storage': data.get('storage_id'),
-            'psu': data.get('psu_id'),
-            'case': data.get('case_id'),
-            'cooler': data.get('cooler_id'),
-            'monitor': data.get('monitor_id'),
-            'os': data.get('os_id'),
-            'peripherals': data.get('peripherals_id'),
-            'keyboard': data.get('keyboard_id'),
-            'mouse': data.get('mouse_id'),
-            'headset': data.get('headset_id'),
-            'webcam': data.get('webcam_id'),
-            'fans': data.get('fans_id'),
-            'thermal_paste': data.get('thermal_paste_id'),
-            'wifi': data.get('wifi_id'),
-            'speakers': data.get('speakers_id'),
-            'microphone': data.get('microphone_id'),
-            'ups': data.get('ups_id'),
-            'tools': data.get('tool_id')
-        }
-        
+        data = hydrate_analysis_build_data(request.json or {})
+        components, total_cost, raw_components = build_analysis_component_snapshot(data)
         prices = {}
-        total_cost = 0
-        
-        for category, comp_id in component_ids.items():
-            if not comp_id or comp_id == "None Selected":
-                continue
-                
-            try:
-                # Try unified components table first
-                comp = db.components.find_one({'_id': ObjectId(comp_id)})
-                
-                # Fallback to category-specific tables
-                if not comp:
-                    col_map = {
-                        'cpu': 'cpus', 'gpu': 'gpus', 'motherboard': 'motherboards',
-                        'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-                        'case': 'cases', 'cooler': 'coolers', 'monitor': 'monitors',
-                        'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
-                        'thermal_paste': 'thermal_paste', 'wifi': 'wifi_adapters', 
-                        'speakers': 'speakers', 'microphone': 'microphones', 
-                        'ups': 'ups', 'tools': 'tools'
-                    }
-                    col = col_map.get(category, category)
-                    comp = db[col].find_one({'_id': ObjectId(comp_id)})
-                
-                if comp:
-                    # Use consistent price helper
-                    price = get_comp_price_usd(comp, category)
-                    
-                    if price and price > 0:
-                        prices[category] = {
-                            'name': comp.get('name', 'Unknown'),
-                            'price': round(price, 2),
-                            'currency': 'USD',
-                            'retailer': comp.get('retailer', 'Market Average'),
-                            'url': comp.get('product_url', '#'),
-                            'in_stock': comp.get('in_stock', True)
-                        }
-                        total_cost += price
-                    else:
-                        # Safety fallback although get_comp_price_usd should already have handled it
-                        prices[category] = {
-                            'name': comp.get('name', 'Unknown'),
-                            'price': None,
-                            'currency': 'USD',
-                            'retailer': 'Price unavailable',
-                            'url': '#',
-                            'in_stock': False
-                        }
-                        
-            except Exception as e:
-                app.logger.error(f"Error fetching price for {category}: {e}")
-                continue
-        
+
+        for key, comp in components.items():
+            _, category = ANALYSIS_COMPONENT_DETAILS.get(key, ('Component', key.replace('_id', '')))
+            raw_doc = raw_components.get(key) or {}
+            price_value = comp.get('price_usd')
+            prices[category] = {
+                'name': comp.get('name', 'Unknown'),
+                'price': round(price_value, 2) if price_value else None,
+                'currency': 'USD',
+                'retailer': raw_doc.get('retailer', 'Market Average') if price_value else 'Price unavailable',
+                'url': raw_doc.get('product_url', '#'),
+                'in_stock': raw_doc.get('in_stock', True) if price_value else False
+            }
+
         user_currency = session.get('currency', 'USD')
         rate = EXCHANGE_RATES.get(user_currency, 1.0)
         symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
 
         return jsonify({
             'status': 'success',
+            'components': components,
             'prices': prices,
             'total_cost': round(total_cost, 2),
+            'total_price': round(total_cost, 2),
+            'total_price_formatted': format_price(total_cost),
             'currency': user_currency,
             'currency_symbol': symbol,
             'exchange_rate': rate,

@@ -693,6 +693,7 @@
         let _analysisRequestId = 0;
         let _validationController = null;
         let _fullAnalysisController = null;
+        let _priceController = null;
         let _simulatorOptions = {};
         let _activeFixSuggestions = [];
         let _selectedFixOptions = {};
@@ -1257,6 +1258,34 @@
             return mergedSuggestions;
         }
 
+        async function startPriceTrackerRefresh(data, requestId) {
+            _priceController = new AbortController();
+
+            try {
+                const priceResp = await fetch('/api/component-prices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    signal: _priceController.signal
+                });
+
+                if (!priceResp.ok) {
+                    throw new Error(`Component prices API returned ${priceResp.status}`);
+                }
+
+                const priceData = await priceResp.json();
+                if (requestId !== _analysisRequestId || priceData.status !== 'success') return;
+
+                updatePriceTracker(
+                    priceData.components || {},
+                    priceData.total_price_formatted || priceData.total_price || '$0.00'
+                );
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.warn('[PriceTracker] Error:', error);
+            }
+        }
+
         async function startDetailedAnalysis(data, requestId) {
             _fullAnalysisController = new AbortController();
 
@@ -1275,12 +1304,14 @@
                 const fullData = await fullResp.json();
                 if (requestId !== _analysisRequestId || fullData.status !== 'success') return;
 
+                const validation = fullData.validation || data.validation || {};
                 if (fullData.validation) {
                     renderCompatibility(fullData.validation);
                 }
-                updatePriceTracker(fullData.components, fullData.total_price);
-                updateEnergyLab(fullData.power);
-                const displayedSuggestions = await buildDisplayedSuggestions(data, fullData.validation, fullData.fix_suggestions || []);
+                if (fullData.components) {
+                    updatePriceTracker(fullData.components, fullData.total_price);
+                }
+                const displayedSuggestions = await buildDisplayedSuggestions(data, validation, fullData.fix_suggestions || []);
                 if (requestId !== _analysisRequestId) return;
                 renderSuggestions(displayedSuggestions);
             } catch (error) {
@@ -1301,6 +1332,7 @@
 
             if (_validationController) _validationController.abort();
             if (_fullAnalysisController) _fullAnalysisController.abort();
+            if (_priceController) _priceController.abort();
 
             beginAnalysisLoading();
             document.body.style.cursor = 'wait';
@@ -1330,7 +1362,14 @@
                 }
 
                 document.body.style.cursor = 'default';
-                void startDetailedAnalysis(payload, requestId);
+                void startPriceTrackerRefresh(payload, requestId);
+                void startDetailedAnalysis({
+                    ...payload,
+                    validation: {
+                        status: result.status,
+                        arch_conflicts: result.arch_conflicts || []
+                    }
+                }, requestId);
             } catch (error) {
                 if (error.name === 'AbortError') return;
                 console.error('[ValidateBuild] Error:', error);
