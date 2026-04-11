@@ -225,9 +225,9 @@ def canonicalize_price_category(cat):
     }.get(normalized, normalized)
 
 _CATEGORY_PRICE_SANITY_LIMITS_USD = {
-    'tools': 80,
-    'thermal_paste': 60,
-    'fans': 120,
+    'tools': 500,
+    'thermal_paste': 300,
+    'fans': 250,
 }
 
 def get_estimated_price(comp_name, cat):
