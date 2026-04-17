@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support | RigMaster AI</title>
+    <title>Complaints | RigMaster AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -146,13 +146,6 @@
     <div class="bg-grid"></div>
     {% include 'shared/navbar.html' %}
 
-    <header class="support-hero">
-        <div class="container">
-            <h1 class="text-gradient" style="font-size: 3.5rem;">Support</h1>
-            <p style="color: var(--text-muted); font-size: 1.2rem; margin-top: 1rem;">Everything you need to build with
-                confidence.</p>
-        </div>
-    </header>
 
     <main class="container">
         {% with messages = get_flashed_messages() %}
@@ -166,32 +159,8 @@
         {% endif %}
         {% endwith %}
 
-        <!-- Dashboard Sections -->
-        <div class="support-grid">
-            <div class="support-card" id="help-center">
-                <h3>Help Center</h3>
-                <p>Browse our extensive guides and FAQs to solve common issues during your PC building journey.</p>
-                <div class="faq-list">
-                    <div class="faq-item">
-                        <div class="faq-question">How does the AI compatibility check work?</div>
-                        <div class="faq-answer">Our AI analyzes socket types, dimensions, and power requirements against
-                            our massive database of verified components.</div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question">Can I save multiple builds?</div>
-                        <div class="faq-answer">Yes, logged-in users can save as many configurations as they like and
-                            compare them in the Insights section.</div>
-                    </div>
-                </div>
-            </div>
-
-
-
-
-        </div>
-
-        <section class="contact-section" id="contact">
-            <h2 class="text-gradient" style="margin-bottom: 2.5rem; font-size: 2.5rem;">Contact & Feedback</h2>
+        <section class="contact-section" id="contact" style="margin-top: 120px;">
+            <h2 class="text-gradient" style="margin-bottom: 2.5rem; font-size: 2.5rem;">Submit a Complaint</h2>
             <form class="contact-form" action="{{ url_for('support_page') }}" method="POST">
                 <div class="form-group">
                     <label>Your Name</label>
@@ -204,6 +173,7 @@
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Type of Request</label>
                     <select name="request_type" class="form-select" required>
+                        <option value="complaint" selected>Formal Complaint</option>
                         <option value="support">Technical Support</option>
                         <option value="feedback">General Feedback</option>
                         <option value="bug">Report a Bug</option>
@@ -220,43 +190,6 @@
         </section>
     </main>
 
-    <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-brand">
-                    <div class="logo">
-                        <span class="logo-accent">Rig</span>Master AI
-                    </div>
-                    <p>The future of PC building is intelligent.</p>
-                </div>
-                <div class="footer-links">
-                    <h5>Platform</h5>
-                    <ul>
-                        <li><a href="{{ url_for('builder') }}">Builder</a></li>
-                        <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
-                        <li><a href="{{ url_for('hardware_encyclopedia') }}">Hardware</a></li>
-                    </ul>
-                </div>
-                <div class="footer-links">
-                    <h5>Support</h5>
-                    <ul>
-                        <li><a href="{{ url_for('support_page') }}#help-center">Help Center</a></li>
-                        <li><a href="{{ url_for('support_page') }}#contact">Contact Us</a></li>
-                    </ul>
-                </div>
-                <div class="footer-links">
-                    <h5>Contact</h5>
-                    <ul>
-                        <li><a href="{{ url_for('support_page') }}#contact">Support</a></li>
-                        <li><a href="{{ url_for('support_page') }}#contact">Feedback</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                &copy; 2026 RigMaster AI. All rights reserved.
-            </div>
-        </div>
-    </footer>
 
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
