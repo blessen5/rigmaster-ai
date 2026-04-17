@@ -101,7 +101,8 @@
                         </svg>
                     </div>
                     <h3>Consult the AI</h3>
-                    <p>Chat with our AI Assistant to resolve bottlenecks, compare parts, and finalize your masterpiece.</p>
+                    <p>Chat with our AI Assistant to resolve bottlenecks, compare parts, and finalize your masterpiece.
+                    </p>
                 </div>
             </div>
         </div>
@@ -119,7 +120,10 @@
                     <h2 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 1rem;">ai assistant</h2>
 
                     <p style="font-size: 1.1rem; line-height: 1.7; color: var(--text-muted); margin-bottom: 2rem;">
-                        Meet your ultimate PC building companion. <strong>ai assistant</strong> analyzes your budget and needs to recommend the perfect setup from our live inventory. Powered by advanced neural networks, it expertly balances 22 unique component categories ensuring flawless bottleneck-free performance.
+                        Meet your ultimate PC building companion. <strong>ai assistant</strong> analyzes your budget and
+                        needs to recommend the perfect setup from our live inventory. Powered by advanced neural
+                        networks, it expertly balances 22 unique component categories ensuring flawless bottleneck-free
+                        performance.
                     </p>
                     <ul
                         style="list-style: none; padding: 0; margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -139,8 +143,8 @@
                     {% if session.get('user_id') %}
                     <a href="#"
                         onclick="if(typeof NexusAI !== 'undefined') { NexusAI.toggle(); } else { alert('AI interface loading...'); } return false;"
-                        class="btn btn-primary"
-                        style="background: var(--primary); border-color: var(--primary);">Chat with AI</a>
+                        class="btn btn-primary" style="background: var(--primary); border-color: var(--primary);">Chat
+                        with AI</a>
                     {% else %}
                     <a href="{{ url_for('signup') }}" class="btn btn-primary"
                         style="background: var(--primary); border-color: var(--primary);">Join Now to Chat</a>
@@ -156,7 +160,8 @@
                             </div>
                             <div
                                 style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 0 12px 12px 12px; flex: 1;">
-                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Can you recommend a full 16-part rig under $1500 for 4K video editing?</p>
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Can you recommend a
+                                    full 16-part rig under $1500 for 4K video editing?</p>
                             </div>
                         </div>
                         <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-direction: row-reverse;">
@@ -164,7 +169,9 @@
                             </div>
                             <div
                                 style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2); padding: 0.8rem; border-radius: 12px 0 12px 12px; flex: 1;">
-                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-main);">Absolutely. I've selected a Ryzen 9 coupled with 64GB of DDR5 from our database, ensuring no bottlenecks. Here is your complete build blueprint...</p>
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-main);">Absolutely. I've
+                                    selected a Ryzen 9 coupled with 64GB of DDR5 from our database, ensuring no
+                                    bottlenecks. Here is your complete build blueprint...</p>
                             </div>
                         </div>
                     </div>
@@ -216,15 +223,17 @@
                 <div class="footer-links">
                     <h5>Support</h5>
                     <ul>
-                        <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
-                        <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                        <li><a href="{{ url_for('support_page') }}#help-center">Help Center</a></li>
+                        <li><a href="{{ url_for('support_page') }}#contact">Contact Us</a></li>
+                        <li><a href="{{ url_for('support_page', _anchor='contact') }}">Complaints</a></li>
                     </ul>
                 </div>
                 <div class="footer-links">
                     <h5>Contact</h5>
                     <ul>
-                        <li><a href="{{ url_for('contact') }}">Support</a></li>
-                        <li><a href="{{ url_for('feedback') }}">Feedback</a></li>
+                        <li><a href="{{ url_for('support_page') }}#contact">Support</a></li>
+                        <li><a href="{{ url_for('support_page') }}#contact">Feedback</a></li>
+                        <li><a href="{{ url_for('support_page', _anchor='contact') }}">File Complaint</a></li>
                     </ul>
                 </div>
             </div>

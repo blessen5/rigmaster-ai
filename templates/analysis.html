@@ -631,23 +631,7 @@
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-brand">
-                    <div class="logo">
-                        <span class="logo-accent">Rig</span>Master AI
-                    </div>
-                    <p>The future of PC building is intelligent.</p>
-                </div>
-                <!-- ... footer links ... -->
-            </div>
-            <div id="preloaded-builds-data" style="display:none;">{{ user_builds|tojson }}</div>
-            <div class="footer-bottom">
-                &copy; 2026 RigMaster AI. All rights reserved.
-            </div>
-        </div>
-    </footer>
+    <div id="preloaded-builds-data" style="display:none;">{{ user_builds|tojson }}</div>
 
     <script>
         const BUILD_COMPONENT_KEYS = [

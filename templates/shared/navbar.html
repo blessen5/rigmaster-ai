@@ -156,6 +156,7 @@
             <li><a href="{{ url_for('ai_recommendation') }}" class="{{ 'active' if request.path == url_for('ai_recommendation') }}">AI Recommendation</a></li>
             <li><a href="{{ url_for('saved_builds') }}" class="{{ 'active' if request.path == url_for('saved_builds') }}">Saved Builds</a></li>
             <li><a href="{{ url_for('group_builder_page') }}" class="{{ 'active' if request.path == url_for('group_builder_page') }}">Group Builder</a></li>
+            <li><a href="{{ url_for('support_page', _anchor='contact') }}" class="{{ 'active' if request.path == url_for('support_page') }}">Complaints</a></li>
             {% endif %}
             {% endif %}
         </ul>
