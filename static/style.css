@@ -771,57 +771,8 @@ footer {
         display: flex;
     }
 
-    .nav-links,
-    .nav-actions {
-        position: fixed;
-        left: -100%;
-        top: 70px;
-        flex-direction: column;
-        background: rgba(2, 6, 23, 0.95);
-        backdrop-filter: blur(20px);
-        width: 100%;
-        text-align: center;
-        transition: 0.3s;
-        box-shadow: 0 10px 27px rgba(0, 0, 0, 0.5);
-        border-bottom: 1px solid var(--border);
-        padding: 2rem 0;
-        z-index: 999;
-        gap: 1.5rem;
-    }
-
-    .nav-actions {
-        top: auto;
-        bottom: -100%;
-        border-bottom: none;
-        border-top: 1px solid var(--border);
-        padding: 1.5rem 0;
-        box-shadow: 0 -10px 27px rgba(0, 0, 0, 0.5);
-    }
-
-    .nav-links.nav-active {
-        left: 0;
-    }
-
-    .nav-actions.nav-active {
-        left: 0;
-        bottom: 0;
-    }
-
-    .nav-links li {
-        width: 100%;
-    }
-
-    .nav-links a {
-        display: block;
-        padding: 1rem 0;
-        font-size: 1.1rem;
-    }
-
-    .nav-actions {
-        display: flex !important;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
+    /* The nav-links drawer is handled by styles inside navbar.html */
+    /* Here we just handle layout-level stacking for non-nav elements */
 
     .hero-content h1 {
         font-size: 3.5rem;
