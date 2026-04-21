@@ -647,6 +647,10 @@
                     style="padding: 0.75rem 2rem; background: #10b981; border-color: #10b981;">
                     Save Email Settings
                 </button>
+                <button id="test-smtp-btn" class="btn btn-secondary" onclick="testSmtpSettings()" 
+                    style="padding: 0.75rem 1.5rem; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary-light);">
+                    Test Connection
+                </button>
                 <button class="btn btn-secondary" onclick="toggleKeyVisibility()" style="padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.05);">
                     Show/Hide Details
                 </button>
@@ -789,6 +793,42 @@
 
             }
 
+
+
+            async function testSmtpSettings() {
+                const btn = document.getElementById('test-smtp-btn');
+                const originalText = btn.innerText;
+                
+                const settings = {
+                    SMTP_SERVER: document.getElementById('smtp-server').value.trim(),
+                    SMTP_PORT: document.getElementById('smtp-port').value.trim(),
+                    SMTP_EMAIL: document.getElementById('smtp-email').value.trim(),
+                    SMTP_PASSWORD: document.getElementById('smtp-password').value.trim()
+                };
+
+                btn.disabled = true;
+                btn.innerText = 'Testing...';
+
+                try {
+                    const response = await fetch('/api/admin/test-smtp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        alert(result.message);
+                    } else {
+                        alert('Test Failed: ' + result.message + '\n\nCommon fixes:\n1. Use a Google App Password (not your main password).\n2. Enable 2-Step Verification on your Google account.\n3. Verify the SMTP Server is smtp.gmail.com and Port 587.');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                }
+            }
 
 
             async function saveSmtpSettings() {
