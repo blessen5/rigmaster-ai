@@ -3,6 +3,65 @@ import io
 import csv
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
+
+# -------------------------------------------------------------------
+# SafeFPDF: auto-sanitizes ALL text passed to cell / multi_cell so
+# that non-Latin-1 currency symbols (₹ €  £ ¥ etc.) never crash
+# the default Helvetica font.  Used everywhere instead of bare FPDF.
+# -------------------------------------------------------------------
+_PDF_SYMBOL_MAP = {
+    '₹': 'Rs.', '\u20b9': 'Rs.',
+    '€': 'EUR', '\u20ac': 'EUR',
+    '£': 'GBP', '\u00a3': 'GBP',
+    '¥': 'JPY', '\u00a5': 'JPY',
+    '₩': 'KRW', '\u20a9': 'KRW',
+    '₺': 'TRY', '\u20ba': 'TRY',
+    '₴': 'UAH', '\u20b4': 'UAH',
+    '₦': 'NGN', '\u20a6': 'NGN',
+    '₱': 'PHP', '\u20b1': 'PHP',
+    '฿': 'THB', '\u0e3f': 'THB',
+    '₫': 'VND', '\u20ab': 'VND',
+    '₪': 'ILS', '\u20aa': 'ILS',
+    '₵': 'GHS', '\u20b5': 'GHS'
+}
+
+def _pdf_sanitize(text):
+    if text is None:
+        return ''
+    s = str(text)
+    for ch, rep in _PDF_SYMBOL_MAP.items():
+        s = s.replace(ch, rep)
+    # Final safety: strip anything remaining that isn't Latin-1 (standard Helvetica range)
+    return s.encode('latin-1', errors='replace').decode('latin-1')
+
+class SafeFPDF(FPDF):
+    """FPDF subclass that sanitizes text before every cell / multi_cell call.
+    Converts non-Latin-1 currency symbols (₹ € £ ¥ etc.) to ASCII equivalents
+    so Helvetica never crashes on Unicode characters."""
+    def normalize_text(self, text):
+        return super().normalize_text(_pdf_sanitize(text))
+
+    def cell(self, w=None, h=None, text='', **kwargs):
+        if 'text' in kwargs:
+            kwargs['text'] = _pdf_sanitize(kwargs['text'])
+        if 'txt' in kwargs:
+            kwargs['txt'] = _pdf_sanitize(kwargs['txt'])
+        return super().cell(w=w, h=h, text=_pdf_sanitize(text), **kwargs)
+
+    def multi_cell(self, w, h=None, text='', **kwargs):
+        if 'text' in kwargs:
+            kwargs['text'] = _pdf_sanitize(kwargs['text'])
+        if 'txt' in kwargs:
+            kwargs['txt'] = _pdf_sanitize(kwargs['txt'])
+        return super().multi_cell(w=w, h=h, text=_pdf_sanitize(text), **kwargs)
+
+    def write(self, h=None, text='', **kwargs):
+        if 'text' in kwargs:
+            kwargs['text'] = _pdf_sanitize(kwargs['text'])
+        if 'txt' in kwargs:
+            kwargs['txt'] = _pdf_sanitize(kwargs['txt'])
+        return super().write(h=h, text=_pdf_sanitize(text), **kwargs)
+
 import os
 import json
 import requests
@@ -597,6 +656,62 @@ def get_site_setting(key, default=None):
         return setting['value'] if setting else default
     except:
         return default
+
+def normalize_smtp_settings(smtp_server, smtp_port, smtp_email, smtp_password):
+    """Trim SMTP config and normalize Gmail app passwords shown in grouped form."""
+    smtp_server = str(smtp_server).strip() if smtp_server is not None else smtp_server
+    smtp_port = str(smtp_port).strip() if smtp_port is not None else smtp_port
+    smtp_email = str(smtp_email).strip() if smtp_email is not None else smtp_email
+    smtp_password = str(smtp_password).strip() if smtp_password is not None else smtp_password
+
+    if smtp_server and smtp_password and 'smtp.gmail.com' in smtp_server.lower():
+        smtp_password = ''.join(smtp_password.split())
+
+    return smtp_server, smtp_port, smtp_email, smtp_password
+
+def get_smtp_config_candidates():
+    """Return unique SMTP configs, preferring DB settings and falling back to env."""
+    candidates = []
+    seen = set()
+
+    raw_candidates = [
+        (
+            'site',
+            get_site_setting('SMTP_SERVER'),
+            get_site_setting('SMTP_PORT'),
+            get_site_setting('SMTP_EMAIL'),
+            get_site_setting('SMTP_PASSWORD')
+        ),
+        (
+            'env',
+            os.getenv('SMTP_SERVER'),
+            os.getenv('SMTP_PORT'),
+            os.getenv('SMTP_EMAIL'),
+            os.getenv('SMTP_PASSWORD')
+        )
+    ]
+
+    for source, smtp_server, smtp_port, smtp_email, smtp_password in raw_candidates:
+        smtp_server, smtp_port, smtp_email, smtp_password = normalize_smtp_settings(
+            smtp_server, smtp_port, smtp_email, smtp_password
+        )
+        if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
+            continue
+
+        key = (smtp_server, smtp_port, smtp_email, smtp_password)
+        if key in seen:
+            continue
+
+        seen.add(key)
+        candidates.append({
+            'source': source,
+            'server': smtp_server,
+            'port': smtp_port,
+            'email': smtp_email,
+            'password': smtp_password
+        })
+
+    return candidates
 
 def log_ai_request(request_type, provider, cached=False):
     """Logs an AI request to the ai_cache collection for analytics."""
@@ -1827,56 +1942,69 @@ def support_page():
 
 def send_contact_email(name, email, req_type, message):
     """Send contact form details via email using SMTP settings from DB (fallback to .env)"""
-    smtp_server = get_site_setting('SMTP_SERVER', os.getenv('SMTP_SERVER'))
-    smtp_port = get_site_setting('SMTP_PORT', os.getenv('SMTP_PORT'))
-    smtp_email = get_site_setting('SMTP_EMAIL', os.getenv('SMTP_EMAIL'))
-    smtp_password = get_site_setting('SMTP_PASSWORD', os.getenv('SMTP_PASSWORD'))
+    smtp_candidates = get_smtp_config_candidates()
 
-
-    if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
+    if not smtp_candidates:
         print(f"[MOCK CONTACT EMAIL] SMTP not configured. From: {name} ({email}) - Type: {req_type}")
         print(f"Message: {message}")
         return True
 
-    try:
-        # Create message for Admin/Support Team
-        msg = MIMEMultipart()
-        msg['From'] = smtp_email
-        msg['To'] = smtp_email # Send to our own support email
-        msg['Subject'] = f"RigMaster Support: {req_type} from {name}"
+    last_error = None
+    for smtp_config in smtp_candidates:
+        smtp_server = smtp_config['server']
+        smtp_port = smtp_config['port']
+        smtp_email = smtp_config['email']
+        smtp_password = smtp_config['password']
+        server = None
+        try:
+            # Create message for Admin/Support Team
+            msg = MIMEMultipart()
+            msg['From'] = smtp_email
+            msg['To'] = smtp_email # Send to our own support email
+            msg['Subject'] = f"RigMaster Support: {req_type} from {name}"
 
-        body = f"New support request from RigMaster AI Contact Form:\n\n"
-        body += f"Name: {name}\n"
-        body += f"Email: {email}\n"
-        body += f"Type: {req_type}\n\n"
-        body += f"Message:\n{message}"
-        
-        msg.attach(MIMEText(body, 'plain'))
+            body = f"New support request from RigMaster AI Contact Form:\n\n"
+            body += f"Name: {name}\n"
+            body += f"Email: {email}\n"
+            body += f"Type: {req_type}\n\n"
+            body += f"Message:\n{message}"
+            
+            msg.attach(MIMEText(body, 'plain'))
 
-        # Add Reply-To so support can reply directly to the user
-        msg.add_header('reply-to', email)
+            # Add Reply-To so support can reply directly to the user
+            msg.add_header('reply-to', email)
 
-        server = smtplib.SMTP(smtp_server, int(smtp_port))
-        server.starttls()
-        server.login(smtp_email, smtp_password)
-        server.sendmail(smtp_email, smtp_email, msg.as_string())
-        
-        # Optionally send a confirmation to the user
-        confirm_msg = MIMEMultipart()
-        confirm_msg['From'] = smtp_email
-        confirm_msg['To'] = email
-        confirm_msg['Subject'] = "RigMaster AI - We've received your message"
-        
-        confirm_body = f"Hi {name},\n\nWe've received your {req_type} request and our team will get back to you as soon as possible.\n\nYour message:\n\"{message}\"\n\nBest regards,\nThe RigMaster AI Team"
-        confirm_msg.attach(MIMEText(confirm_body, 'plain'))
-        
-        server.sendmail(smtp_email, email, confirm_msg.as_string())
-        
-        server.quit()
-        return True
-    except Exception as e:
-        app.logger.error(f"[EMAIL ERROR] Failed to send contact email: {e}")
-        return False
+            server = smtplib.SMTP(smtp_server, int(smtp_port))
+            server.starttls()
+            server.login(smtp_email, smtp_password)
+            server.sendmail(smtp_email, smtp_email, msg.as_string())
+            
+            # Optionally send a confirmation to the user
+            confirm_msg = MIMEMultipart()
+            confirm_msg['From'] = smtp_email
+            confirm_msg['To'] = email
+            confirm_msg['Subject'] = "RigMaster AI - We've received your message"
+            
+            confirm_body = f"Hi {name},\n\nWe've received your {req_type} request and our team will get back to you as soon as possible.\n\nYour message:\n\"{message}\"\n\nBest regards,\nThe RigMaster AI Team"
+            confirm_msg.attach(MIMEText(confirm_body, 'plain'))
+            
+            server.sendmail(smtp_email, email, confirm_msg.as_string())
+            server.quit()
+            app.logger.info(f"[EMAIL INFO] Contact email sent using {smtp_config['source']} SMTP settings")
+            return True
+        except Exception as e:
+            last_error = e
+            app.logger.warning(
+                f"[EMAIL WARN] Contact email failed using {smtp_config['source']} SMTP settings for {smtp_email}: {e}"
+            )
+            try:
+                if server:
+                    server.quit()
+            except Exception:
+                pass
+
+    app.logger.error(f"[EMAIL ERROR] Failed to send contact email: {last_error}")
+    return False
 
 
 @app.route('/vault')
@@ -1975,34 +2103,48 @@ def send_generic_email(to_email, subject, body):
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
-    
-    smtp_server = get_site_setting('SMTP_SERVER', os.getenv('SMTP_SERVER'))
-    smtp_port = get_site_setting('SMTP_PORT', os.getenv('SMTP_PORT'))
-    smtp_email = get_site_setting('SMTP_EMAIL', os.getenv('SMTP_EMAIL'))
-    smtp_password = get_site_setting('SMTP_PASSWORD', os.getenv('SMTP_PASSWORD'))
 
+    smtp_candidates = get_smtp_config_candidates()
 
-    if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
+    if not smtp_candidates:
         print(f"[MOCK EMAIL] To: {to_email} | Subject: {subject} | Body: {body}")
         return True
 
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = smtp_email
-        msg['To'] = to_email
-        msg['Subject'] = subject
+    last_error = None
+    for smtp_config in smtp_candidates:
+        smtp_server = smtp_config['server']
+        smtp_port = smtp_config['port']
+        smtp_email = smtp_config['email']
+        smtp_password = smtp_config['password']
+        server = None
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = smtp_email
+            msg['To'] = to_email
+            msg['Subject'] = subject
 
-        msg.attach(MIMEText(body, 'plain'))
-        server = smtplib.SMTP(smtp_server, int(smtp_port))
-        server.starttls()
-        server.login(smtp_email, smtp_password)
-        text = msg.as_string()
-        server.sendmail(smtp_email, to_email, text)
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send email to {to_email}: {e}")
-        return False
+            msg.attach(MIMEText(body, 'plain'))
+            server = smtplib.SMTP(smtp_server, int(smtp_port))
+            server.starttls()
+            server.login(smtp_email, smtp_password)
+            text = msg.as_string()
+            server.sendmail(smtp_email, to_email, text)
+            server.quit()
+            app.logger.info(f"[EMAIL INFO] Generic email sent using {smtp_config['source']} SMTP settings")
+            return True
+        except Exception as e:
+            last_error = e
+            app.logger.warning(
+                f"[EMAIL WARN] Generic email failed using {smtp_config['source']} SMTP settings for {smtp_email}: {e}"
+            )
+            try:
+                if server:
+                    server.quit()
+            except Exception:
+                pass
+
+    print(f"[EMAIL ERROR] Failed to send email to {to_email}: {last_error}")
+    return False
 
 @app.route('/admin/broadcast', methods=['GET'])
 @admin_required
@@ -2507,8 +2649,10 @@ def db_status():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/save_build', methods=['POST'])
-@login_required
+@app.route('/api/save-build', methods=['POST'])
 def save_build():
+    if not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Session expired. Please login to save builds.'}), 401
     try:
         if db is None:
             return jsonify({'status': 'error', 'message': 'Database not connected'}), 500
@@ -2575,6 +2719,13 @@ def save_build():
             build_doc['quantity'] = existing_build.get('quantity')
         else:
             build_doc['quantity'] = quantity
+
+        # Add AI/Deep Info if present
+        for extra in ['total_price', 'usage', 'ai_notes']:
+            if extra in data:
+                build_doc[extra] = data.get(extra)
+            elif existing_build and extra in existing_build:
+                build_doc[extra] = existing_build.get(extra)
         
         if build_id:
             db.saved_builds.update_one(
@@ -6014,8 +6165,9 @@ def order_components():
 
 
 @app.route('/api/ai-recommend', methods=['POST'])
-@login_required
 def api_ai_recommend():
+    if not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Session expired. Please login again.'}), 401
     try:
         if db is None:
             return jsonify({'status': 'error', 'message': 'Database not connected'}), 500
@@ -7265,9 +7417,16 @@ def export_build(build_id):
             flash("Database connection error")
             return redirect(url_for('saved_builds'))
 
+        user_id = session.get('user_id')
+        user_ids = [user_id]
+        try:
+            user_ids.append(ObjectId(user_id))
+        except Exception:
+            pass
+
         build = db.saved_builds.find_one({
             '_id': ObjectId(build_id),
-            'user_id': session.get('user_id')
+            'user_id': {'$in': user_ids}
         })
 
         if not build:
@@ -7307,7 +7466,7 @@ def export_build(build_id):
         valid_res = run_validation_logic(build)
 
         # Generate PDF
-        pdf = FPDF()
+        pdf = SafeFPDF()
         pdf.add_page()
         
         # Header
@@ -7435,6 +7594,7 @@ def export_build(build_id):
         # Output to bytes
         pdf_output = pdf.output()
         buffer = io.BytesIO(pdf_output)
+        buffer.seek(0)
         
         return send_file(
             buffer,
@@ -7444,7 +7604,10 @@ def export_build(build_id):
         )
 
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        import traceback
+        app.logger.error(f'PDF export error: {e}\n{traceback.format_exc()}')
+        flash(f'PDF generation failed: {str(e)}', 'error')
+        return redirect(url_for('saved_builds'))
 
 @app.route('/admin')
 @admin_required
@@ -7681,6 +7844,45 @@ def admin_settings_api():
         return jsonify({'status': 'success', 'message': 'Settings updated successfully'})
     except Exception as e:
         app.logger.error(f"Settings update error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/admin/test-smtp', methods=['POST'])
+@admin_required
+def admin_test_smtp():
+    """Verify SMTP settings by attempting a login and sending a test email to the self-sender."""
+    try:
+        data = request.get_json()
+        smtp_server = data.get('SMTP_SERVER')
+        smtp_port = data.get('SMTP_PORT')
+        smtp_email = data.get('SMTP_EMAIL')
+        smtp_password = data.get('SMTP_PASSWORD')
+        smtp_server, smtp_port, smtp_email, smtp_password = normalize_smtp_settings(
+            smtp_server, smtp_port, smtp_email, smtp_password
+        )
+
+        if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
+            return jsonify({'status': 'error', 'message': 'All SMTP fields are required for the test.'}), 400
+
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart()
+        msg['From'] = smtp_email
+        msg['To'] = smtp_email
+        msg['Subject'] = "RigMaster AI - SMTP Test Connection"
+        msg.attach(MIMEText("This is a test email from the RigMaster AI Admin Console to verify your SMTP settings. If you received this, your connection is working perfectly!", 'plain'))
+
+        # Standard Gmail/SMTP connection sequence
+        server = smtplib.SMTP(smtp_server, int(smtp_port))
+        server.starttls()
+        server.login(smtp_email, smtp_password)
+        server.sendmail(smtp_email, smtp_email, msg.as_string())
+        server.quit()
+
+        return jsonify({'status': 'success', 'message': f'Connection successful! Test email sent to {smtp_email}'})
+    except Exception as e:
+        app.logger.error(f"SMTP Test Connection Failure: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/admin/settings/delete', methods=['POST'])
@@ -8398,36 +8600,51 @@ def api_build_optimizer():
 # --- Forgot Password Logic ---
 
 def send_email(to_email, otp):
-    smtp_server = os.getenv('SMTP_SERVER')
-    smtp_port = os.getenv('SMTP_PORT')
-    smtp_email = os.getenv('SMTP_EMAIL')
-    smtp_password = os.getenv('SMTP_PASSWORD')
+    smtp_candidates = get_smtp_config_candidates()
 
-    if not all([smtp_server, smtp_port, smtp_email, smtp_password]):
+    if not smtp_candidates:
         print(f"[MOCK EMAIL] SMTP not configured. OTP for {to_email}: {otp}")
         return True
 
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = smtp_email
-        msg['To'] = to_email
-        msg['Subject'] = "RigMaster AI - Password Reset OTP"
+    last_error = None
+    for smtp_config in smtp_candidates:
+        smtp_server = smtp_config['server']
+        smtp_port = smtp_config['port']
+        smtp_email = smtp_config['email']
+        smtp_password = smtp_config['password']
+        server = None
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = smtp_email
+            msg['To'] = to_email
+            msg['Subject'] = "RigMaster AI - Password Reset OTP"
 
-        body = f"Your OTP for password reset is: {otp}\n\nThis code expires in 10 minutes."
-        msg.attach(MIMEText(body, 'plain'))
+            body = f"Your OTP for password reset is: {otp}\n\nThis code expires in 10 minutes."
+            msg.attach(MIMEText(body, 'plain'))
 
-        server = smtplib.SMTP(smtp_server, int(smtp_port))
-        server.starttls()
-        server.login(smtp_email, smtp_password)
-        text = msg.as_string()
-        server.sendmail(smtp_email, to_email, text)
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send email to {to_email}: {e}")
-        # Fallback for dev/testing if email fails
-        print(f"[FALLBACK] OTP for {to_email}: {otp}")
-        return False
+            server = smtplib.SMTP(smtp_server, int(smtp_port))
+            server.starttls()
+            server.login(smtp_email, smtp_password)
+            text = msg.as_string()
+            server.sendmail(smtp_email, to_email, text)
+            server.quit()
+            app.logger.info(f"[EMAIL INFO] OTP email sent using {smtp_config['source']} SMTP settings")
+            return True
+        except Exception as e:
+            last_error = e
+            app.logger.warning(
+                f"[EMAIL WARN] OTP email failed using {smtp_config['source']} SMTP settings for {smtp_email}: {e}"
+            )
+            try:
+                if server:
+                    server.quit()
+            except Exception:
+                pass
+
+    print(f"[EMAIL ERROR] Failed to send email to {to_email}: {last_error}")
+    # Fallback for dev/testing if email fails
+    print(f"[FALLBACK] OTP for {to_email}: {otp}")
+    return False
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -8907,7 +9124,7 @@ def api_export_group_build(plan_id):
             return "Project plan not found", 404
             
         # Generate PDF
-        pdf = FPDF()
+        pdf = SafeFPDF()
         pdf.add_page()
         
         # Header
