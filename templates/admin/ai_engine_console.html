@@ -601,7 +601,7 @@
 
                         Server</label>
 
-                    <input type="text" id="smtp-server" value="{{ smtp_settings.server }}" placeholder="smtp.gmail.com"
+                    <input type="password" id="smtp-server" value="{{ smtp_settings.server }}" placeholder="smtp.gmail.com"
                         style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: white;">
 
                 </div>
@@ -612,7 +612,7 @@
 
                         Port</label>
 
-                    <input type="text" id="smtp-port" value="{{ smtp_settings.port }}" placeholder="587"
+                    <input type="password" id="smtp-port" value="{{ smtp_settings.port }}" placeholder="587"
                         style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: white;">
 
                 </div>
@@ -623,7 +623,7 @@
 
                         Email</label>
 
-                    <input type="text" id="smtp-email" value="{{ smtp_settings.email }}" placeholder="your@email.com"
+                    <input type="password" id="smtp-email" value="{{ smtp_settings.email }}" placeholder="your@email.com"
                         style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: white;">
 
                 </div>
@@ -645,11 +645,11 @@
 
                 <button class="btn btn-primary" onclick="saveSmtpSettings()"
                     style="padding: 0.75rem 2rem; background: #10b981; border-color: #10b981;">
-
                     Save Email Settings
-
                 </button>
-
+                <button class="btn btn-secondary" onclick="toggleKeyVisibility()" style="padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.05);">
+                    Show/Hide Details
+                </button>
             </div>
 
         </div>
@@ -883,7 +883,7 @@
 
             function toggleKeyVisibility() {
 
-                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-hf', 'key-openrouter', 'smtp-password'];
+                const ids = ['key-groq', 'key-mistral', 'key-gemini', 'key-hf', 'key-openrouter', 'smtp-server', 'smtp-port', 'smtp-email', 'smtp-password'];
 
                 let foundAny = false;
 
