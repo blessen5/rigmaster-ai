@@ -72,6 +72,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from google import genai
 import re
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -101,6 +104,16 @@ if not _secret:
     app.logger.warning("SECRET_KEY not set in environment — using a random key. Sessions will not survive restarts.")
 app.secret_key = _secret
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB Limit
+
+# Initialize Security Extensions
+csrf = CSRFProtect(app)
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["500 per day", "100 per hour"],
+    storage_uri="memory://",
+    strategy="fixed-window"
+)
 
 DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'groq')
 AI_RATE_LIMIT_DEFAULTS = {
@@ -2251,6 +2264,7 @@ def admin_user_analytics():
     return render_template('admin/user_analytics.html', metrics=metrics)
 
 @app.route('/signup', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def signup():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -2286,6 +2300,7 @@ def signup():
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -8717,6 +8732,7 @@ def send_email(to_email, otp):
     return False
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("3 per minute")
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -8753,6 +8769,7 @@ def forgot_password():
     return render_template('forgot_password.html')
 
 @app.route('/verify-otp', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def verify_otp():
     if request.method == 'POST':
         otp_input = request.form.get('otp')
@@ -8791,6 +8808,7 @@ def verify_otp():
     return render_template('verify_otp.html')
 
 @app.route('/reset-password', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def reset_password():
     email = session.get('reset_email_verified')
     if not email:

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap"
         rel="stylesheet">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         table {
             width: 100%;
@@ -201,6 +202,7 @@
         </div>
 
         <script>
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             document.getElementById('add-admin-form').onsubmit = async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
@@ -214,7 +216,10 @@
                 try {
                     const res = await fetch('/api/admin/users/create', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify(data)
                     });
                     const result = await res.json();
@@ -237,7 +242,10 @@
                 if (!confirm('Are you sure you want to change this user\'s status?')) return;
 
                 try {
-                    const res = await fetch(`/api/admin/users/${userId}/toggle-status`, { method: 'POST' });
+                    const res = await fetch(`/api/admin/users/${userId}/toggle-status`, { 
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                    });
                     const result = await res.json();
                     if (result.status === 'success') {
                         location.reload();
@@ -253,7 +261,10 @@
                 if (!confirm('Are you sure you want to promote this user to admin?')) return;
 
                 try {
-                    const res = await fetch(`/api/admin/users/${userId}/make-admin`, { method: 'POST' });
+                    const res = await fetch(`/api/admin/users/${userId}/make-admin`, { 
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                    });
                     const result = await res.json();
                     if (result.status === 'success') {
                         location.reload();
@@ -269,7 +280,10 @@
                 if (!confirm('WARNING: THIS IS PERMANENT. Are you sure you want to delete this user?')) return;
 
                 try {
-                    const res = await fetch(`/api/admin/users/${userId}/delete`, { method: 'DELETE' });
+                    const res = await fetch(`/api/admin/users/${userId}/delete`, { 
+                        method: 'DELETE',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                    });
                     const result = await res.json();
                     if (result.status === 'success') {
                         location.reload();
