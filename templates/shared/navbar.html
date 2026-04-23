@@ -283,7 +283,8 @@
         <!-- Nav links (desktop: inline row  |  mobile: side drawer) -->
         <ul class="nav-links" id="nav-links-list">
             {% if request.path.startswith('/admin') %}
-            <li><a href="{{ url_for('home') }}" class="{{ 'active' if request.path == url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('home') }}" class="{{ 'active' if request.path == url_for('home') }}">Visit Site</a>
+            </li>
             <li><a href="/admin" class="{{ 'active' if request.path == '/admin' }}">Dashboard</a></li>
             <li><a href="/admin/users" class="{{ 'active' if request.path == '/admin/users' }}">Users</a></li>
             <li><a href="/admin/broadcast" class="{{ 'active' if request.path == '/admin/broadcast' }}">Broadcast</a>
