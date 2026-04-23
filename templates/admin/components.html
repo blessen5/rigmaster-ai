@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700&display=swap"
         rel="stylesheet">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         .cat-btn {
             background: rgba(255, 255, 255, 0.05);
@@ -295,6 +296,7 @@
         </div>
 
         <script>
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             let currentCategory = 'cpus';
             let isEditing = false;
             let editId = null;
@@ -452,7 +454,10 @@
             async function deleteComp(id) {
                 if (!confirm('Are you sure you want to delete this component?')) return;
                 try {
-                    const res = await fetch(`/api/admin/components/${currentCategory}/${id}`, { method: 'DELETE' });
+                    const res = await fetch(`/api/admin/components/${currentCategory}/${id}`, { 
+                        method: 'DELETE',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                    });
                     const result = await res.json();
                     if (result.status === 'success') loadCategory(currentCategory, document.querySelector('.cat-btn.active'));
                 } catch (e) { alert('Delete failed'); }
@@ -469,7 +474,10 @@
                 try {
                     const res = await fetch(url, {
                         method: method,
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify(data)
                     });
                     const result = await res.json();
@@ -506,6 +514,7 @@
                 try {
                     const res = await fetch('/api/admin/import-components', {
                         method: 'POST',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN },
                         body: formData
                     });
                     const data = await res.json();
