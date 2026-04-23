@@ -1593,6 +1593,58 @@
             document.getElementById('simulation-results-section').style.display = 'block';
             document.getElementById('simulation-explanation').innerHTML = marked.parse(result.explanation);
         };
+
+        document.getElementById('save-sim-build').onclick = async () => {
+            const saveBtn = document.getElementById('save-sim-build');
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                const upgradedData = { ...buildData };
+                // Remove existing build ID to ensure a NEW build is created
+                delete upgradedData.build_id;
+                delete upgradedData._id;
+                delete upgradedData.id;
+
+                // Update components from simulation selects
+                SIMULATOR_CATEGORIES.forEach(category => {
+                    const select = document.getElementById(`sim-${category.id}`);
+                    if (select && select.value) {
+                        upgradedData[category.key] = select.value;
+                    }
+                });
+
+                // Set a descriptive name
+                const originalName = buildData.name || 'Custom Rig';
+                upgradedData.name = `Upgrade Sim - ${originalName}`;
+
+                const response = await fetch('/api/save_build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(upgradedData)
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert('Simulated build saved successfully!');
+                    // Optionally redirect to the new build analysis
+                    if (result.build_id) {
+                        window.location.href = `/analysis?build_id=${result.build_id}`;
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert('Failed to save build: ' + result.message);
+                }
+            } catch (error) {
+                console.error('[Simulator] Save error:', error);
+                alert('An error occurred while saving the build.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        };
     </script>
     {% if session.get('user_id') %}
     {% include 'shared/rigmaster_ai.html' %}

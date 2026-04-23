@@ -7917,9 +7917,19 @@ def admin_delete_setting():
 def admin_system_health():
     """Check system health status"""
     try:
+        collections = db.list_collection_names() if db is not None else []
+        # Filter out specific internal/legacy collections as requested
+        excluded = ['cpus', 'gpus', 'group_projects', 'shopping_cache']
+        filtered_collections = [c for c in collections if c not in excluded]
+        
+        # Ensure 'otp' is listed if not already present (as it's a core but ephemeral collection)
+        if 'otp' not in filtered_collections:
+            filtered_collections.append('otp')
+            filtered_collections.sort()
+        
         health = {
             'database': 'Connected' if db is not None else 'Disconnected',
-            'collections': db.list_collection_names() if db is not None else [],
+            'collections': filtered_collections,
             'ai_providers': {}
         }
         
@@ -8305,24 +8315,52 @@ def admin_import_components():
         
         stats = {'total': 0, 'added': 0, 'skipped': 0, 'errors': []}
         
-        # Valid collections
-        collections = ['cpus', 'gpus', 'motherboards', 'ram', 'storage', 'psu', 'cases', 'coolers', 'fans', 'monitors', 'os', 'peripherals', 'thermal_paste', 'wifi_adapters', 'speakers', 'microphones', 'ups', 'tools']
+        # Consistent mapping with admin_add_component
+        cat_map = {
+            'cpu': 'cpu', 'cpus': 'cpu',
+            'gpu': 'gpu', 'gpus': 'gpu',
+            'motherboard': 'motherboard', 'motherboards': 'motherboard',
+            'ram': 'ram', 'memory': 'ram',
+            'storage': 'storage', 'ssd': 'storage', 'hdd': 'storage',
+            'psu': 'psu', 'power supply': 'psu',
+            'case': 'case', 'cases': 'case',
+            'cooler': 'cooler', 'coolers': 'cooler',
+            'fan': 'fans', 'fans': 'fans',
+            'monitor': 'monitor', 'monitors': 'monitor',
+            'os': 'os', 'operating system': 'os',
+            'peripheral': 'peripherals', 'peripherals': 'peripherals',
+            'keyboard': 'peripherals', 'keyboards': 'peripherals',
+            'mouse': 'peripherals', 'mice': 'peripherals',
+            'headset': 'peripherals', 'headsets': 'peripherals',
+            'webcam': 'peripherals', 'webcams': 'peripherals',
+            'thermal paste': 'thermal_paste', 'thermal_paste': 'thermal_paste',
+            'wifi': 'wifi_adapters', 'wifi_adapter': 'wifi_adapters', 'wifi_adapters': 'wifi_adapters',
+            'speaker': 'speakers', 'speakers': 'speakers',
+            'microphone': 'microphones', 'microphones': 'microphones',
+            'ups': 'ups',
+            'tool': 'tools', 'tools': 'tools'
+        }
+        
+        subcat_map = {
+            'keyboard': 'keyboard', 'keyboards': 'keyboard',
+            'mouse': 'mouse', 'mice': 'mouse',
+            'headset': 'headset', 'headsets': 'headset',
+            'webcam': 'webcam', 'webcams': 'webcam'
+        }
         
         for row in reader:
             stats['total'] += 1
             try:
-                # 1. Validate mandatory fields
-                comp_type = row.get('type', '').lower().strip()
-                # Handle plurals if user provides them
-                if not comp_type.endswith('s') and comp_type not in ['ram', 'storage', 'psu']:
-                    if comp_type == 'motherboard': comp_type = 'motherboards'
-                    elif comp_type == 'case': comp_type = 'cases'
-                    elif comp_type == 'cooler': comp_type = 'coolers'
-                    else: comp_type += 's'
-                
-                if comp_type not in collections:
+                raw_type = row.get('type', '').lower().strip()
+                if not raw_type:
                     stats['skipped'] += 1
-                    stats['errors'].append(f"Row {stats['total']}: Invalid component type '{row.get('type')}'")
+                    stats['errors'].append(f"Row {stats['total']}: Missing 'type' column")
+                    continue
+                    
+                target_cat = cat_map.get(raw_type)
+                if not target_cat:
+                    stats['skipped'] += 1
+                    stats['errors'].append(f"Row {stats['total']}: Invalid component type '{raw_type}'")
                     continue
                 
                 name = row.get('name') or row.get('model')
@@ -8331,28 +8369,40 @@ def admin_import_components():
                     stats['errors'].append(f"Row {stats['total']}: Missing Name/Model")
                     continue
                 
-                # 2. Duplicate Check
-                if db[comp_type].find_one({'name': name}):
+                # Check for duplicates within the correct category
+                query = {'category': target_cat, 'name': name}
+                target_subcat = subcat_map.get(raw_type)
+                if target_subcat:
+                    query['sub_category'] = target_subcat
+                
+                if db.components.find_one(query):
                     stats['skipped'] += 1
                     continue
                 
-                # 3. Clean and Insert
-                # We store generic fields and specific ones
+                # Clean and Insert
                 doc = {}
                 for k, v in row.items():
-                    if v and v.strip():
-                        # Try to convert numbers
+                    if k.lower() == 'type': continue # We use target_cat instead
+                    
+                    if v and str(v).strip():
+                        # Try to convert numbers for price, tdp, wattage etc
+                        clean_v = str(v).strip()
                         try:
-                            if '.' in v: doc[k] = float(v)
-                            else: doc[k] = int(v)
+                            if '.' in clean_v: doc[k] = float(clean_v)
+                            else: doc[k] = int(clean_v)
                         except:
-                            doc[k] = v.strip()
+                            doc[k] = clean_v
                 
-                # Ensure 'name' is set
+                # Set mandatory fields
                 doc['name'] = name
-                if 'type' in doc: del doc['type']
+                doc['category'] = target_cat
+                if target_subcat:
+                    doc['sub_category'] = target_subcat
                 
-                db[comp_type].insert_one(doc)
+                if 'status' not in doc:
+                    doc['status'] = 'Active'
+                
+                db.components.insert_one(doc)
                 stats['added'] += 1
                 
             except Exception as row_err:
@@ -8364,6 +8414,26 @@ def admin_import_components():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': f"Failed to parse CSV: {str(e)}"}), 500
+
+@app.route('/api/admin/download-import-template')
+@admin_required
+def download_import_template():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    # Headers
+    writer.writerow(['type', 'name', 'brand', 'price', 'status', 'socket', 'tdp', 'core_count', 'chipset', 'memory', 'memory_type', 'form_factor', 'wattage'])
+    # Examples
+    writer.writerow(['cpus', 'Core i9-14900K', 'Intel', '589.00', 'Active', 'LGA1700', '125', '24', '', '', '', '', ''])
+    writer.writerow(['gpus', 'GeForce RTX 4080 Super', 'NVIDIA', '999.00', 'Active', '', '320', '', 'RTX 4080 Super', '16', '', '', ''])
+    writer.writerow(['motherboards', 'ROG STRIX Z790-E', 'ASUS', '399.00', 'Active', 'LGA1700', '', '', '', '', 'DDR5', 'ATX', ''])
+    
+    output.seek(0)
+    return send_file(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='rigmaster_import_template.csv'
+    )
 
 # ==========================================
 # ADVANCED ANALYSIS FEATURES
@@ -8666,7 +8736,7 @@ def forgot_password():
         otp = ''.join(random.choices(string.digits, k=6))
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
-        db.otps.update_one(
+        db.otp.update_one(
             {'email': email},
             {'$set': {'otp': otp, 'expires_at': expires_at}},
             upsert=True
@@ -8695,7 +8765,7 @@ def verify_otp():
         global db
         if db is None: db = get_db()
 
-        record = db.otps.find_one({'email': email})
+        record = db.otp.find_one({'email': email})
         
         if not record:
             flash('Invalid or expired OTP.')
@@ -8714,7 +8784,7 @@ def verify_otp():
         session['reset_email_verified'] = email # Authorized for reset
         
         # Clean up OTP
-        db.otps.delete_one({'email': email})
+        db.otp.delete_one({'email': email})
         
         return redirect(url_for('reset_password'))
 

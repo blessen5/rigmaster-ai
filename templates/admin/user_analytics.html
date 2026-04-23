@@ -89,24 +89,24 @@
 
     <header class="support-hero" style="padding: 5rem 0 1.5rem; text-align: center;">
         <div class="container">
-                <h1 class="text-gradient"
-                    style="font-size: 3rem; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 0.5rem;">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 19H19" stroke="url(#eng_grad)" stroke-width="2" stroke-linecap="round" />
-                        <path d="M5 15L9 11L13 15L19 7" stroke="url(#eng_grad)" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" />
-                        <defs>
-                            <linearGradient id="eng_grad" x1="5" y1="7" x2="19" y2="19" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="var(--primary-light)" />
-                                <stop offset="1" stop-color="var(--primary)" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    User Analytics
-                </h1>
-                <p style="color: var(--text-muted); font-size: 1.1rem;">
-                    Dive into user trends, popular hardware, and platform growth.
-                </p>
+            <h1 class="text-gradient"
+                style="font-size: 3rem; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 0.5rem;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 19H19" stroke="url(#eng_grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M5 15L9 11L13 15L19 7" stroke="url(#eng_grad)" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="eng_grad" x1="5" y1="7" x2="19" y2="19" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="var(--primary-light)" />
+                            <stop offset="1" stop-color="var(--primary)" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                User Analytics
+            </h1>
+            <p style="color: var(--text-muted); font-size: 1.1rem;">
+                Dive into user trends, popular hardware, and platform growth.
+            </p>
         </div>
     </header>
 
@@ -149,8 +149,9 @@
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
             <div class="insight-card">
-                <h2 style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; font-size: 1.25rem;"><i
-                        class="bi bi-fire"></i> Most Popular CPUs</h2>
+                <h2
+                    style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; font-size: 1.25rem;">
+                    <i class="bi bi-fire"></i> Most Popular CPUs</h2>
                 <ul class="popular-list">
                     {% for item in metrics.top_cpu %}
                     <li>
@@ -170,8 +171,9 @@
             </div>
 
             <div class="insight-card">
-                <h2 style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; font-size: 1.25rem;"><i
-                        class="bi bi-gpu-card"></i> Most Popular GPUs</h2>
+                <h2
+                    style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; font-size: 1.25rem;">
+                    <i class="bi bi-gpu-card"></i> Most Popular GPUs</h2>
                 <ul class="popular-list">
                     {% for item in metrics.top_gpu %}
                     <li>
