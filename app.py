@@ -9564,7 +9564,7 @@ def api_revoke_session():
 def api_update_preferences():
     """Update user market and display preferences"""
     try:
-        data = request.json
+        data = request.get_json(silent=True, force=True) or {}
         currency = data.get('currency', 'USD')
         units = data.get('units', 'Metric')
         
