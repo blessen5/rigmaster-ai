@@ -1377,7 +1377,10 @@
                     `<div style="padding: 1.2rem 1.5rem; color: #f87171;">${error.message}</div>`;
                 alert(`Validation error: ${error.message}`);
             } finally {
-                if (requestId === _analysisRequestId) document.body.style.cursor = 'default';
+                if (requestId === _analysisRequestId) {
+                    document.body.style.cursor = 'default';
+                    _isApplyingFixBatch = false;
+                }
             }
         }
 
@@ -1420,17 +1423,8 @@
 
             renderSuggestions(_activeFixSuggestions, true);
 
-            if (remainingCount > 0) {
-                showFixNotification(
-                    `${selectedCount} of ${totalSuggestions} fixes selected. Choose ${remainingCount} more to re-run analysis.`,
-                    'info'
-                );
-                return;
-            }
-
             _isApplyingFixBatch = true;
-            renderSuggestions(_activeFixSuggestions, true);
-            showFixNotification(`All ${totalSuggestions} fixes selected. Applying updates and re-validating build...`, 'success');
+            showFixNotification(`Applying fix: ${category} update...`, 'success');
 
             try {
                 const buildId = buildData.build_id || params.get('build_id');
