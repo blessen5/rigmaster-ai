@@ -400,6 +400,8 @@
     </div>
 
     <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
         function openModal(id) { document.getElementById(id).style.display = 'block'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
@@ -411,7 +413,10 @@
             try {
                 const res = await fetch('/api/profile/update', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ username, email })
                 });
                 const data = await res.json();
@@ -427,7 +432,10 @@
             try {
                 const res = await fetch('/api/profile/change-password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ current_password: current, new_password: newPass })
                 });
                 const data = await res.json();
@@ -440,7 +448,10 @@
             try {
                 const res = await fetch('/api/profile/delete-account', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ confirm: 'DELETE' })
                 });
                 const data = await res.json();
@@ -459,7 +470,10 @@
             try {
                 const res = await fetch('/api/profile/update-preferences', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ currency, units })
                 });
                 const data = await res.json();

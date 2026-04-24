@@ -764,6 +764,7 @@
     </div>
 
     <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         let selectedPurpose = 'Gaming';
         let currentBudget = Number('{{ default_budget }}');
 
@@ -818,7 +819,10 @@
             try {
                 const res = await fetch('/api/ai-recommend', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ budget: currentBudget, usage: finalPurpose, requirements })
                 });
 
@@ -987,7 +991,10 @@
                 try {
                     const res = await fetch('/api/save_build', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify(flatData)
                     });
 

@@ -1,3 +1,4 @@
+<meta name="csrf-token" content="{{ csrf_token() }}">
 {% if global_announcement %}
 <div class="global-announcement-bar">
     <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -361,7 +362,10 @@
                     const cur = this.value;
                     fetch('/api/set-currency', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
                         body: JSON.stringify({ currency: cur })
                     }).then(r => r.json()).then(p => {
                         window.dispatchEvent(new CustomEvent('rigmaster:currency-changed', {
@@ -420,7 +424,10 @@
                 if (deskSel) deskSel.value = cur;
                 fetch('/api/set-currency', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
                     body: JSON.stringify({ currency: cur })
                 }).then(function () { location.reload(); }).catch(function () { location.reload(); });
             });

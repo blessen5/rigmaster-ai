@@ -634,6 +634,7 @@
     <div id="preloaded-builds-data" style="display:none;">{{ user_builds|tojson }}</div>
 
     <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const BUILD_COMPONENT_KEYS = [
             'cpu_id', 'gpu_id', 'motherboard_id', 'ram_id', 'storage_id', 'psu_id',
             'case_id', 'cooler_id', 'monitor_id', 'os_id', 'fans_id', 'keyboard_id',
@@ -718,7 +719,10 @@
             try {
                 const response = await fetch('/api/validate_build', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(data)
                 });
 
@@ -756,7 +760,10 @@
                 // Full Analysis for Labs
                 const fullResp = await fetch('/api/full-analysis', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(data)
                 });
 
@@ -1214,7 +1221,10 @@
             try {
                 const fallbackResp = await fetch('/api/fix-compatibility', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(data)
                 });
 
@@ -1244,7 +1254,10 @@
             try {
                 const priceResp = await fetch('/api/component-prices', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(data),
                     signal: _priceController.signal
                 });
@@ -1272,7 +1285,10 @@
             try {
                 const fullResp = await fetch('/api/full-analysis', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(data),
                     signal: _fullAnalysisController.signal
                 });
@@ -1321,7 +1337,10 @@
             try {
                 const response = await fetch('/api/validate_build', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(payload),
                     signal: _validationController.signal
                 });
@@ -1420,7 +1439,10 @@
 
                     const saveResp = await fetch('/api/save_build', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify(buildData)
                     });
 
@@ -1560,15 +1582,21 @@
             const controls = document.getElementById('simulation-controls');
             controls.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem; grid-column: 1 / -1;">Loading component database...</div>';
             try {
-                const responses = await Promise.all(
-                    SIMULATOR_CATEGORIES.map(async category => {
-                        const res = await fetch(category.api);
-                        const data = await res.json();
-                        return [category.key, Array.isArray(data) ? data : []];
-                    })
-                );
-
-                _simulatorOptions = Object.fromEntries(responses);
+                const bulkResp = await fetch('/api/components/bulk');
+                const bulkData = await bulkResp.json();
+                
+                _simulatorOptions = {
+                    cpu_id: bulkData.cpus || [],
+                    gpu_id: bulkData.gpus || [],
+                    motherboard_id: bulkData.motherboards || [],
+                    ram_id: bulkData.ram || [],
+                    storage_id: bulkData.storage || [],
+                    psu_id: bulkData.psu || [],
+                    case_id: bulkData.cases || [],
+                    cooler_id: bulkData.coolers || [],
+                    monitor_id: bulkData.monitors || [],
+                    os_id: bulkData.os || []
+                };
                 renderCurrentBuildList();
                 renderSimulationControls();
             } catch (error) {
@@ -1586,7 +1614,10 @@
             });
             const resp = await fetch('/api/simulate-upgrade', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
                 body: JSON.stringify({ original_components: buildData, upgraded_components: upgrades })
             });
             const result = await resp.json();
@@ -1621,7 +1652,10 @@
 
                 const response = await fetch('/api/save_build', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(upgradedData)
                 });
 

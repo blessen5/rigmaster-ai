@@ -456,7 +456,9 @@
                 try {
                     const res = await fetch(`/api/admin/components/${currentCategory}/${id}`, { 
                         method: 'DELETE',
-                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                        headers: { 
+                            'X-CSRFToken': CSRF_TOKEN
+                        }
                     });
                     const result = await res.json();
                     if (result.status === 'success') loadCategory(currentCategory, document.querySelector('.cat-btn.active'));
