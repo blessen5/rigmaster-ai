@@ -1563,6 +1563,11 @@
             document.getElementById('close-simulator').onclick = () => document.getElementById('simulator-modal').style.display = 'none';
         });
 
+        window.addEventListener('rigmaster:currency-changed', (e) => {
+            console.log(`[Analysis] Currency changed to ${e.detail.currency}. Re-validating build...`);
+            void validateBuild(buildData);
+        });
+
         function getSimulatorOptionName(key, selectedId) {
             if (!selectedId) return 'None Selected';
             const options = _simulatorOptions[key] || [];
