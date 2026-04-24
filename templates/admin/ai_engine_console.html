@@ -721,13 +721,17 @@
 
 
         <script>
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             async function updatePreferredAI() {
                 const provider = document.getElementById('preferred-ai').value;
                 try {
                     const res = await fetch('/api/admin/settings', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify({ preferred_ai_provider: provider })
                     });
                     const result = await res.json();
@@ -764,8 +768,10 @@
                     const res = await fetch('/api/admin/settings', {
 
                         method: 'POST',
-
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
 
                         body: JSON.stringify({ api_keys: keys })
 
@@ -812,7 +818,10 @@
                 try {
                     const response = await fetch('/api/admin/test-smtp', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify(settings)
                     });
 
@@ -852,8 +861,10 @@
                     const res = await fetch('/api/admin/settings', {
 
                         method: 'POST',
-
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
 
                         body: JSON.stringify(settings)
 
@@ -892,8 +903,10 @@
                     const res = await fetch('/api/admin/settings/delete', {
 
                         method: 'POST',
-
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
 
                         body: JSON.stringify({ key: 'api_keys', nested_key: nestedKey })
 
@@ -971,7 +984,10 @@
 
                 try {
 
-                    const res = await fetch('/api/admin/clear-cache', { method: 'POST' });
+                    const res = await fetch('/api/admin/clear-cache', { 
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                    });
 
                     const result = await res.json();
 

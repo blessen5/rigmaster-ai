@@ -270,6 +270,7 @@
         </div>
 
         <script>
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             let currentComplaintId = null;
 
             function viewMessage(id) {
@@ -301,7 +302,10 @@
                 try {
                     const res = await fetch(`/api/admin/complaints/${currentComplaintId}/status`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN
+                        },
                         body: JSON.stringify({ status: status, reply_message: replyMessage })
                     });
                     const result = await res.json();
@@ -326,7 +330,10 @@
             async function deleteComplaint(id) {
                 if (!confirm('Are you sure you want to delete this complaint?')) return;
                 try {
-                    const res = await fetch(`/api/admin/complaints/${id}`, { method: 'DELETE' });
+                    const res = await fetch(`/api/admin/complaints/${id}`, { 
+                        method: 'DELETE',
+                        headers: { 'X-CSRFToken': CSRF_TOKEN }
+                    });
                     const result = await res.json();
                     if (result.status === 'success') {
                         document.getElementById(`complaint-${id}`).remove();

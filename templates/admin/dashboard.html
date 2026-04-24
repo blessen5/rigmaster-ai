@@ -188,11 +188,16 @@
     </main>
 
     <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
         async function postSettings(data) {
             try {
                 const res = await fetch('/api/admin/settings', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
@@ -205,7 +210,6 @@
                 alert('Connection failed');
             }
         }
-
     </script>
 </body>
 

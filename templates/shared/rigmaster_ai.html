@@ -686,11 +686,15 @@
             chatBody.scrollTop = chatBody.scrollHeight;
 
             const context = this.gatherContext();
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             try {
                 const response = await fetch('/ai-assistant', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({
                         message: text,
                         context: context

@@ -304,6 +304,8 @@
     </main>
 
     <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
         // --- Global Announcement Functions ---
         function updatePreview(text) {
             const previewText = document.getElementById('preview-text');
@@ -334,7 +336,10 @@
             try {
                 const res = await fetch('/api/admin/settings', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ global_announcement: text })
                 });
                 const result = await res.json();
@@ -376,7 +381,10 @@
             try {
                 const res = await fetch('/api/admin/broadcast', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -405,7 +413,10 @@
             try {
                 const res = await fetch('/api/admin/settings', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ maintenance_mode: !currentVal })
                 });
                 const result = await res.json();

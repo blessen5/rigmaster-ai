@@ -666,6 +666,7 @@
     </div>
 
     <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         function closeModal() {
             document.getElementById('shopping-modal').style.display = 'none';
         }
@@ -699,7 +700,10 @@
             try {
                 const response = await fetch('/api/order-components', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
                     body: JSON.stringify({ build_id: buildId })
                 });
 
@@ -752,7 +756,8 @@
 
             try {
                 const response = await fetch(`/api/delete_build/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN }
                 });
                 const data = await response.json();
 

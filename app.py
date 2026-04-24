@@ -133,6 +133,75 @@ AI_RATE_LIMIT_PATHS = {
 }
 _ai_rate_limit_state = defaultdict(deque)
 _ai_rate_limit_lock = Lock()
+ 
+# -------------------------------------------------------------------
+# COMPONENT LIST CACHE
+# Hardware data changes rarely, so we cache lists for 5 minutes.
+# -------------------------------------------------------------------
+_COMPONENT_CACHE = {}
+_COMPONENT_CACHE_TTL = 300 # 5 minutes
+_COMPONENT_CACHE_LOCK = Lock()
+ 
+def get_component_list(category_name):
+    """Helper to fetch simplified component list from unified components table with 5min caching."""
+    global db
+    now = time.time()
+    
+    # Check cache first
+    with _COMPONENT_CACHE_LOCK:
+        if category_name in _COMPONENT_CACHE:
+            data, expiry = _COMPONENT_CACHE[category_name]
+            if now < expiry:
+                return data
+
+    try:
+        if db is None:
+            db = get_db()
+        if db is None:
+            return []
+            
+        # Mapping
+        cat_map = {
+            'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
+            'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
+            'cases': 'case', 'coolers': 'cooler', 'monitors': 'monitor',
+            'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
+            'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
+            'speakers': 'speakers', 'microphones': 'microphones',
+            'ups': 'ups', 'tools': 'tools',
+            'peripheral_keyboard': 'peripherals', 'peripheral_mouse': 'peripherals',
+            'peripheral_headset': 'peripherals', 'peripheral_webcam': 'peripherals'
+        }
+        target_cat = cat_map.get(category_name, category_name)
+        
+        query = {'category': target_cat}
+        if category_name == 'ram':
+            query = {'category': {'$in': ['ram', 'memory']}}
+        elif category_name.startswith('peripheral_'):
+            sub_cat = category_name.replace('peripheral_', '')
+            query = {'category': 'peripherals', 'sub_category': sub_cat}
+
+        items = list(db.components.find(query, {'name': 1, 'status': 1, 'brand': 1}).sort('name', 1))
+        data = [{
+            'id': str(item['_id']), 
+            'name': item.get('name', 'Unknown'),
+            'status': item.get('status', 'Active'),
+            'brand': item.get('brand', 'Unknown')
+        } for item in items]
+        
+        # Update cache
+        with _COMPONENT_CACHE_LOCK:
+            _COMPONENT_CACHE[category_name] = (data, now + _COMPONENT_CACHE_TTL)
+            
+        return data
+    except Exception as e:
+        app.logger.error(f"Error fetching {category_name}: {e}")
+        return []
+
+def get_cached_component_list(category_name):
+    # This is now just a wrapper for get_component_list
+    return get_component_list(category_name)
+
 
 # Register format_price as a template filter
 @app.template_filter('format_price')
@@ -2469,7 +2538,7 @@ def saved_builds():
 
         build_details['project_total'] = format_price(total_unit_cost)
         
-        diff_info = calculate_build_difficulty(build)
+        diff_info = calculate_build_difficulty(build, components_map=components_map)
         build_details['difficulty'] = diff_info['level']
         build_details['difficulty_explanation'] = diff_info['explanation']
         
@@ -2495,57 +2564,38 @@ def delete_build(build_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
 # API Endpoints
-def get_component_list(category_name):
-    """Helper to fetch simplified component list from unified components table"""
-    global db
-    try:
-        if db is None:
-            db = get_db()
-        if db is None:
-            return []
-            
-        # category_name should be singular 'cpu', 'gpu' etc.
-        # But our API routes usage below calls with 'cpus', 'gpus'...
-        # Map them here
-        cat_map = {
-            'cpus': 'cpu',
-            'gpus': 'gpu',
-            'motherboards': 'motherboard',
-            'ram': 'ram',
-            'storage': 'storage',
-            'psu': 'psu',
-            'cases': 'case',
-            'coolers': 'cooler',
-            'monitors': 'monitor',
-            'os': 'os',
-            'peripherals': 'peripherals',
-            'fans': 'fans'
-        }
-        target_cat = cat_map.get(category_name, category_name) # Fallback to input if not in map
-        
-        # Search for both 'ram' and 'memory' if RAM is requested due to DB inconsistency
-        query = {'category': target_cat}
-        if category_name == 'ram':
-            query = {'category': {'$in': ['ram', 'memory']}}
+# Endpoints now use get_component_list which handles caching internally.
 
-        # sort by name, include status and brand for builder logic
-        items = list(db.components.find(query, {'name': 1, 'status': 1, 'brand': 1}).sort('name', 1))
-        return [{
-            'id': str(item['_id']), 
-            'name': item.get('name', 'Unknown'),
-            'status': item.get('status', 'Active'),
-            'brand': item.get('brand', 'Unknown')
-        } for item in items]
-    except Exception as e:
-        app.logger.error(f"Error fetching {category_name}: {e}")
-        return []
+
+@app.route('/api/components/bulk')
+@login_required
+def api_components_bulk():
+    """Returns multiple component lists in one single request to speed up builder/simulator load."""
+    cats = request.args.get('categories', '').split(',')
+    if not cats or cats == ['']:
+        # Default set for builder/simulator
+        cats = [
+            'cpus', 'gpus', 'motherboards', 'ram', 'storage', 'psu', 'cases', 
+            'coolers', 'monitors', 'os', 'fans', 'thermal_paste', 'wifi_adapters',
+            'speakers', 'microphones', 'ups', 'tools'
+        ]
+    
+    results = {}
+    for cat in cats:
+        results[cat] = get_cached_component_list(cat)
+    
+    # Peripheral sub-categories
+    periph_subs = ['keyboard', 'mouse', 'headset', 'webcam']
+    for sub in periph_subs:
+        results[f'peripheral_{sub}'] = get_cached_component_list(f'peripheral_{sub}')
+        
+    return jsonify(results)
 
 @app.route('/api/cpus')
 @login_required
 def api_cpus():
-    return jsonify(get_component_list('cpus'))
+    return jsonify(get_cached_component_list('cpus'))
 
 @app.route('/api/gpus')
 @login_required
@@ -2646,7 +2696,7 @@ def api_ups():
 @app.route('/api/tools')
 @login_required
 def api_tools():
-    return jsonify(get_component_list('tools'))
+    return jsonify(get_cached_component_list('tools'))
 
 
 
@@ -5623,17 +5673,23 @@ def run_power_analysis(data):
         app.logger.error(f"Power analysis internal error: {e}")
         return {'status': 'error', 'message': str(e)}
 
-def calculate_build_difficulty(build):
+def calculate_build_difficulty(build, components_map=None):
     try:
         score = 0
         reasons = []
         
-        cpu = get_component_by_id(build.get('cpu_id'))
-        gpu = get_component_by_id(build.get('gpu_id'))
-        cooler = get_component_by_id(build.get('cooler_id'))
-        case = get_component_by_id(build.get('case_id'))
-        storage = get_component_by_id(build.get('storage_id'))
-        psu = get_component_by_id(build.get('psu_id'))
+        def _get_comp(cid):
+            if not cid: return None
+            if components_map and str(cid) in components_map:
+                return components_map[str(cid)]
+            return get_component_by_id(cid)
+
+        cpu = _get_comp(build.get('cpu_id'))
+        gpu = _get_comp(build.get('gpu_id'))
+        cooler = _get_comp(build.get('cooler_id'))
+        case = _get_comp(build.get('case_id'))
+        storage = _get_comp(build.get('storage_id'))
+        psu = _get_comp(build.get('psu_id'))
 
         # 1. GPU Complexity
         if gpu:
