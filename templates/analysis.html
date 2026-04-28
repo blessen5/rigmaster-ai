@@ -625,6 +625,9 @@
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 1rem; padding-bottom: 1rem;">
+                    <button id="apply-sim-build" class="btn btn-primary" style="padding: 0.8rem 2rem; min-width: 200px; display: none; background: #10b981; border-color: #10b981;">
+                        Apply to This Build
+                    </button>
                     <button id="save-sim-build" class="btn btn-primary" style="padding: 0.8rem 2rem; min-width: 200px;">
                         Save as New Build
                     </button>
@@ -682,9 +685,12 @@
         let _fullAnalysisController = null;
         let _priceController = null;
         let _simulatorOptions = {};
+        let _resolvedBuildNames = {};
         let _activeFixSuggestions = [];
         let _selectedFixOptions = {};
         let _isApplyingFixBatch = false;
+        let _cachedSimulatorData = null;
+        let _isFetchingSimulatorData = false;
         const FIX_CATEGORY_KEY_MAP = {
             'cpu': 'cpu_id',
             'gpu': 'gpu_id',
@@ -949,6 +955,11 @@
         }
 
         function renderCompatibility(result) {
+            // Save resolved names for the simulator to use
+            if (result.resolved_names) {
+                _resolvedBuildNames = result.resolved_names;
+            }
+            
             const statusEl = document.getElementById('compat-status');
             const badge = document.getElementById('health-status-badge');
             const icon = document.getElementById('health-icon');
@@ -1598,6 +1609,9 @@
                 prepareSimulator();
             };
             document.getElementById('close-simulator').onclick = () => document.getElementById('simulator-modal').style.display = 'none';
+
+            // Background pre-fetch for simulator data
+            setTimeout(fetchSimulatorData, 500);
         });
 
         window.addEventListener('rigmaster:currency-changed', (e) => {
@@ -1608,8 +1622,19 @@
         function getSimulatorOptionName(key, selectedId) {
             if (!selectedId) return 'None Selected';
             const options = _simulatorOptions[key] || [];
-            const match = options.find(item => item.id === selectedId);
-            return match ? match.name : 'Selected Component';
+            // Handle both object {id, name} and array [id, name] formats for robustness
+            const match = options.find(item => {
+                if (Array.isArray(item)) return item[0] === selectedId;
+                return item.id === selectedId;
+            });
+            if (match) {
+                return Array.isArray(match) ? match[1] : match.name;
+            }
+            // Fallback to resolved names from the main analysis report
+            if (_resolvedBuildNames[key]) {
+                return _resolvedBuildNames[key];
+            }
+            return 'Selected Component';
         }
 
         function renderCurrentBuildList() {
@@ -1636,16 +1661,56 @@
                 const group = document.createElement('div');
                 group.innerHTML = `
                     <label for="sim-${category.id}" style="font-size: 0.7rem; color: var(--text-muted);">${category.label}</label>
-                    <select id="sim-${category.id}" class="form-select" style="width:100%; margin-top:0.4rem;"></select>
+                    <select id="sim-${category.id}" class="form-select simulator-select" data-key="${category.key}" style="width:100%; margin-top:0.4rem; cursor: pointer;">
+                    </select>
                 `;
                 controls.appendChild(group);
 
                 const select = group.querySelector('select');
                 const currentId = buildData[category.key] || '';
-                const options = _simulatorOptions[category.key] || [];
-                select.innerHTML = '<option value="">-- Keep Current --</option>' + options.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
-                select.value = currentId;
+                
+                // Initially only show "Keep Current" and the actually selected item (if any)
+                // This makes initial rendering near-instant
+                let initialHtml = '<option value="">-- Keep Current --</option>';
+                if (currentId) {
+                    const currentName = getSimulatorOptionName(category.key, currentId);
+                    initialHtml += `<option value="${currentId}" selected>${currentName}</option>`;
+                }
+                select.innerHTML = initialHtml;
+
+                // Populate full list only when user interacts with the select
+                select.onmousedown = () => populateDropdownOnDemand(select, category.key, currentId);
             });
+        }
+
+        function populateDropdownOnDemand(select, key, currentId) {
+            if (select.dataset.populated === 'true') return;
+            
+            const options = _simulatorOptions[key] || [];
+            if (options.length === 0) return;
+
+            const fragment = document.createDocumentFragment();
+            
+            // Re-add "Keep Current"
+            const defOpt = document.createElement('option');
+            defOpt.value = "";
+            defOpt.textContent = "-- Keep Current --";
+            fragment.appendChild(defOpt);
+
+            options.forEach(item => {
+                const id = Array.isArray(item) ? item[0] : item.id;
+                const name = Array.isArray(item) ? item[1] : item.name;
+                
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                if (id === currentId) opt.selected = true;
+                fragment.appendChild(opt);
+            });
+
+            select.innerHTML = '';
+            select.appendChild(fragment);
+            select.dataset.populated = 'true';
         }
 
         async function prepareSimulator() {
@@ -1657,24 +1722,19 @@
 
             document.getElementById('simulation-results-section').style.display = 'none';
 
+            if (_cachedSimulatorData) {
+                populateSimulatorOptions(_cachedSimulatorData);
+                renderCurrentBuildList();
+                renderSimulationControls();
+                return;
+            }
+
             const controls = document.getElementById('simulation-controls');
             controls.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem; grid-column: 1 / -1;">Loading component database...</div>';
+            
             try {
-                const bulkResp = await fetch('/api/components/bulk');
-                const bulkData = await bulkResp.json();
-                
-                _simulatorOptions = {
-                    cpu_id: bulkData.cpus || [],
-                    gpu_id: bulkData.gpus || [],
-                    motherboard_id: bulkData.motherboards || [],
-                    ram_id: bulkData.ram || [],
-                    storage_id: bulkData.storage || [],
-                    psu_id: bulkData.psu || [],
-                    case_id: bulkData.cases || [],
-                    cooler_id: bulkData.coolers || [],
-                    monitor_id: bulkData.monitors || [],
-                    os_id: bulkData.os || []
-                };
+                const data = await fetchSimulatorData();
+                populateSimulatorOptions(data);
                 renderCurrentBuildList();
                 renderSimulationControls();
             } catch (error) {
@@ -1682,6 +1742,56 @@
                 document.getElementById('current-build-list').innerHTML = '<div style="color: #f87171; text-align:center; padding:1rem;">Failed to load the current configuration.</div>';
                 document.getElementById('simulation-controls').innerHTML = '<div style="color: #f87171; text-align:center; padding:1rem; grid-column:1 / -1;">Failed to load upgrade options. Please try again.</div>';
             }
+        }
+
+        async function fetchSimulatorData() {
+            if (_isFetchingSimulatorData) {
+                // Wait for existing fetch
+                return new Promise(resolve => {
+                    const check = setInterval(() => {
+                        if (_cachedSimulatorData) {
+                            clearInterval(check);
+                            resolve(_cachedSimulatorData);
+                        }
+                    }, 100);
+                });
+            }
+
+            _isFetchingSimulatorData = true;
+            try {
+                const bulkResp = await fetch('/api/components/bulk');
+                _cachedSimulatorData = await bulkResp.json();
+                return _cachedSimulatorData;
+            } finally {
+                _isFetchingSimulatorData = false;
+            }
+        }
+
+        function populateSimulatorOptions(bulkData) {
+            _simulatorOptions = {
+                cpu_id: bulkData.cpus || [],
+                gpu_id: bulkData.gpus || [],
+                motherboard_id: bulkData.motherboards || [],
+                ram_id: bulkData.ram || [],
+                storage_id: bulkData.storage || [],
+                psu_id: bulkData.psu || [],
+                case_id: bulkData.cases || [],
+                cooler_id: bulkData.coolers || [],
+                monitor_id: bulkData.monitors || [],
+                os_id: bulkData.os || [],
+                fans_id: bulkData.fans || [],
+                keyboard_id: bulkData.peripheral_keyboard || [],
+                mouse_id: bulkData.peripheral_mouse || [],
+                headset_id: bulkData.peripheral_headset || [],
+                webcam_id: bulkData.peripheral_webcam || [],
+                thermal_paste_id: bulkData.thermal_paste || [],
+                wifi_id: bulkData.wifi_adapters || [],
+                speakers_id: bulkData.speakers || [],
+                microphone_id: bulkData.microphones || [],
+                ups_id: bulkData.ups || [],
+                tool_id: bulkData.tools || [],
+                peripherals_id: bulkData.peripherals || []
+            };
         }
 
         document.getElementById('run-simulation').onclick = async () => {
@@ -1701,6 +1811,56 @@
             const result = await resp.json();
             document.getElementById('simulation-results-section').style.display = 'block';
             document.getElementById('simulation-explanation').innerHTML = marked.parse(result.explanation);
+            
+            // Show "Apply" button only if we are editing an existing build
+            const applyBtn = document.getElementById('apply-sim-build');
+            if (buildData.build_id || buildData.id) {
+                applyBtn.style.display = 'block';
+            } else {
+                applyBtn.style.display = 'none';
+            }
+        };
+
+        document.getElementById('apply-sim-build').onclick = async () => {
+            const applyBtn = document.getElementById('apply-sim-build');
+            const originalText = applyBtn.textContent;
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Updating...';
+
+            try {
+                const upgradedData = { ...buildData };
+                
+                // Update components from simulation selects
+                SIMULATOR_CATEGORIES.forEach(category => {
+                    const select = document.getElementById(`sim-${category.id}`);
+                    if (select && select.value) {
+                        upgradedData[category.key] = select.value;
+                    }
+                });
+
+                const response = await fetch('/api/save_build', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify(upgradedData)
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert('Build updated successfully!');
+                    location.reload();
+                } else {
+                    alert('Failed to update build: ' + result.message);
+                }
+            } catch (error) {
+                console.error('[Simulator] Save Error:', error);
+                alert('An error occurred while updating the build.');
+            } finally {
+                applyBtn.disabled = false;
+                applyBtn.textContent = originalText;
+            }
         };
 
         document.getElementById('save-sim-build').onclick = async () => {

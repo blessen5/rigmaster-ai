@@ -142,15 +142,18 @@ _COMPONENT_CACHE = {}
 _COMPONENT_CACHE_TTL = 300 # 5 minutes
 _COMPONENT_CACHE_LOCK = Lock()
  
-def get_component_list(category_name):
+def get_component_list(category_name, simplified=False):
     """Helper to fetch simplified component list from unified components table with 5min caching."""
     global db
     now = time.time()
     
+    # Cache key includes simplified flag
+    cache_key = f"{category_name}_simple" if simplified else category_name
+    
     # Check cache first
     with _COMPONENT_CACHE_LOCK:
-        if category_name in _COMPONENT_CACHE:
-            data, expiry = _COMPONENT_CACHE[category_name]
+        if cache_key in _COMPONENT_CACHE:
+            data, expiry = _COMPONENT_CACHE[cache_key]
             if now < expiry:
                 return data
 
@@ -160,40 +163,88 @@ def get_component_list(category_name):
         if db is None:
             return []
             
-        # Mapping
-        cat_map = {
-            'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
-            'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-            'cases': 'case', 'coolers': 'cooler', 'monitors': 'monitor',
-            'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
-            'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
-            'speakers': 'speakers', 'microphones': 'microphones',
-            'ups': 'ups', 'tools': 'tools',
-            'peripheral_keyboard': 'peripherals', 'peripheral_mouse': 'peripherals',
-            'peripheral_headset': 'peripherals', 'peripheral_webcam': 'peripherals'
-        }
-        target_cat = cat_map.get(category_name, category_name)
-        
-        query = {'category': target_cat}
+        # Comprehensive mapping with synonyms to match hardware_encyclopedia logic
         if category_name == 'ram':
-            query = {'category': {'$in': ['ram', 'memory']}}
+            query = {'category': {'$in': ['ram', 'memory', 'RAM', 'Memory', 'memory-kit']}}
+        elif category_name == 'cpus':
+            query = {'category': {'$in': ['cpu', 'cpus', 'CPU', 'Processors', 'Processor']}}
+        elif category_name == 'gpus':
+            query = {'category': {'$in': ['gpu', 'gpus', 'GPU', 'Graphics Cards', 'Video Card', 'video-card']}}
+        elif category_name == 'motherboards':
+            query = {'category': {'$in': ['motherboard', 'motherboards', 'Motherboard']}}
+        elif category_name == 'storage':
+            query = {'category': {'$in': ['storage', 'Storage', 'internal-hard-drive', 'external-hard-drive', 'ssd', 'hdd']}}
+        elif category_name == 'psu':
+            query = {'category': {'$in': ['psu', 'power-supply', 'Power Supply', 'power_supply']}}
+        elif category_name == 'cases':
+            query = {'category': {'$in': ['case', 'cases', 'Case', 'case-accessory']}}
+        elif category_name == 'coolers':
+            query = {'category': {'$in': ['cooler', 'coolers', 'cpu-cooler', 'fan-controller']}}
+        elif category_name == 'fans':
+            query = {'category': {'$in': ['fans', 'fan', 'Fans', 'case-fan']}}
+        elif category_name == 'thermal_paste':
+            query = {'category': {'$in': ['thermal-paste', 'thermal_paste', 'Thermal Paste']}}
+        elif category_name == 'wifi_adapters':
+            query = {'category': {'$in': ['wifi_adapters', 'wireless-network-card', 'wired-network-card', 'wifi', 'Network Adapters']}}
+        elif category_name == 'speakers':
+            query = {'category': {'$in': ['speakers', 'speaker', 'Speakers']}}
+        elif category_name == 'microphones':
+            query = {'category': {'$in': ['microphone', 'microphones', 'Microphone']}}
+        elif category_name == 'ups':
+            query = {'category': {'$in': ['ups', 'ups-surge', 'UPS']}}
+        elif category_name == 'tools':
+            query = {'category': {'$in': ['tools', 'tool', 'Assembly Tools']}}
         elif category_name.startswith('peripheral_'):
             sub_cat = category_name.replace('peripheral_', '')
-            query = {'category': 'peripherals', 'sub_category': sub_cat}
+            # Peripherals can be categorized by 'peripherals' + sub_category, or directly by their type
+            periph_cats = ['peripherals', 'Peripherals']
+            if sub_cat == 'keyboard': periph_cats.extend(['keyboard', 'keyboards', 'Keyboard'])
+            if sub_cat == 'mouse': periph_cats.extend(['mouse', 'mice', 'Mouse', 'mouse-pad'])
+            if sub_cat == 'headset': periph_cats.extend(['headset', 'headsets', 'Headset', 'headphones'])
+            if sub_cat == 'webcam': periph_cats.extend(['webcam', 'webcams', 'Webcam'])
+            query = {
+                '$or': [
+                    {'category': {'$in': periph_cats}},
+                    {'category': 'peripherals', 'sub_category': sub_cat}
+                ]
+            }
+        else:
+            cat_map = {
+                'monitors': 'monitor', 'os': 'os'
+            }
+            target_cat = cat_map.get(category_name, category_name)
+            query = {'category': target_cat}
 
-        items = list(db.components.find(query, {'name': 1, 'status': 1, 'brand': 1}).sort('name', 1))
-        data = [{
-            'id': str(item['_id']), 
-            'name': item.get('name', 'Unknown'),
-            'status': item.get('status', 'Active'),
-            'brand': item.get('brand', 'Unknown')
-        } for item in items]
+        # Select only required fields
+        projection = {'name': 1}
+        if not simplified:
+            projection.update({'status': 1, 'brand': 1})
+            
+        cursor = db.components.find(query, projection).sort('name', 1)
+        if simplified:
+            cursor = cursor.limit(1000) # Prevents browser crash with 70k items
+            
+        items = list(cursor)
+        
+        data = []
+        for item in items:
+            if simplified:
+                # Array format is much smaller than Object format in JSON
+                data.append([str(item['_id']), item.get('name', 'Unknown')])
+            else:
+                doc = {'id': str(item['_id']), 'name': item.get('name', 'Unknown')}
+                doc['status'] = item.get('status', 'Active')
+                doc['brand'] = item.get('brand', 'Unknown')
+                data.append(doc)
         
         # Update cache
         with _COMPONENT_CACHE_LOCK:
-            _COMPONENT_CACHE[category_name] = (data, now + _COMPONENT_CACHE_TTL)
+            _COMPONENT_CACHE[cache_key] = (data, now + _COMPONENT_CACHE_TTL)
             
         return data
+    except Exception as e:
+        app.logger.error(f"Error fetching {category_name}: {e}")
+        return []
     except Exception as e:
         app.logger.error(f"Error fetching {category_name}: {e}")
         return []
@@ -965,10 +1016,52 @@ def hardware_encyclopedia():
             req_cat = 'cpus'
             
         db_cat = category_map.get(req_cat, 'cpu')
-        # Use regex to be robust against trailing spaces or case differences in DB
-        query = {'category': {'$regex': f'^{re.escape(db_cat.strip())}$', '$options': 'i'}}
         
-        # Mapping for sub-category routing
+        # Build optimized query
+        query = {}
+        
+        # Category handling with exhaustive synonyms and exact matches for index performance
+        if req_cat == 'ram':
+            query['category'] = {'$in': ['ram', 'memory', 'RAM', 'Memory', 'memory-kit']}
+        elif req_cat == 'cpus':
+            query['category'] = {'$in': ['cpu', 'cpus', 'CPU', 'Processors', 'Processor']}
+        elif req_cat == 'gpus':
+            query['category'] = {'$in': ['gpu', 'gpus', 'GPU', 'Graphics Cards', 'Video Card', 'video-card']}
+        elif req_cat == 'motherboards':
+            query['category'] = {'$in': ['motherboard', 'motherboards', 'Motherboard']}
+        elif req_cat == 'storage':
+            query['category'] = {'$in': ['storage', 'Storage', 'internal-hard-drive', 'external-hard-drive', 'ssd', 'hdd']}
+        elif req_cat == 'psu':
+            query['category'] = {'$in': ['psu', 'power-supply', 'Power Supply', 'power_supply']}
+        elif req_cat == 'cases':
+            query['category'] = {'$in': ['case', 'cases', 'Case', 'case-accessory']}
+        elif req_cat == 'coolers':
+            query['category'] = {'$in': ['cooler', 'coolers', 'cpu-cooler', 'fan-controller']}
+        elif req_cat == 'thermal_paste':
+            query['category'] = {'$in': ['thermal-paste', 'thermal_paste', 'Thermal Paste']}
+        elif req_cat == 'wifi_adapters':
+            query['category'] = {'$in': ['wifi_adapters', 'wireless-network-card', 'wired-network-card', 'wifi', 'Network Adapters']}
+        elif req_cat == 'peripherals':
+             query['category'] = {'$in': ['peripherals', 'Peripherals', 'keyboard', 'mouse', 'headset', 'webcam', 'microphone', 'speakers', 'headphones', 'mouse-pad']}
+        elif req_cat == 'keyboards':
+            query['category'] = {'$in': ['keyboard', 'keyboards', 'Keyboard']}
+        elif req_cat == 'mice':
+            query['category'] = {'$in': ['mouse', 'mice', 'Mouse']}
+        elif req_cat == 'headsets':
+            query['category'] = {'$in': ['headset', 'headsets', 'Headset', 'headphones']}
+        elif req_cat == 'webcams':
+            query['category'] = {'$in': ['webcam', 'webcams', 'Webcam']}
+        elif req_cat == 'speakers':
+            query['category'] = {'$in': ['speakers', 'speaker', 'Speakers']}
+        elif req_cat == 'microphones':
+            query['category'] = {'$in': ['microphone', 'microphones', 'Microphone']}
+        elif req_cat == 'fans':
+            query['category'] = {'$in': ['fans', 'fan', 'Fans', 'case-fan']}
+        else:
+            # Use exact match if possible, or $in for known common casing
+            query['category'] = {'$in': [db_cat, db_cat.lower(), db_cat.capitalize(), db_cat.upper()]}
+        
+        # Sub-category routing for peripherals
         subcat_map = {
             'keyboards': 'keyboard',
             'mice': 'mouse',
@@ -985,19 +1078,26 @@ def hardware_encyclopedia():
         # Pagination
         try:
             page = int(request.args.get('page', 1))
-            per_page = 40
+            per_page = int(request.args.get('per_page', 50)) # Increased slightly for speed/scrolling
             if page < 1: page = 1
         except:
             page = 1
-            per_page = 40
+            per_page = 50
 
         # Generic query to components table
+        # Optimized sorting: index on (category, name) means sorting by name after category filter is efficient
         cursor = db.components.find(query).sort('name', 1)
-        total_items = db.components.count_documents(query)
+        
+        # Skip count_documents for AJAX requests if not needed, but keep for initial page load
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        total_items = 0
+        if not is_ajax or page == 1:
+            total_items = db.components.count_documents(query)
         
         items = list(cursor.skip((page - 1) * per_page).limit(per_page))
         
-        total_pages = (total_items + per_page - 1) // per_page
+        total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 0
         for item in items:
             item['_id'] = str(item['_id'])
             formatted_fields = {}
@@ -1006,12 +1106,23 @@ def hardware_encyclopedia():
                 if raw_price in (None, ''):
                     continue
                 try:
-                    normalized_price = float(str(raw_price).replace('$', '').replace(',', '').strip())
-                    formatted_fields[price_key] = format_price(normalized_price)
+                    # Clean the price string before conversion
+                    price_str = str(raw_price).replace('$', '').replace(',', '').strip()
+                    if price_str:
+                        normalized_price = float(price_str)
+                        formatted_fields[price_key] = format_price(normalized_price)
                 except (TypeError, ValueError):
                     formatted_fields[price_key] = raw_price
             item['_formatted_fields'] = formatted_fields
             
+        if is_ajax:
+            return jsonify({
+                'items': items,
+                'current_page': page,
+                'total_pages': total_pages,
+                'has_more': page < total_pages
+            })
+
         return render_template('hardware.html', 
                                items=items, 
                                current_cat=req_cat, 
@@ -2582,12 +2693,12 @@ def api_components_bulk():
     
     results = {}
     for cat in cats:
-        results[cat] = get_cached_component_list(cat)
+        results[cat] = get_component_list(cat, simplified=True)
     
     # Peripheral sub-categories
     periph_subs = ['keyboard', 'mouse', 'headset', 'webcam']
     for sub in periph_subs:
-        results[f'peripheral_{sub}'] = get_cached_component_list(f'peripheral_{sub}')
+        results[f'peripheral_{sub}'] = get_component_list(f'peripheral_{sub}', simplified=True)
         
     return jsonify(results)
 
@@ -3824,7 +3935,31 @@ def api_fix_compatibility():
         return jsonify({
             'status': final_status,
             'suggestions': suggestions,
-            'architectural_coverage': True
+            'architectural_coverage': True,
+            'resolved_names': {
+                'cpu_id': cpu.get('name') if cpu else None,
+                'gpu_id': gpu.get('name') if gpu else None,
+                'motherboard_id': mobo.get('name') if mobo else None,
+                'ram_id': ram.get('name') if ram else None,
+                'storage_id': storage.get('name') if storage else None,
+                'psu_id': psu.get('name') if psu else None,
+                'case_id': case.get('name') if case else None,
+                'cooler_id': cooler.get('name') if cooler else None,
+                'fans_id': fans.get('name') if fans else None,
+                'os_id': os_cfg.get('name') if os_cfg else None,
+                'monitor_id': monitor.get('name') if monitor else None,
+                'keyboard_id': keyboard.get('name') if keyboard else None,
+                'mouse_id': mouse.get('name') if mouse else None,
+                'headset_id': headset.get('name') if headset else None,
+                'webcam_id': webcam.get('name') if webcam else None,
+                'speakers_id': speakers.get('name') if speakers else None,
+                'microphone_id': microphone.get('name') if microphone else None,
+                'thermal_paste_id': paste.get('name') if paste else None,
+                'wifi_id': network.get('name') if network else None,
+                'ups_id': ups.get('name') if ups else None,
+                'tool_id': tools.get('name') if tools else None,
+                'peripherals_id': (peripherals.get('name') if 'peripherals' in locals() and peripherals else None)
+            }
         })
 
     except Exception as e:
@@ -3922,29 +4057,41 @@ def api_simulate_upgrade():
             }
 
         # 2. Resolve upgraded configuration
+        # Merge upgrades with original values to preserve unchanged parts
+        full_upgraded = {}
+        # Base it on original components
+        orig_source = data.get('original_components') or {}
+        for key in ANALYSIS_BUILD_KEYS:
+            # Use upgraded value if provided, otherwise fallback to original
+            val = upgrades.get(key)
+            if val and str(val).strip():
+                full_upgraded[key] = val
+            else:
+                full_upgraded[key] = orig_source.get(key)
+
         sim_resolved = {
-            'CPU': get_name(upgrades.get('cpu_id')),
-            'GPU': get_name(upgrades.get('gpu_id')),
-            'MOTHERBOARD': get_name(upgrades.get('motherboard_id')),
-            'RAM': get_name(upgrades.get('ram_id')),
-            'STORAGE': get_name(upgrades.get('storage_id')),
-            'PSU': get_name(upgrades.get('psu_id')),
-            'CASE': get_name(upgrades.get('case_id')),
-            'COOLER': get_name(upgrades.get('cooler_id')),
-            'MONITOR': get_name(upgrades.get('monitor_id')),
-            'OS': get_name(upgrades.get('os_id')),
-            'PERIPHERALS': get_name(upgrades.get('peripherals_id')),
-            'KEYBOARD': get_name(upgrades.get('keyboard_id')),
-            'MOUSE': get_name(upgrades.get('mouse_id')),
-            'HEADSET': get_name(upgrades.get('headset_id')),
-            'WEBCAM': get_name(upgrades.get('webcam_id')),
-            'FANS': get_name(upgrades.get('fans_id')),
-            'THERMAL_PASTE': get_name(upgrades.get('thermal_paste_id')),
-            'WIFI': get_name(upgrades.get('wifi_id')),
-            'SPEAKERS': get_name(upgrades.get('speakers_id')),
-            'MICROPHONE': get_name(upgrades.get('microphone_id')),
-            'UPS': get_name(upgrades.get('ups_id')),
-            'TOOLS': get_name(upgrades.get('tool_id'))
+            'CPU': get_name(full_upgraded.get('cpu_id')),
+            'GPU': get_name(full_upgraded.get('gpu_id')),
+            'MOTHERBOARD': get_name(full_upgraded.get('motherboard_id')),
+            'RAM': get_name(full_upgraded.get('ram_id')),
+            'STORAGE': get_name(full_upgraded.get('storage_id')),
+            'PSU': get_name(full_upgraded.get('psu_id')),
+            'CASE': get_name(full_upgraded.get('case_id')),
+            'COOLER': get_name(full_upgraded.get('cooler_id')),
+            'MONITOR': get_name(full_upgraded.get('monitor_id')),
+            'OS': get_name(full_upgraded.get('os_id')),
+            'PERIPHERALS': get_name(full_upgraded.get('peripherals_id')),
+            'KEYBOARD': get_name(full_upgraded.get('keyboard_id')),
+            'MOUSE': get_name(full_upgraded.get('mouse_id')),
+            'HEADSET': get_name(full_upgraded.get('headset_id')),
+            'WEBCAM': get_name(full_upgraded.get('webcam_id')),
+            'FANS': get_name(full_upgraded.get('fans_id')),
+            'THERMAL_PASTE': get_name(full_upgraded.get('thermal_paste_id')),
+            'WIFI': get_name(full_upgraded.get('wifi_id')),
+            'SPEAKERS': get_name(full_upgraded.get('speakers_id')),
+            'MICROPHONE': get_name(full_upgraded.get('microphone_id')),
+            'UPS': get_name(full_upgraded.get('ups_id')),
+            'TOOLS': get_name(full_upgraded.get('tool_id'))
         }
 
         # 3. Get AI Analysis from upgraded Engine
