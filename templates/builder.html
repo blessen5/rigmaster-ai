@@ -8,15 +8,34 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        .builder-page { margin-top: 70px; padding-bottom: 3rem; }
+        .builder-page {
+            margin-top: 70px;
+            padding-bottom: 3rem;
+        }
 
-        .builder-header { text-align: center; padding: 0.75rem 0 0.75rem; }
-        .builder-header h1 { font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -1.5px; margin-bottom: 0.5rem; }
-        .builder-header p { color: var(--text-muted); font-size: 1rem; max-width: 500px; margin: 0 auto; }
+        .builder-header {
+            text-align: center;
+            padding: 0.75rem 0 0.75rem;
+        }
+
+        .builder-header h1 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            letter-spacing: -1.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .builder-header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
 
         .builder-card {
             background: var(--bg-card);
@@ -25,185 +44,395 @@
             border: 1px solid var(--border);
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
             position: relative;
         }
+
         .builder-card::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(99,102,241,0.4), rgba(168,85,247,0.4), transparent);
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.4), transparent);
         }
 
         .name-strip {
-            display: flex; align-items: center; gap: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
             padding: 0.85rem 1.5rem;
             border-bottom: 1px solid var(--border);
-            background: rgba(255,255,255,0.015);
+            background: rgba(255, 255, 255, 0.015);
         }
+
         .name-strip label {
-            font-size: 0.75rem; font-weight: 700; color: var(--primary-light);
-            text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap; flex-shrink: 0;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--primary-light);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
+
         .name-input {
-            flex: 1; background: transparent; border: none;
+            flex: 1;
+            background: transparent;
+            border: none;
             border-bottom: 1px solid var(--border);
-            color: var(--text-main); font-family: 'Outfit', sans-serif;
-            font-size: 1rem; font-weight: 600; padding: 0.3rem 0.5rem; outline: none;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.3rem 0.5rem;
+            outline: none;
             transition: border-color 0.2s;
         }
-        .name-input:focus { border-color: var(--primary); }
-        .name-input::placeholder { color: var(--text-muted); font-weight: 400; }
 
-        .builder-form-body { padding: 1rem 1.5rem 1.25rem; }
+        .name-input:focus {
+            border-color: var(--primary);
+        }
 
-        .builder-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-        @media (max-width: 1100px) { .builder-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 680px) { .builder-grid { grid-template-columns: 1fr; } }
+        .name-input::placeholder {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .builder-form-body {
+            padding: 1rem 1.5rem 1.25rem;
+        }
+
+        .builder-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 1100px) {
+            .builder-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 680px) {
+            .builder-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
         .category-label {
             grid-column: 1 / -1;
-            display: flex; align-items: center; gap: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             margin: 0.75rem 0 0;
             padding-bottom: 0.4rem;
             border-bottom: 1px solid var(--border);
             color: var(--primary-light);
             font-family: 'Outfit', sans-serif;
-            font-size: 0.75rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 2px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
-        .category-label svg { color: var(--primary-light); opacity: 0.8; }
 
-        .form-item { display: flex; flex-direction: column; gap: 0.25rem; }
-        .form-item label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); letter-spacing: 0.3px; }
+        .category-label svg {
+            color: var(--primary-light);
+            opacity: 0.8;
+        }
+
+        .form-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .form-item label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
 
         .form-select {
-            width: 100%; padding: 0.55rem 0.85rem;
-            background: rgba(0,0,0,0.25);
+            width: 100%;
+            padding: 0.55rem 0.85rem;
+            background: rgba(0, 0, 0, 0.25);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             color: var(--text-main);
-            font-family: 'Inter', sans-serif; font-size: 0.88rem;
-            outline: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            outline: none;
+            cursor: pointer;
             transition: all 0.2s ease;
-            appearance: none; -webkit-appearance: none;
+            appearance: none;
+            -webkit-appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 0.85rem center;
             padding-right: 2.2rem;
         }
-        .form-select option { background: #0f172a; }
-        .form-select:hover { border-color: rgba(99,102,241,0.35); background-color: rgba(0,0,0,0.35); }
-        .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+
+        .form-select option {
+            background: #0f172a;
+        }
+
+        .form-select:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+            background-color: rgba(0, 0, 0, 0.35);
+        }
+
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
 
         .addons-btn {
-            width: 100%; padding: 0.55rem 0.85rem;
-            background: rgba(255,255,255,0.03);
+            width: 100%;
+            padding: 0.55rem 0.85rem;
+            background: rgba(255, 255, 255, 0.03);
             border: 1px dashed var(--border);
             border-radius: var(--radius-md);
             color: var(--text-muted);
-            font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 500;
-            cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             transition: all 0.25s ease;
         }
-        .addons-btn:hover { border-color: var(--primary-light); color: var(--primary-light); background: rgba(99,102,241,0.05); }
-        .addons-btn.open { border-color: var(--primary-light); color: #fff; border-style: solid; background: rgba(99,102,241,0.06); }
+
+        .addons-btn:hover {
+            border-color: var(--primary-light);
+            color: var(--primary-light);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .addons-btn.open {
+            border-color: var(--primary-light);
+            color: #fff;
+            border-style: solid;
+            background: rgba(99, 102, 241, 0.06);
+        }
 
         .peripherals-panel {
-            display: none; grid-column: 1 / -1;
+            display: none;
+            grid-column: 1 / -1;
             padding: 1.25rem;
-            background: rgba(99,102,241,0.04);
-            border: 1px solid rgba(99,102,241,0.2);
+            background: rgba(99, 102, 241, 0.04);
+            border: 1px solid rgba(99, 102, 241, 0.2);
             border-radius: var(--radius-md);
             margin-top: -0.5rem;
         }
-        .peripherals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
-        .periph-item { display: flex; flex-direction: column; gap: 0.35rem; }
-        .periph-item label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+
+        .peripherals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .periph-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .periph-item label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
 
         .lifecycle-warning {
-            display: none; padding: 1rem 1.25rem;
-            background: rgba(251,191,36,0.08);
-            border: 1px solid rgba(251,191,36,0.35);
-            border-radius: var(--radius-md); margin-top: 1.25rem;
+            display: none;
+            padding: 1rem 1.25rem;
+            background: rgba(251, 191, 36, 0.08);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: var(--radius-md);
+            margin-top: 1.25rem;
         }
+
         .lifecycle-warning-head {
-            display: flex; align-items: center; gap: 0.6rem;
-            color: #fbbf24; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: #fbbf24;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 0.6rem;
         }
-        .lifecycle-warning p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+
+        .lifecycle-warning p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
 
         .builder-actions {
-            display: flex; align-items: center; justify-content: flex-end;
-            gap: 0.75rem; padding: 1.25rem 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding: 1.25rem 1.75rem;
             border-top: 1px solid var(--border);
-            background: rgba(255,255,255,0.01); flex-wrap: wrap;
+            background: rgba(255, 255, 255, 0.01);
+            flex-wrap: wrap;
         }
+
         .action-cancel {
-            padding: 0.7rem 1.4rem; background: transparent;
-            border: 1px solid var(--border); border-radius: var(--radius-md);
-            color: var(--text-muted); font-family: 'Inter', sans-serif;
-            font-size: 0.88rem; font-weight: 500; text-decoration: none;
-            cursor: pointer; transition: all 0.2s ease;
-            display: inline-flex; align-items: center;
+            padding: 0.7rem 1.4rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
         }
-        .action-cancel:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+
+        .action-cancel:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+        }
+
         .action-save {
             padding: 0.7rem 1.75rem;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            border: none; border-radius: var(--radius-md);
-            color: #fff; font-family: 'Outfit', sans-serif;
-            font-size: 0.9rem; font-weight: 700; cursor: pointer;
+            border: none;
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
             transition: all 0.25s ease;
-            box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
         }
-        .action-save:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(99,102,241,0.5); filter: brightness(1.1); }
+
+        .action-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(99, 102, 241, 0.5);
+            filter: brightness(1.1);
+        }
+
         .action-update {
-            display: none; padding: 0.7rem 1.75rem;
+            display: none;
+            padding: 0.7rem 1.75rem;
             background: linear-gradient(135deg, #10b981, #059669);
-            border: none; border-radius: var(--radius-md);
-            color: #fff; font-family: 'Outfit', sans-serif;
-            font-size: 0.9rem; font-weight: 700; cursor: pointer;
+            border: none;
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
             transition: all 0.25s ease;
-            box-shadow: 0 4px 14px rgba(16,185,129,0.3);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
         }
-        .action-update:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(16,185,129,0.5); }
+
+        .action-update:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(16, 185, 129, 0.5);
+        }
+
         .action-export {
-            display: none; padding: 0.7rem 1.4rem; background: transparent;
-            border: 1px solid rgba(99,102,241,0.4); border-radius: var(--radius-md);
-            color: var(--primary-light); font-family: 'Inter', sans-serif;
-            font-size: 0.88rem; font-weight: 500; text-decoration: none;
-            cursor: pointer; transition: all 0.25s ease;
+            display: none;
+            padding: 0.7rem 1.4rem;
+            background: transparent;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            border-radius: var(--radius-md);
+            color: var(--primary-light);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.25s ease;
         }
-        .action-export:hover { background: rgba(99,102,241,0.08); border-color: var(--primary-light); }
+
+        .action-export:hover {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: var(--primary-light);
+        }
 
         #save-success-overlay {
-            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-            background: rgba(15,23,42,0.95); backdrop-filter: blur(16px);
-            border: 1px solid rgba(99,102,241,0.35); border-radius: 16px;
-            padding: 1rem 1.5rem; display: none; align-items: center; gap: 1rem;
-            z-index: 9999; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            flex-wrap: wrap; justify-content: center;
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            z-index: 9999;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            flex-wrap: wrap;
+            justify-content: center;
         }
-        #save-success-overlay span { font-weight: 600; color: #4ade80; font-family: 'Outfit', sans-serif; }
+
+        #save-success-overlay span {
+            font-weight: 600;
+            color: #4ade80;
+            font-family: 'Outfit', sans-serif;
+        }
 
         .verified-badge {
-            background: rgba(16,185,129,0.1); border: 1px solid #10b981;
-            color: #10b981; font-size: 0.7rem; font-weight: 700; padding: 3px 9px;
-            border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;
-            text-transform: uppercase; letter-spacing: 0.5px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #10b981;
+            color: #10b981;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+
         .shopping-card {
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-            border-radius: 12px; padding: 1.25rem;
-            display: flex; flex-direction: column; gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
             transition: all 0.3s ease;
         }
-        .shopping-card:hover { transform: translateY(-4px); border-color: var(--primary-light); background: rgba(255,255,255,0.05); }
 
-        .message.assistant-message { padding: 1.2rem; }
-        .message.assistant-message h1, .message.assistant-message h2, .message.assistant-message h3 {
-            color: var(--primary-light); font-size: 1rem; margin: 0.8rem 0 0.4rem; font-family: 'Outfit', sans-serif;
+        .shopping-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary-light);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .message.assistant-message {
+            padding: 1.2rem;
+        }
+
+        .message.assistant-message h1,
+        .message.assistant-message h2,
+        .message.assistant-message h3 {
+            color: var(--primary-light);
+            font-size: 1rem;
+            margin: 0.8rem 0 0.4rem;
+            font-family: 'Outfit', sans-serif;
         }
     </style>
 </head>
@@ -221,7 +450,8 @@
         <div class="builder-card">
             <div class="name-strip">
                 <label for="build-name">Build Name</label>
-                <input type="text" id="build-name" name="config_name" class="name-input" placeholder="E.g. Gaming Rig 2025...">
+                <input type="text" id="build-name" name="config_name" class="name-input"
+                    placeholder="E.g. Gaming Rig 2025...">
             </div>
 
             <div class="builder-form-body">
@@ -229,35 +459,79 @@
                     <div class="builder-grid">
 
                         <div class="category-label">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></svg>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <rect x="4" y="4" width="16" height="16" rx="2" />
+                                <path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3" />
+                            </svg>
                             Core Performance
                         </div>
-                        <div class="form-item"><label>Processor (CPU)</label><select id="cpu-select" class="form-select"><option value="">Loading CPUs...</option></select></div>
-                        <div class="form-item"><label>Graphics Card (GPU)</label><select id="gpu-select" class="form-select"><option value="">Loading GPUs...</option></select></div>
-                        <div class="form-item"><label>Motherboard</label><select id="mobo-select" class="form-select"><option value="">Loading Motherboards...</option></select></div>
+                        <div class="form-item"><label>Processor (CPU)</label><select id="cpu-select"
+                                class="form-select">
+                                <option value="">Loading CPUs...</option>
+                            </select></div>
+                        <div class="form-item"><label>Graphics Card (GPU)</label><select id="gpu-select"
+                                class="form-select">
+                                <option value="">Loading GPUs...</option>
+                            </select></div>
+                        <div class="form-item"><label>Motherboard</label><select id="mobo-select" class="form-select">
+                                <option value="">Loading Motherboards...</option>
+                            </select></div>
 
                         <div class="category-label">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="9" width="20" height="6" rx="1"/><path d="M6 15v2M10 15v2M14 15v2M18 15v2M6 7v2M10 7v2M14 7v2M18 7v2"/></svg>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <rect x="2" y="9" width="20" height="6" rx="1" />
+                                <path d="M6 15v2M10 15v2M14 15v2M18 15v2M6 7v2M10 7v2M14 7v2M18 7v2" />
+                            </svg>
                             Memory &amp; Storage
                         </div>
-                        <div class="form-item"><label>Memory (RAM)</label><select id="ram-select" class="form-select"><option value="">Loading RAM...</option></select></div>
-                        <div class="form-item"><label>Primary Storage</label><select id="storage-select" class="form-select"><option value="">Loading Storage...</option></select></div>
-                        <div class="form-item"><label>CPU Cooler</label><select id="cooler-select" class="form-select"><option value="">Loading Coolers...</option></select></div>
+                        <div class="form-item"><label>Memory (RAM)</label><select id="ram-select" class="form-select">
+                                <option value="">Loading RAM...</option>
+                            </select></div>
+                        <div class="form-item"><label>Primary Storage</label><select id="storage-select"
+                                class="form-select">
+                                <option value="">Loading Storage...</option>
+                            </select></div>
+                        <div class="form-item"><label>CPU Cooler</label><select id="cooler-select" class="form-select">
+                                <option value="">Loading Coolers...</option>
+                            </select></div>
 
                         <div class="category-label">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="20" height="20" rx="1"/><path d="M6 12h4M12 8v8M16 10v4"/></svg>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <rect x="2" y="2" width="20" height="20" rx="1" />
+                                <path d="M6 12h4M12 8v8M16 10v4" />
+                            </svg>
                             Power &amp; Case
                         </div>
-                        <div class="form-item"><label>Power Supply (PSU)</label><select id="psu-select" class="form-select"><option value="">Loading PSUs...</option></select></div>
-                        <div class="form-item"><label>Chassis (Case)</label><select id="case-select" class="form-select"><option value="">Loading Cases...</option></select></div>
-                        <div class="form-item"><label>Cooling Fans</label><select id="fans-select" class="form-select"><option value="">Loading Fans...</option></select></div>
+                        <div class="form-item"><label>Power Supply (PSU)</label><select id="psu-select"
+                                class="form-select">
+                                <option value="">Loading PSUs...</option>
+                            </select></div>
+                        <div class="form-item"><label>Chassis (Case)</label><select id="case-select"
+                                class="form-select">
+                                <option value="">Loading Cases...</option>
+                            </select></div>
+                        <div class="form-item"><label>Cooling Fans</label><select id="fans-select" class="form-select">
+                                <option value="">Loading Fans...</option>
+                            </select></div>
 
                         <div class="category-label">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="1"/><path d="M8 21h8M12 17v4"/></svg>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <rect x="2" y="3" width="20" height="14" rx="1" />
+                                <path d="M8 21h8M12 17v4" />
+                            </svg>
                             Extras &amp; OS
                         </div>
-                        <div class="form-item"><label>Monitor</label><select id="monitor-select" class="form-select"><option value="">Loading Monitors...</option></select></div>
-                        <div class="form-item"><label>Operating System</label><select id="os-select" class="form-select"><option value="">Loading OS...</option></select></div>
+                        <div class="form-item"><label>Monitor</label><select id="monitor-select" class="form-select">
+                                <option value="">Loading Monitors...</option>
+                            </select></div>
+                        <div class="form-item"><label>Operating System</label><select id="os-select"
+                                class="form-select">
+                                <option value="">Loading OS...</option>
+                            </select></div>
                         <div class="form-item">
                             <label>Peripherals &amp; Add-ons</label>
                             <button type="button" onclick="togglePeripherals()" id="periph-btn" class="addons-btn">
@@ -268,16 +542,46 @@
 
                         <div id="peripherals-panel" class="peripherals-panel">
                             <div class="peripherals-grid">
-                                <div class="periph-item"><label>&#9000;&#65039; Keyboard</label><select id="keyboard-select" class="form-select"><option value="">Select Keyboard...</option></select></div>
-                                <div class="periph-item"><label>&#128432;&#65039; Mouse</label><select id="mouse-select" class="form-select"><option value="">Select Mouse...</option></select></div>
-                                <div class="periph-item"><label>&#127911; Headset</label><select id="headset-select" class="form-select"><option value="">Select Headset...</option></select></div>
-                                <div class="periph-item"><label>&#128247; Webcam</label><select id="webcam-select" class="form-select"><option value="">Select Webcam...</option></select></div>
-                                <div class="periph-item"><label>&#127777;&#65039; Thermal Paste</label><select id="thermal_paste-select" class="form-select"><option value="">Select Thermal Paste...</option></select></div>
-                                <div class="periph-item"><label>&#128246; Network Adapter</label><select id="wifi-select" class="form-select"><option value="">Select Adapter...</option></select></div>
-                                <div class="periph-item"><label>&#128266; Speakers</label><select id="speakers-select" class="form-select"><option value="">Select Speakers...</option></select></div>
-                                <div class="periph-item"><label>&#127897;&#65039; Microphone</label><select id="microphone-select" class="form-select"><option value="">Select Microphone...</option></select></div>
-                                <div class="periph-item"><label>&#128267; UPS / Surge</label><select id="ups-select" class="form-select"><option value="">Select UPS...</option></select></div>
-                                <div class="periph-item"><label>&#128295; Assembly Tools</label><select id="tool-select" class="form-select"><option value="">Select Toolkit...</option></select></div>
+                                <div class="periph-item"><label>&#9000;&#65039; Keyboard</label><select
+                                        id="keyboard-select" class="form-select">
+                                        <option value="">Select Keyboard...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#128432;&#65039; Mouse</label><select id="mouse-select"
+                                        class="form-select">
+                                        <option value="">Select Mouse...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#127911; Headset</label><select id="headset-select"
+                                        class="form-select">
+                                        <option value="">Select Headset...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#128247; Webcam</label><select id="webcam-select"
+                                        class="form-select">
+                                        <option value="">Select Webcam...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#127777;&#65039; Thermal Paste</label><select
+                                        id="thermal_paste-select" class="form-select">
+                                        <option value="">Select Thermal Paste...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#128246; Network Adapter</label><select
+                                        id="wifi-select" class="form-select">
+                                        <option value="">Select Adapter...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#128266; Speakers</label><select id="speakers-select"
+                                        class="form-select">
+                                        <option value="">Select Speakers...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#127897;&#65039; Microphone</label><select
+                                        id="microphone-select" class="form-select">
+                                        <option value="">Select Microphone...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#128267; UPS / Surge</label><select id="ups-select"
+                                        class="form-select">
+                                        <option value="">Select UPS...</option>
+                                    </select></div>
+                                <div class="periph-item"><label>&#128295; Assembly Tools</label><select id="tool-select"
+                                        class="form-select">
+                                        <option value="">Select Toolkit...</option>
+                                    </select></div>
                             </div>
                         </div>
 
@@ -285,7 +589,13 @@
 
                     <div id="lifecycle-warning" class="lifecycle-warning">
                         <div class="lifecycle-warning-head">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path
+                                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
                             Hardware Compatibility Note
                         </div>
                         <p id="warning-text"></p>
@@ -296,7 +606,8 @@
             <div class="builder-actions">
                 <a href="{{ url_for('home') }}" class="action-cancel">Cancel</a>
                 <a id="export-pdf-link" href="#" class="action-export">Export PDF</a>
-                <button type="button" id="update-btn" class="action-update" onclick="saveBuild(true)">Update Build</button>
+                <button type="button" id="update-btn" class="action-update" onclick="saveBuild(true)">Update
+                    Build</button>
                 <button type="button" id="save-btn" class="action-save" onclick="saveBuild()">Save Build</button>
             </div>
         </div>
@@ -304,10 +615,15 @@
 
     <div id="save-success-overlay">
         <span>Build Saved!</span>
-        <button class="btn btn-primary btn-sm" onclick="viewAnalysis()" style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none;">View Analysis</button>
-        <button class="btn btn-secondary btn-sm" onclick="orderComponents()" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Order Components</button>
-        <a id="overlay-export-pdf" href="#" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-color: white;">Export PDF</a>
-        <button class="btn btn-secondary btn-sm" onclick="closeSuccessOverlay()" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Dismiss</button>
+        <button class="btn btn-primary btn-sm" onclick="viewAnalysis()"
+            style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none;">View
+            Analysis</button>
+        <button class="btn btn-secondary btn-sm" onclick="orderComponents()"
+            style="padding: 0.5rem 1rem; font-size: 0.85rem;">Order Components</button>
+        <a id="overlay-export-pdf" href="#" class="btn btn-secondary btn-sm"
+            style="padding: 0.5rem 1rem; font-size: 0.85rem; border-color: white;">Export PDF</a>
+        <button class="btn btn-secondary btn-sm" onclick="closeSuccessOverlay()"
+            style="padding: 0.5rem 1rem; font-size: 0.85rem;">Dismiss</button>
     </div>
 
     <div id="shopping-modal" class="modal">
@@ -317,7 +633,8 @@
                 <span class="close-modal" onclick="closeModal()">&times;</span>
             </div>
             <div id="shopping-results" class="shopping-grid">
-                <p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">Loading purchase options...</p>
+                <p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">Loading
+                    purchase options...</p>
             </div>
         </div>
     </div>
@@ -399,7 +716,7 @@
             if (panel.style.display === 'none' || panel.style.display === '') {
                 // Populate data if not already loaded
                 if (window._populatePeripherals) window._populatePeripherals();
-                
+
                 panel.style.display = 'block';
                 icon.textContent = '×';
                 btn.style.borderColor = 'var(--primary-light)';
@@ -438,20 +755,20 @@
                     const el = document.getElementById(id);
                     if (el) el.addEventListener('change', checkLifecycleStatus);
                 });
-            
+
             // Bulk load all components in ONE request
             let bulkData = null;
             const periphBtn = document.getElementById('periph-btn');
             const periphBtnText = periphBtn.querySelector('span');
             const originalBtnText = periphBtnText.textContent;
-            
+
             periphBtnText.textContent = "Loading Data...";
             periphBtn.disabled = true;
 
             try {
                 const bulkResp = await fetch('/api/components/bulk');
                 bulkData = await bulkResp.json();
-                
+
                 // Categories to load immediately (Core, Storage, Power, Extras)
                 const coreMap = {
                     'cpus': 'cpu-select', 'gpus': 'gpu-select', 'motherboards': 'mobo-select',
@@ -463,7 +780,7 @@
                 for (const [apiKey, elementId] of Object.entries(coreMap)) {
                     const select = document.getElementById(elementId);
                     if (!select || !bulkData[apiKey]) continue;
-                    
+
                     const label = elementId.split('-')[0].replace('_', ' ').toUpperCase();
                     let html = `<option value="">Select ${label}...</option>`;
                     const items = bulkData[apiKey];
@@ -472,15 +789,15 @@
                     }
                     select.innerHTML = html;
                 }
-                
+
                 periphBtnText.textContent = originalBtnText;
                 periphBtn.disabled = false;
 
                 // Defer peripheral population until the panel is actually opened
                 window._peripheralsLoaded = false;
-                window._populatePeripherals = function() {
+                window._populatePeripherals = function () {
                     if (window._peripheralsLoaded || !bulkData) return;
-                    
+
                     const periphMap = {
                         'peripheral_keyboard': 'keyboard-select', 'peripheral_mouse': 'mouse-select',
                         'peripheral_headset': 'headset-select', 'peripheral_webcam': 'webcam-select',
@@ -492,7 +809,7 @@
                     for (const [apiKey, elementId] of Object.entries(periphMap)) {
                         const select = document.getElementById(elementId);
                         if (!select || !bulkData[apiKey]) continue;
-                        
+
                         const label = elementId.split('-')[0].replace('_', ' ').toUpperCase();
                         let html = `<option value="">Select ${label}...</option>`;
                         const items = bulkData[apiKey];
@@ -531,7 +848,7 @@
                         if (b.os_id) document.getElementById('os-select').value = b.os_id;
                         if (b.keyboard_id || b.mouse_id || b.headset_id || b.webcam_id || b.thermal_paste_id || b.wifi_id || b.speakers_id || b.microphone_id || b.ups_id || b.tool_id) {
                             if (window._populatePeripherals) window._populatePeripherals();
-                            
+
                             if (b.keyboard_id) document.getElementById('keyboard-select').value = b.keyboard_id;
                             if (b.mouse_id) document.getElementById('mouse-select').value = b.mouse_id;
                             if (b.headset_id) document.getElementById('headset-select').value = b.headset_id;
@@ -665,7 +982,7 @@
             try {
                 const response = await fetch('/api/save_build', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': CSRF_TOKEN
                     },
@@ -705,7 +1022,7 @@
             try {
                 const response = await fetch('/api/order-components', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': CSRF_TOKEN
                     },
