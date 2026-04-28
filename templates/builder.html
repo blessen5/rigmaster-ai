@@ -396,7 +396,10 @@
             const panel = document.getElementById('peripherals-panel');
             const icon = document.getElementById('periph-icon');
             const btn = document.getElementById('periph-btn');
-            if (panel.style.display === 'none') {
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                // Populate data if not already loaded
+                if (window._populatePeripherals) window._populatePeripherals();
+                
                 panel.style.display = 'block';
                 icon.textContent = '×';
                 btn.style.borderColor = 'var(--primary-light)';
@@ -437,36 +440,73 @@
                 });
             
             // Bulk load all components in ONE request
+            let bulkData = null;
+            const periphBtn = document.getElementById('periph-btn');
+            const periphBtnText = periphBtn.querySelector('span');
+            const originalBtnText = periphBtnText.textContent;
+            
+            periphBtnText.textContent = "Loading Data...";
+            periphBtn.disabled = true;
+
             try {
                 const bulkResp = await fetch('/api/components/bulk');
-                const bulkData = await bulkResp.json();
+                bulkData = await bulkResp.json();
                 
-                const selectMap = {
+                // Categories to load immediately (Core, Storage, Power, Extras)
+                const coreMap = {
                     'cpus': 'cpu-select', 'gpus': 'gpu-select', 'motherboards': 'mobo-select',
                     'ram': 'ram-select', 'storage': 'storage-select', 'psu': 'psu-select',
                     'cases': 'case-select', 'coolers': 'cooler-select', 'monitors': 'monitor-select',
-                    'os': 'os-select', 'fans': 'fans-select', 'peripheral_keyboard': 'keyboard-select',
-                    'peripheral_mouse': 'mouse-select', 'peripheral_headset': 'headset-select',
-                    'peripheral_webcam': 'webcam-select', 'thermal_paste': 'thermal_paste-select',
-                    'wifi_adapters': 'wifi-select', 'speakers': 'speakers-select',
-                    'microphones': 'microphone-select', 'ups': 'ups-select', 'tools': 'tool-select'
+                    'os': 'os-select', 'fans': 'fans-select'
                 };
 
-                for (const [apiKey, elementId] of Object.entries(selectMap)) {
+                for (const [apiKey, elementId] of Object.entries(coreMap)) {
                     const select = document.getElementById(elementId);
                     if (!select || !bulkData[apiKey]) continue;
                     
-                    const label = elementId.split('-')[0].replace('_', ' ');
-                    select.innerHTML = `<option value="">Select ${label}...</option>`;
-                    bulkData[apiKey].forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id;
-                        option.textContent = item.name;
-                        select.appendChild(option);
-                    });
+                    const label = elementId.split('-')[0].replace('_', ' ').toUpperCase();
+                    let html = `<option value="">Select ${label}...</option>`;
+                    const items = bulkData[apiKey];
+                    for (let i = 0; i < items.length; i++) {
+                        html += `<option value="${items[i].id}">${items[i].name}</option>`;
+                    }
+                    select.innerHTML = html;
                 }
+                
+                periphBtnText.textContent = originalBtnText;
+                periphBtn.disabled = false;
+
+                // Defer peripheral population until the panel is actually opened
+                window._peripheralsLoaded = false;
+                window._populatePeripherals = function() {
+                    if (window._peripheralsLoaded || !bulkData) return;
+                    
+                    const periphMap = {
+                        'peripheral_keyboard': 'keyboard-select', 'peripheral_mouse': 'mouse-select',
+                        'peripheral_headset': 'headset-select', 'peripheral_webcam': 'webcam-select',
+                        'thermal_paste': 'thermal_paste-select', 'wifi_adapters': 'wifi-select',
+                        'speakers': 'speakers-select', 'microphones': 'microphone-select',
+                        'ups': 'ups-select', 'tools': 'tool-select'
+                    };
+
+                    for (const [apiKey, elementId] of Object.entries(periphMap)) {
+                        const select = document.getElementById(elementId);
+                        if (!select || !bulkData[apiKey]) continue;
+                        
+                        const label = elementId.split('-')[0].replace('_', ' ').toUpperCase();
+                        let html = `<option value="">Select ${label}...</option>`;
+                        const items = bulkData[apiKey];
+                        for (let i = 0; i < items.length; i++) {
+                            html += `<option value="${items[i].id}">${items[i].name}</option>`;
+                        }
+                        select.innerHTML = html;
+                    }
+                    window._peripheralsLoaded = true;
+                };
+
             } catch (error) {
                 console.error('Bulk fetch failed:', error);
+                periphBtnText.textContent = "Error Loading Data";
             }
 
 
@@ -489,17 +529,20 @@
                         if (b.cooler_id) document.getElementById('cooler-select').value = b.cooler_id;
                         if (b.monitor_id) document.getElementById('monitor-select').value = b.monitor_id;
                         if (b.os_id) document.getElementById('os-select').value = b.os_id;
-                        if (b.keyboard_id) document.getElementById('keyboard-select').value = b.keyboard_id;
-                        if (b.mouse_id) document.getElementById('mouse-select').value = b.mouse_id;
-                        if (b.headset_id) document.getElementById('headset-select').value = b.headset_id;
-                        if (b.webcam_id) document.getElementById('webcam-select').value = b.webcam_id;
-                        if (b.thermal_paste_id) document.getElementById('thermal_paste-select').value = b.thermal_paste_id;
-                        if (b.wifi_id) document.getElementById('wifi-select').value = b.wifi_id;
-                        if (b.speakers_id) document.getElementById('speakers-select').value = b.speakers_id;
-                        if (b.microphone_id) document.getElementById('microphone-select').value = b.microphone_id;
-                        if (b.ups_id) document.getElementById('ups-select').value = b.ups_id;
-                        if (b.tool_id) document.getElementById('tool-select').value = b.tool_id;
                         if (b.keyboard_id || b.mouse_id || b.headset_id || b.webcam_id || b.thermal_paste_id || b.wifi_id || b.speakers_id || b.microphone_id || b.ups_id || b.tool_id) {
+                            if (window._populatePeripherals) window._populatePeripherals();
+                            
+                            if (b.keyboard_id) document.getElementById('keyboard-select').value = b.keyboard_id;
+                            if (b.mouse_id) document.getElementById('mouse-select').value = b.mouse_id;
+                            if (b.headset_id) document.getElementById('headset-select').value = b.headset_id;
+                            if (b.webcam_id) document.getElementById('webcam-select').value = b.webcam_id;
+                            if (b.thermal_paste_id) document.getElementById('thermal_paste-select').value = b.thermal_paste_id;
+                            if (b.wifi_id) document.getElementById('wifi-select').value = b.wifi_id;
+                            if (b.speakers_id) document.getElementById('speakers-select').value = b.speakers_id;
+                            if (b.microphone_id) document.getElementById('microphone-select').value = b.microphone_id;
+                            if (b.ups_id) document.getElementById('ups-select').value = b.ups_id;
+                            if (b.tool_id) document.getElementById('tool-select').value = b.tool_id;
+
                             document.getElementById('peripherals-panel').style.display = 'block';
                             document.getElementById('periph-icon').textContent = '×';
                             document.getElementById('periph-btn').style.borderColor = 'var(--primary-light)';
