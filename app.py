@@ -914,22 +914,16 @@ def home():
 @login_required
 def hardware_encyclopedia():
     try:
-        # Category now maps to the 'category' field string in components table
-        # We handle the plural -> singular mapping here or just rely on 'cpus' -> 'cpu' if we want
-        # But for UI consistency, better to map:
         category_map = {
-            'cpus': 'cpu',
-            'gpus': 'gpu',
-            'motherboards': 'motherboard',
-            'ram': 'ram',
-            'storage': 'storage',
-            'psu': 'psu',
-            'cases': 'case',
-            'coolers': 'cooler',
-            'monitors': 'monitor',
-            'os': 'os',
-            'peripherals': 'peripherals',
-            'fans': 'fans'
+            'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
+            'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
+            'cases': 'case', 'coolers': 'cooler', 'monitors': 'monitor',
+            'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
+            'keyboards': 'peripherals', 'mice': 'peripherals',
+            'headsets': 'peripherals', 'webcams': 'peripherals',
+            'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
+            'speakers': 'speakers', 'microphones': 'microphones',
+            'ups': 'ups', 'tools': 'tools'
         }
         
         req_cat = request.args.get('category', 'cpus').lower()
@@ -967,18 +961,6 @@ def hardware_encyclopedia():
             'ups': 'UPS / Power Protection',
             'tools': 'Assembly Tools'
         }
-        
-        category_map = {
-            'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
-            'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
-            'cases': 'case', 'coolers': 'cooler', 'monitors': 'monitor',
-            'os': 'os', 'peripherals': 'peripherals', 'fans': 'fans',
-            'keyboards': 'peripherals', 'mice': 'peripherals',
-            'headsets': 'peripherals', 'webcams': 'peripherals',
-            'thermal_paste': 'thermal_paste', 'wifi_adapters': 'wifi_adapters',
-            'speakers': 'speakers', 'microphones': 'microphones',
-            'ups': 'ups', 'tools': 'tools'
-        }
         if req_cat not in valid_categories:
             req_cat = 'cpus'
             
@@ -1000,8 +982,22 @@ def hardware_encyclopedia():
         if search:
             query['name'] = {'$regex': search, '$options': 'i'}
             
+        # Pagination
+        try:
+            page = int(request.args.get('page', 1))
+            per_page = 40
+            if page < 1: page = 1
+        except:
+            page = 1
+            per_page = 40
+
         # Generic query to components table
-        items = list(db.components.find(query).sort('name', 1))
+        cursor = db.components.find(query).sort('name', 1)
+        total_items = db.components.count_documents(query)
+        
+        items = list(cursor.skip((page - 1) * per_page).limit(per_page))
+        
+        total_pages = (total_items + per_page - 1) // per_page
         for item in items:
             item['_id'] = str(item['_id'])
             formatted_fields = {}
@@ -1020,10 +1016,13 @@ def hardware_encyclopedia():
                                items=items, 
                                current_cat=req_cat, 
                                categories=valid_categories,
-                               search=search)
+                               search=search,
+                               current_page=page,
+                               total_pages=total_pages)
     except Exception as e:
-        app.logger.error(f"Hardware Error: {e}")
-        flash("Could not load hardware database.")
+        import traceback
+        app.logger.error(f"Hardware Encyclopedia Error: {str(e)}\n{traceback.format_exc()}")
+        flash("The hardware database is temporarily unavailable. Please try again in a few moments.")
         return redirect(url_for('home'))
 
 
@@ -8254,6 +8253,9 @@ def admin_delete_build(build_id):
 @app.route('/api/admin/components/<category>', methods=['GET'])
 @admin_required
 def admin_get_components(category):
+    global db
+    if db is None: db = get_db()
+    if db is None: return jsonify({'status': 'error', 'message': 'Database connection failed'}), 503
     cat_map = {
         'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
         'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
@@ -8266,42 +8268,74 @@ def admin_get_components(category):
         'ups': 'ups', 'tools': 'tools'
     }
     
-    if category not in cat_map:
-        return jsonify({'status': 'error', 'message': 'Invalid category'}), 400
+    try:
+        if category not in cat_map:
+            return jsonify({'status': 'error', 'message': 'Invalid category'}), 400
+        
+        target_cat = cat_map[category]
+        query = {'category': target_cat}
+        
+        # Handle sub-category mapping for admin filtering
+        subcat_map = {
+            'keyboards': 'keyboard',
+            'mice': 'mouse',
+            'headsets': 'headset',
+            'webcams': 'webcam'
+        }
+        
+        if category in subcat_map:
+            query['sub_category'] = subcat_map[category]
+        
+        status_filter = request.args.get('status')
+        if status_filter:
+            query['status'] = status_filter
     
-    target_cat = cat_map[category]
-    query = {'category': target_cat}
+        search_query = request.args.get('search')
+        if search_query:
+            query['name'] = {'$regex': search_query, '$options': 'i'}
     
-    # Handle sub-category mapping for admin filtering
-    subcat_map = {
-        'keyboards': 'keyboard',
-        'mice': 'mouse',
-        'headsets': 'headset',
-        'webcams': 'webcam'
-    }
+        # Pagination
+        try:
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 50))
+            if page < 1: page = 1
+            if limit < 1 or limit > 500: limit = 50
+        except:
+            page = 1
+            limit = 50
     
-    if category in subcat_map:
-        query['sub_category'] = subcat_map[category]
-    
-    status_filter = request.args.get('status')
-    if status_filter:
-        query['status'] = status_filter
-
-    search_query = request.args.get('search')
-    if search_query:
-        query['name'] = {'$regex': search_query, '$options': 'i'}
-
-    # Generic query to components table
-    items = list(db.components.find(query).sort('name', 1))
-    app.logger.info(f"Hardware Query: {query} -> Found {len(items)} items")
-    for item in items:
-        item['_id'] = str(item['_id'])
-        if 'status' not in item: item['status'] = 'Active'
-    return jsonify({'status': 'success', 'components': items})
+        # Generic query to components table
+        cursor = db.components.find(query).sort('name', 1)
+        
+        # Apply pagination
+        items = list(cursor.skip((page - 1) * limit).limit(limit))
+        
+        total_count = db.components.count_documents(query)
+        
+        app.logger.info(f"Hardware Query: {query} -> Found {len(items)} items (Page {page}, Total {total_count})")
+        for item in items:
+            item['_id'] = str(item['_id'])
+            if 'status' not in item: item['status'] = 'Active'
+            
+        return jsonify({
+            'status': 'success', 
+            'components': items,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': total_count,
+                'has_more': (page * limit) < total_count
+            }
+        })
+    except Exception as e:
+        app.logger.error(f"Error in admin_get_components: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/admin/components/<category>', methods=['POST'])
 @admin_required
 def admin_add_component(category):
+    global db
+    if db is None: db = get_db()
     cat_map = {
         'cpus': 'cpu', 'gpus': 'gpu', 'motherboards': 'motherboard',
         'ram': 'ram', 'storage': 'storage', 'psu': 'psu',
@@ -8350,6 +8384,9 @@ def admin_add_component(category):
 @app.route('/api/admin/components/<category>/<comp_id>', methods=['PUT', 'DELETE'])
 @admin_required
 def admin_manage_component(category, comp_id):
+    global db
+    if db is None: db = get_db()
+    if db is None: return jsonify({'status': 'error', 'message': 'Database connection failed'}), 503
     try:
         # We don't strictly need category for ID lookup but it helps validation
         if request.method == 'DELETE':
@@ -8370,6 +8407,9 @@ def admin_manage_component(category, comp_id):
 @app.route('/api/admin/import-components', methods=['POST'])
 @admin_required
 def admin_import_components():
+    global db
+    if db is None: db = get_db()
+    if db is None: return jsonify({'status': 'error', 'message': 'Database connection failed'}), 503
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file part'}), 400
     

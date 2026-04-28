@@ -362,7 +362,7 @@
                     const cur = this.value;
                     fetch('/api/set-currency', {
                         method: 'POST',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
                             'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                         },
@@ -424,7 +424,7 @@
                 if (deskSel) deskSel.value = cur;
                 fetch('/api/set-currency', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },

@@ -1567,12 +1567,14 @@ footer {
     color: #22c55e;
 }
 
-.flash-alert-error, .flash-alert-danger {
+.flash-alert-error,
+.flash-alert-danger {
     border-color: rgba(239, 68, 68, 0.4);
     background: rgba(239, 68, 68, 0.05);
 }
 
-.flash-alert-error i, .flash-alert-danger i {
+.flash-alert-error i,
+.flash-alert-danger i {
     color: #ef4444;
 }
 
@@ -1590,6 +1592,7 @@ footer {
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);

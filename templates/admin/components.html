@@ -219,6 +219,13 @@
                 <div id="comp-list">
                     <!-- Loaded via JS -->
                 </div>
+                
+                <div id="pagination-controls" style="text-align: center; margin-top: 2rem; display: none;">
+                    <button id="load-more-btn" class="btn btn-secondary" onclick="loadMore()" style="padding: 0.8rem 2rem; font-weight: 600;">
+                        Load More Components
+                    </button>
+                    <p id="pagination-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;"></p>
+                </div>
             </div>
         </div>
         </div>
@@ -298,6 +305,8 @@
         <script>
             const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             let currentCategory = 'cpus';
+            let currentPage = 1;
+            let hasMore = false;
             let isEditing = false;
             let editId = null;
 
@@ -309,7 +318,13 @@
                 }, 400);
             }
 
-            async function loadCategory(cat, btn) {
+            async function loadCategory(cat, btn, append = false) {
+                if (!append) {
+                    currentPage = 1;
+                    const listEl = document.getElementById('comp-list');
+                    listEl.innerHTML = '';
+                }
+
                 currentCategory = cat;
                 if (btn) {
                     document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
@@ -318,49 +333,85 @@
 
                 const listEl = document.getElementById('comp-list');
                 const spinner = document.getElementById('loading-spinner');
+                const paginationControls = document.getElementById('pagination-controls');
                 const statusFilter = document.getElementById('status-filter').value;
+                const loadMoreBtn = document.getElementById('load-more-btn');
 
-                listEl.innerHTML = '';
                 spinner.style.display = 'block';
+                if (!append) paginationControls.style.display = 'none';
 
                 try {
-                    let url = `/api/admin/components/${cat}?`;
+                    let url = `/api/admin/components/${cat}?page=${currentPage}&limit=50&`;
                     const search = document.getElementById('comp-search').value;
                     if (statusFilter) url += `status=${statusFilter}&`;
                     if (search) url += `search=${encodeURIComponent(search)}&`;
 
                     const res = await fetch(url);
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({ message: `HTTP Error ${res.status}` }));
+                        throw new Error(errorData.message || `Server returned ${res.status}`);
+                    }
                     const data = await res.json();
                     spinner.style.display = 'none';
 
                     if (data.status === 'success') {
-                        if (data.components.length === 0) {
+                        if (data.components.length === 0 && !append) {
                             listEl.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted); background:rgba(255,255,255,0.02); border-radius:12px; border:1px dashed var(--border);">No components found in this category.</div>';
                             return;
                         }
+                        
                         data.components.forEach(comp => {
                             const status = comp.status || 'Active';
                             const card = document.createElement('div');
                             card.className = 'comp-card';
+                            card.dataset.comp = JSON.stringify(comp);
                             card.innerHTML = `
-                            <div class="comp-info">
-                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
-                                    <h4 style="margin:0">${comp.name}</h4>
-                                    <span class="status-badge status-${status.toLowerCase()}">${status}</span>
+                                <div class="comp-info">
+                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                                        <h4 style="margin:0">${comp.name}</h4>
+                                        <span class="status-badge status-${status.toLowerCase()}">${status}</span>
+                                    </div>
+                                    <p>${formatDetails(comp)}</p>
                                 </div>
-                                <p>${formatDetails(comp)}</p>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button onclick='editComp(${JSON.stringify(comp)})' class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Edit</button>
-                                <button onclick="deleteComp('${comp._id}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem; color: #f87171;">Delete</button>
-                            </div>
-                        `;
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button onclick="editCompFromBtn(this)" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Edit</button>
+                                    <button onclick="deleteComp('${comp._id}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem; color: #f87171;">Delete</button>
+                                </div>
+                            `;
                             listEl.appendChild(card);
                         });
+
+                        // Update pagination state
+                        if (data.pagination) {
+                            hasMore = data.pagination.has_more;
+                            currentPage = data.pagination.page;
+                            
+                            if (hasMore) {
+                                paginationControls.style.display = 'block';
+                                document.getElementById('pagination-status').textContent = `Showing ${listEl.children.length} of ${data.pagination.total} components`;
+                            } else {
+                                paginationControls.style.display = 'none';
+                            }
+                        } else {
+                            console.warn("Pagination data missing from success response:", data);
+                            paginationControls.style.display = 'none';
+                        }
+                    } else {
+                        throw new Error(data.message || "Unknown server error");
                     }
                 } catch (e) {
+                    console.error("Load error:", e);
                     spinner.style.display = 'none';
-                    listEl.innerHTML = '<p style="color:red">Failed to load data.</p>';
+                    let errorMsg = "Failed to load data. ";
+                    if (e.message) errorMsg += ` (${e.message})`;
+                    if (!append) listEl.innerHTML = `<p style="color:#f87171; text-align:center; padding: 2rem; background: rgba(248,113,113,0.05); border: 1px dashed rgba(248,113,113,0.2); border-radius: 12px;">${errorMsg}<br><small style="color: var(--text-muted);">Please check your connection or try refreshing the page.</small></p>`;
+                }
+            }
+
+            function loadMore() {
+                if (hasMore) {
+                    currentPage++;
+                    loadCategory(currentCategory, null, true);
                 }
             }
 
@@ -439,6 +490,11 @@
                     }
                     container.appendChild(div);
                 });
+            }
+
+            function editCompFromBtn(btn) {
+                const comp = JSON.parse(btn.closest('.comp-card').dataset.comp);
+                editComp(comp);
             }
 
             function editComp(comp) {
