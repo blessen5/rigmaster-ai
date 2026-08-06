@@ -242,9 +242,6 @@ def get_component_list(category_name, simplified=False):
     except Exception as e:
         app.logger.error(f"Error fetching {category_name}: {e}")
         return []
-    except Exception as e:
-        app.logger.error(f"Error fetching {category_name}: {e}")
-        return []
 
 def get_cached_component_list(category_name):
     # This is now just a wrapper for get_component_list
