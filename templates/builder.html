@@ -785,7 +785,10 @@
                     let html = `<option value="">Select ${label}...</option>`;
                     const items = bulkData[apiKey];
                     for (let i = 0; i < items.length; i++) {
-                        html += `<option value="${items[i].id}">${items[i].name}</option>`;
+                        const item = items[i];
+                        const itemId = Array.isArray(item) ? item[0] : item.id;
+                        const itemName = Array.isArray(item) ? item[1] : item.name;
+                        html += `<option value="${itemId}">${itemName}</option>`;
                     }
                     select.innerHTML = html;
                 }
@@ -814,7 +817,10 @@
                         let html = `<option value="">Select ${label}...</option>`;
                         const items = bulkData[apiKey];
                         for (let i = 0; i < items.length; i++) {
-                            html += `<option value="${items[i].id}">${items[i].name}</option>`;
+                            const item = items[i];
+                            const itemId = Array.isArray(item) ? item[0] : item.id;
+                            const itemName = Array.isArray(item) ? item[1] : item.name;
+                            html += `<option value="${itemId}">${itemName}</option>`;
                         }
                         select.innerHTML = html;
                     }
