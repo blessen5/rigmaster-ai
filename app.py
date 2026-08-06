@@ -228,14 +228,11 @@ def get_component_list(category_name, simplified=False):
         
         data = []
         for item in items:
-            if simplified:
-                # Array format is much smaller than Object format in JSON
-                data.append([str(item['_id']), item.get('name', 'Unknown')])
-            else:
-                doc = {'id': str(item['_id']), 'name': item.get('name', 'Unknown')}
+            doc = {'id': str(item['_id']), 'name': item.get('name', 'Unknown')}
+            if not simplified:
                 doc['status'] = item.get('status', 'Active')
                 doc['brand'] = item.get('brand', 'Unknown')
-                data.append(doc)
+            data.append(doc)
         
         # Update cache
         with _COMPONENT_CACHE_LOCK:
