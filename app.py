@@ -670,37 +670,61 @@ def get_db():
         if _mongo_client is None:
             from pymongo import MongoClient
             import certifi
-            try:
-                # First try with certifi for proper SSL, with conservative pool settings
+            
+            is_ssl = 'mongodb+srv' in MONGO_URI or 'tls=true' in MONGO_URI or 'ssl=true' in MONGO_URI
+            if is_ssl:
+                try:
+                    # First try with certifi for proper SSL, with conservative pool settings
+                    _mongo_client = MongoClient(
+                        MONGO_URI, 
+                        serverSelectionTimeoutMS=5000,
+                        tz_aware=True,
+                        tlsCAFile=certifi.where(),
+                        maxPoolSize=10,       # Keep max connections low for Atlas free tier
+                        minPoolSize=0,        # Don't keep idle connections open
+                        maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
+                        connectTimeoutMS=10000,
+                        socketTimeoutMS=30000,
+                        retryWrites=True
+                    )
+                    _mongo_client.admin.command('ping')
+                except Exception as e:
+                    app.logger.error(f"Certifi SSL failed, falling back: {e}")
+                    # Robust URI parameter appending
+                    sep = "&" if "?" in MONGO_URI else "?"
+                    fallback_uri = f"{MONGO_URI}{sep}tlsAllowInvalidCertificates=true"
+                    _mongo_client = MongoClient(
+                        fallback_uri,
+                        serverSelectionTimeoutMS=5000,
+                        tz_aware=True,
+                        maxPoolSize=10,
+                        connectTimeoutMS=10000
+                    )
+                    _mongo_client.admin.command('ping')
+            else:
                 _mongo_client = MongoClient(
-                    MONGO_URI, 
-                    serverSelectionTimeoutMS=5000,
-                    tz_aware=True,
-                    tlsCAFile=certifi.where(),
-                    maxPoolSize=10,       # Keep max connections low for Atlas free tier
-                    minPoolSize=0,        # Don't keep idle connections open
-                    maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
-                    connectTimeoutMS=10000,
-                    socketTimeoutMS=30000,
-                    retryWrites=True
-                )
-                _mongo_client.admin.command('ping')
-            except Exception as e:
-                app.logger.error(f"Certifi SSL failed, falling back: {e}")
-                # Robust URI parameter appending
-                sep = "&" if "?" in MONGO_URI else "?"
-                fallback_uri = f"{MONGO_URI}{sep}tlsAllowInvalidCertificates=true"
-                _mongo_client = MongoClient(
-                    fallback_uri,
+                    MONGO_URI,
                     serverSelectionTimeoutMS=5000,
                     tz_aware=True,
                     maxPoolSize=10,
-                    connectTimeoutMS=10000
+                    connectTimeoutMS=5000
                 )
                 _mongo_client.admin.command('ping')
         return _mongo_client['rigmaster']
     except Exception as e:
         app.logger.error(f"MongoDB connection failed: {e}")
+        if MONGO_URI != 'mongodb://localhost:27017/rigmaster' and not os.getenv('VERCEL'):
+            try:
+                app.logger.warning("Attempting local MongoDB fallback (mongodb://localhost:27017/rigmaster)...")
+                from pymongo import MongoClient
+                _mongo_client = MongoClient(
+                    'mongodb://localhost:27017/rigmaster',
+                    serverSelectionTimeoutMS=3000
+                )
+                _mongo_client.admin.command('ping')
+                return _mongo_client['rigmaster']
+            except Exception as local_e:
+                app.logger.error(f"Local MongoDB fallback also failed: {local_e}")
         _mongo_client = None
         return None
 
@@ -3021,6 +3045,7 @@ def api_fix_compatibility():
         network = get_comp(data.get('wifi_id'))
         ups = get_comp(data.get('ups_id'))
         tools = get_comp(data.get('tool_id'))
+        peripherals = get_comp(data.get('peripherals_id'))
 
         if not cpu or not mobo or not ram:
             return jsonify({'suggestions': [], 'status': 'Incomplete Selection'})
@@ -3958,7 +3983,7 @@ def api_fix_compatibility():
                 'wifi_id': network.get('name') if network else None,
                 'ups_id': ups.get('name') if ups else None,
                 'tool_id': tools.get('name') if tools else None,
-                'peripherals_id': (peripherals.get('name') if 'peripherals' in locals() and peripherals else None)
+                'peripherals_id': peripherals.get('name') if peripherals else None
             }
         })
 
