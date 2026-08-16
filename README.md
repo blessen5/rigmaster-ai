@@ -41,7 +41,7 @@ Validates builds across 4 core engineering dimensions with severity scoring (**I
 flowchart TD
     User([User Request]) --> FlaskApp[Flask Web Core]
     
-    subgraph AI Engine [Multi-Provider AI Engine]
+    subgraph AIEngine ["Multi-Provider AI Engine"]
         Groq[Groq API]
         Gemini[Google Gemini API]
         Mistral[Mistral AI]
@@ -49,25 +49,25 @@ flowchart TD
         HF[Hugging Face API]
     end
     
-    subgraph Compatibility [Relational Constraint Engine]
+    subgraph Compatibility ["Relational Constraint Engine"]
         Volumetric[3D Volumetric Clearance]
         Electrical[Electrical & Transient Spike Check]
         Logical[Socket / Bus / RAM Gen Check]
         Headers[ARGB & USB Header Matrix]
     end
     
-    subgraph Data & Pricing [Data Layer]
+    subgraph DataAndPricing ["Data Layer"]
         SerpAPI[SerpAPI Live Price Fetcher]
         MongoDB[(MongoDB Atlas)]
         Currency[160+ Exchange Rates Engine]
     end
 
-    FlaskApp --> AI Engine
-    AI Engine -- Failover & Rotation --> FlaskApp
+    FlaskApp --> AIEngine
+    AIEngine -- Failover & Rotation --> FlaskApp
     FlaskApp --> Compatibility
     Compatibility --> FlaskApp
-    FlaskApp --> Data & Pricing
-    Data & Pricing --> FlaskApp
+    FlaskApp --> DataAndPricing
+    DataAndPricing --> FlaskApp
 ```
 
 ---
